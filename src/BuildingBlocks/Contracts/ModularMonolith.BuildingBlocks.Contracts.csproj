@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\Packages\Tsikhanau.Railway\Tsikhanau.Railway.csproj" />
+  </ItemGroup>
+</Project>

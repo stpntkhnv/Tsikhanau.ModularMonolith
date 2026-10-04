@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\Domain\ModularMonolith.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Api\ModularMonolith.BuildingBlocks.Api.csproj" />
+    <ProjectReference Include="..\TestModules\ModularMonolith.TestModules.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+</Project>

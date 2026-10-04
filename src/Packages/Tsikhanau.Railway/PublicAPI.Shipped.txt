@@ -1,0 +1,216 @@
+#nullable enable
+const Tsikhanau.Railway.AggregateError.DefaultCode = "aggregate" -> string!
+const Tsikhanau.Railway.ValidationError.DefaultCode = "validation" -> string!
+override sealed Tsikhanau.Railway.AggregateError.Equals(Tsikhanau.Railway.Error? other) -> bool
+override sealed Tsikhanau.Railway.Error.ToString() -> string!
+override sealed Tsikhanau.Railway.ValidationError.Equals(Tsikhanau.Railway.Error? other) -> bool
+override Tsikhanau.Railway.AggregateError.<Clone>$() -> Tsikhanau.Railway.AggregateError!
+override Tsikhanau.Railway.AggregateError.Equals(object? obj) -> bool
+override Tsikhanau.Railway.AggregateError.GetHashCode() -> int
+override Tsikhanau.Railway.Error.Equals(object? obj) -> bool
+override Tsikhanau.Railway.Error.GetHashCode() -> int
+override Tsikhanau.Railway.FieldError.GetHashCode() -> int
+override Tsikhanau.Railway.FieldError.ToString() -> string!
+override Tsikhanau.Railway.Optional<T>.Equals(object? obj) -> bool
+override Tsikhanau.Railway.Optional<T>.GetHashCode() -> int
+override Tsikhanau.Railway.Optional<T>.ToString() -> string!
+override Tsikhanau.Railway.Result<T>.Equals(object? obj) -> bool
+override Tsikhanau.Railway.Result<T>.GetHashCode() -> int
+override Tsikhanau.Railway.Result<T>.ToString() -> string!
+override Tsikhanau.Railway.Unit.Equals(object? obj) -> bool
+override Tsikhanau.Railway.Unit.GetHashCode() -> int
+override Tsikhanau.Railway.Unit.ToString() -> string!
+override Tsikhanau.Railway.ValidationError.<Clone>$() -> Tsikhanau.Railway.ValidationError!
+override Tsikhanau.Railway.ValidationError.Equals(object? obj) -> bool
+override Tsikhanau.Railway.ValidationError.GetHashCode() -> int
+static readonly Tsikhanau.Railway.Unit.Value -> Tsikhanau.Railway.Unit
+static Tsikhanau.Railway.AggregateError.From(System.Collections.Generic.IEnumerable<Tsikhanau.Railway.Error!>! errors) -> Tsikhanau.Railway.AggregateError!
+static Tsikhanau.Railway.AggregateError.operator !=(Tsikhanau.Railway.AggregateError? left, Tsikhanau.Railway.AggregateError? right) -> bool
+static Tsikhanau.Railway.AggregateError.operator ==(Tsikhanau.Railway.AggregateError? left, Tsikhanau.Railway.AggregateError? right) -> bool
+static Tsikhanau.Railway.Error.Conflict(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.Failure(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.Forbidden(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.FromException(System.Exception! exception) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.NotFound(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.operator !=(Tsikhanau.Railway.Error? left, Tsikhanau.Railway.Error? right) -> bool
+static Tsikhanau.Railway.Error.operator ==(Tsikhanau.Railway.Error? left, Tsikhanau.Railway.Error? right) -> bool
+static Tsikhanau.Railway.Error.Unauthorized(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.Unexpected(string! code, string! message) -> Tsikhanau.Railway.Error!
+static Tsikhanau.Railway.Error.Validation(string! field, string! message) -> Tsikhanau.Railway.ValidationError!
+static Tsikhanau.Railway.FieldError.operator !=(Tsikhanau.Railway.FieldError left, Tsikhanau.Railway.FieldError right) -> bool
+static Tsikhanau.Railway.FieldError.operator ==(Tsikhanau.Railway.FieldError left, Tsikhanau.Railway.FieldError right) -> bool
+static Tsikhanau.Railway.Optional<T>.FromNullable(T? value) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.Optional<T>.implicit operator Tsikhanau.Railway.Optional<T>(T? value) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.Optional<T>.None() -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.Optional<T>.operator !=(Tsikhanau.Railway.Optional<T> left, Tsikhanau.Railway.Optional<T> right) -> bool
+static Tsikhanau.Railway.Optional<T>.operator ==(Tsikhanau.Railway.Optional<T> left, Tsikhanau.Railway.Optional<T> right) -> bool
+static Tsikhanau.Railway.Optional<T>.Some(T value) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalConversions.ToResult<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<Tsikhanau.Railway.Error!>! errorFactory) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.OptionalConversions.ToResult<T>(this Tsikhanau.Railway.Optional<T> optional, Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.OptionalExtensions.Bind<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, Tsikhanau.Railway.Optional<TResult>>! binder) -> Tsikhanau.Railway.Optional<TResult>
+static Tsikhanau.Railway.OptionalExtensions.BindAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!>! binderAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.BindAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, Tsikhanau.Railway.Optional<TResult>>! binder) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.BindAsync<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!>! binderAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.Map<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, TResult?>! mapper) -> Tsikhanau.Railway.Optional<TResult>
+static Tsikhanau.Railway.OptionalExtensions.MapAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, System.Threading.Tasks.Task<TResult>!>! mapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.MapAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, TResult?>! mapper) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.MapAsync<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, System.Threading.Tasks.Task<TResult>!>! mapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<TResult>>!
+static Tsikhanau.Railway.OptionalExtensions.Match<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, TResult>! onSome, System.Func<TResult>! onNone) -> TResult
+static Tsikhanau.Railway.OptionalExtensions.MatchAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, System.Threading.Tasks.Task<TResult>!>! onSomeAsync, System.Func<System.Threading.Tasks.Task<TResult>!>! onNoneAsync) -> System.Threading.Tasks.Task<TResult>!
+static Tsikhanau.Railway.OptionalExtensions.MatchAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, TResult>! onSome, System.Func<TResult>! onNone) -> System.Threading.Tasks.Task<TResult>!
+static Tsikhanau.Railway.OptionalExtensions.MatchAsync<T, TResult>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, System.Threading.Tasks.Task<TResult>!>! onSomeAsync, System.Func<System.Threading.Tasks.Task<TResult>!>! onNoneAsync) -> System.Threading.Tasks.Task<TResult>!
+static Tsikhanau.Railway.OptionalExtensions.Or<T>(this Tsikhanau.Railway.Optional<T> optional, Tsikhanau.Railway.Optional<T> fallback) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalExtensions.OrAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, Tsikhanau.Railway.Optional<T> fallback) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.OrElse<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<Tsikhanau.Railway.Optional<T>>! fallbackFactory) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalExtensions.OrElseAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!>! fallbackFactoryAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.OrElseAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<Tsikhanau.Railway.Optional<T>>! fallbackFactory) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.OrElseAsync<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!>! fallbackFactoryAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.Tap<T>(this Tsikhanau.Railway.Optional<T> optional, System.Action<T>! action) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalExtensions.TapAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Action<T>! action) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.TapAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.TapAsync<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.Where<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, bool>! predicate) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalExtensions.WhereAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, bool>! predicate) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.WhereAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>! optionalTask, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.OptionalExtensions.WhereAsync<T>(this Tsikhanau.Railway.Optional<T> optional, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Optional<T>>!
+static Tsikhanau.Railway.Result.Combine<T>(params System.ReadOnlySpan<Tsikhanau.Railway.Result<T>> results) -> Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>
+static Tsikhanau.Railway.Result.Combine<T>(this System.Collections.Generic.IEnumerable<Tsikhanau.Railway.Result<T>>! results) -> Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>
+static Tsikhanau.Railway.Result.CombineAll<T>(params System.ReadOnlySpan<Tsikhanau.Railway.Result<T>> results) -> Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>
+static Tsikhanau.Railway.Result.CombineAll<T>(this System.Collections.Generic.IEnumerable<Tsikhanau.Railway.Result<T>>! results) -> Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>
+static Tsikhanau.Railway.Result.CombineAllAsync<T>(params System.ReadOnlySpan<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!> resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>>!
+static Tsikhanau.Railway.Result.CombineAllAsync<T>(this System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!>! resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>>!
+static Tsikhanau.Railway.Result.CombineAsync<T>(params System.ReadOnlySpan<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!> resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>>!
+static Tsikhanau.Railway.Result.CombineAsync<T>(this System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!>! resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<System.Collections.Generic.IReadOnlyList<T>!>>!
+static Tsikhanau.Railway.Result.CombineIgnoreValues<T>(params System.ReadOnlySpan<Tsikhanau.Railway.Result<T>> results) -> Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>
+static Tsikhanau.Railway.Result.CombineIgnoreValues<T>(this System.Collections.Generic.IEnumerable<Tsikhanau.Railway.Result<T>>! results) -> Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>
+static Tsikhanau.Railway.Result.CombineIgnoreValuesAsync<T>(params System.ReadOnlySpan<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!> resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>>!
+static Tsikhanau.Railway.Result.CombineIgnoreValuesAsync<T>(this System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!>! resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>>!
+static Tsikhanau.Railway.Result.Failure(Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>
+static Tsikhanau.Railway.Result.Failure<T>(Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.FirstSuccess<T>(params System.ReadOnlySpan<Tsikhanau.Railway.Result<T>> results) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.FirstSuccess<T>(this System.Collections.Generic.IEnumerable<Tsikhanau.Railway.Result<T>>! results) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.FirstSuccessAsync<T>(params System.ReadOnlySpan<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!> resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.Result.FirstSuccessAsync<T>(this System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!>! resultTasks) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.Result.Success() -> Tsikhanau.Railway.Result<Tsikhanau.Railway.Unit>
+static Tsikhanau.Railway.Result.Success<T>(T value) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.Try<T>(System.Func<T>! func) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.Try<T>(System.Func<T>! func, System.Func<System.Exception!, Tsikhanau.Railway.Error!>! errorMapper) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result.TryAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! funcAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.Result.TryAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! funcAsync, System.Func<System.Exception!, Tsikhanau.Railway.Error!>! errorMapper) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.Result<T>.Failure(Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result<T>.implicit operator Tsikhanau.Railway.Result<T>(T value) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result<T>.implicit operator Tsikhanau.Railway.Result<T>(Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.Result<T>.operator !=(Tsikhanau.Railway.Result<T> left, Tsikhanau.Railway.Result<T> right) -> bool
+static Tsikhanau.Railway.Result<T>.operator ==(Tsikhanau.Railway.Result<T> left, Tsikhanau.Railway.Result<T> right) -> bool
+static Tsikhanau.Railway.Result<T>.Success(T value) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultConversions.ToOptional<T>(this Tsikhanau.Railway.Result<T> result) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.ResultExtensions.Bind<T, TResult>(this Tsikhanau.Railway.Result<T> result, System.Func<T, Tsikhanau.Railway.Result<TResult>>! binder) -> Tsikhanau.Railway.Result<TResult>
+static Tsikhanau.Railway.ResultExtensions.BindAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!>! binderAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.BindAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, Tsikhanau.Railway.Result<TResult>>! binder) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.BindAsync<T, TResult>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!>! binderAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.Ensure<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T, bool>! predicate, System.Func<T, Tsikhanau.Railway.Error!>! errorFactory) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultExtensions.Ensure<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T, bool>! predicate, Tsikhanau.Railway.Error! error) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, bool>! predicate, System.Func<T, Tsikhanau.Railway.Error!>! errorFactory) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, bool>! predicate, Tsikhanau.Railway.Error! error) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync, System.Func<T, Tsikhanau.Railway.Error!>! errorFactory) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync, Tsikhanau.Railway.Error! error) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync, System.Func<T, Tsikhanau.Railway.Error!>! errorFactory) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.EnsureAsync<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task<bool>!>! predicateAsync, Tsikhanau.Railway.Error! error) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefault<T>(this Tsikhanau.Railway.Result<T> result) -> T?
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefault<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T>! defaultValueFactory) -> T
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefault<T>(this Tsikhanau.Railway.Result<T> result, T defaultValue) -> T
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefaultAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask) -> System.Threading.Tasks.Task<T?>!
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefaultAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<System.Threading.Tasks.Task<T>!>! defaultValueFactoryAsync) -> System.Threading.Tasks.Task<T>!
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefaultAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T>! defaultValueFactory) -> System.Threading.Tasks.Task<T>!
+static Tsikhanau.Railway.ResultExtensions.GetValueOrDefaultAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, T defaultValue) -> System.Threading.Tasks.Task<T>!
+static Tsikhanau.Railway.ResultExtensions.Map<T, TResult>(this Tsikhanau.Railway.Result<T> result, System.Func<T, TResult>! mapper) -> Tsikhanau.Railway.Result<TResult>
+static Tsikhanau.Railway.ResultExtensions.MapAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task<TResult>!>! mapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.MapAsync<T, TResult>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, TResult>! mapper) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.MapAsync<T, TResult>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task<TResult>!>! mapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<TResult>>!
+static Tsikhanau.Railway.ResultExtensions.MapError<T>(this Tsikhanau.Railway.Result<T> result, System.Func<Tsikhanau.Railway.Error!, Tsikhanau.Railway.Error!>! errorMapper) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultExtensions.MapErrorAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task<Tsikhanau.Railway.Error!>!>! errorMapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.MapErrorAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<Tsikhanau.Railway.Error!, Tsikhanau.Railway.Error!>! errorMapper) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.MapErrorAsync<T>(this Tsikhanau.Railway.Result<T> result, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task<Tsikhanau.Railway.Error!>!>! errorMapperAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.Match<T, TOutput>(this Tsikhanau.Railway.Result<T> result, System.Func<T, TOutput>! onSuccess, System.Func<Tsikhanau.Railway.Error!, TOutput>! onFailure) -> TOutput
+static Tsikhanau.Railway.ResultExtensions.MatchAsync<T, TOutput>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task<TOutput>!>! onSuccessAsync, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task<TOutput>!>! onFailureAsync) -> System.Threading.Tasks.Task<TOutput>!
+static Tsikhanau.Railway.ResultExtensions.MatchAsync<T, TOutput>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, TOutput>! onSuccess, System.Func<Tsikhanau.Railway.Error!, TOutput>! onFailure) -> System.Threading.Tasks.Task<TOutput>!
+static Tsikhanau.Railway.ResultExtensions.MatchAsync<T, TOutput>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task<TOutput>!>! onSuccessAsync, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task<TOutput>!>! onFailureAsync) -> System.Threading.Tasks.Task<TOutput>!
+static Tsikhanau.Railway.ResultExtensions.Tap<T>(this Tsikhanau.Railway.Result<T> result, System.Action<T>! action) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultExtensions.TapAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Action<T>! action) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.TapAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<T, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.TapAsync<T>(this Tsikhanau.Railway.Result<T> result, System.Func<T, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.TapError<T>(this Tsikhanau.Railway.Result<T> result, System.Action<Tsikhanau.Railway.Error!>! action) -> Tsikhanau.Railway.Result<T>
+static Tsikhanau.Railway.ResultExtensions.TapErrorAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Action<Tsikhanau.Railway.Error!>! action) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.TapErrorAsync<T>(this System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>! resultTask, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.TapErrorAsync<T>(this Tsikhanau.Railway.Result<T> result, System.Func<Tsikhanau.Railway.Error!, System.Threading.Tasks.Task!>! actionAsync) -> System.Threading.Tasks.Task<Tsikhanau.Railway.Result<T>>!
+static Tsikhanau.Railway.ResultExtensions.Zip<T1, T2>(this Tsikhanau.Railway.Result<T1> first, Tsikhanau.Railway.Result<T2> second) -> Tsikhanau.Railway.Result<(T1, T2)>
+static Tsikhanau.Railway.Unit.operator !=(Tsikhanau.Railway.Unit left, Tsikhanau.Railway.Unit right) -> bool
+static Tsikhanau.Railway.Unit.operator ==(Tsikhanau.Railway.Unit left, Tsikhanau.Railway.Unit right) -> bool
+static Tsikhanau.Railway.ValidationError.For(string! field, string! message) -> Tsikhanau.Railway.ValidationError!
+static Tsikhanau.Railway.ValidationError.From(System.Collections.Generic.IEnumerable<Tsikhanau.Railway.FieldError>! fieldErrors) -> Tsikhanau.Railway.ValidationError!
+static Tsikhanau.Railway.ValidationError.operator !=(Tsikhanau.Railway.ValidationError? left, Tsikhanau.Railway.ValidationError? right) -> bool
+static Tsikhanau.Railway.ValidationError.operator ==(Tsikhanau.Railway.ValidationError? left, Tsikhanau.Railway.ValidationError? right) -> bool
+Tsikhanau.Railway.AggregateError
+Tsikhanau.Railway.AggregateError.Equals(Tsikhanau.Railway.AggregateError? other) -> bool
+Tsikhanau.Railway.AggregateError.Errors.get -> System.Collections.Generic.IReadOnlyList<Tsikhanau.Railway.Error!>!
+Tsikhanau.Railway.Error
+Tsikhanau.Railway.Error.Code.get -> string!
+Tsikhanau.Railway.Error.Error(Tsikhanau.Railway.Error! original) -> void
+Tsikhanau.Railway.Error.Error(Tsikhanau.Railway.ErrorKind kind, string! code, string! message) -> void
+Tsikhanau.Railway.Error.GetAllCodes() -> System.Collections.Generic.IEnumerable<string!>!
+Tsikhanau.Railway.Error.GetFullMessage() -> string!
+Tsikhanau.Railway.Error.Inner.get -> Tsikhanau.Railway.Error?
+Tsikhanau.Railway.Error.Inner.init -> void
+Tsikhanau.Railway.Error.Kind.get -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.Error.Message.get -> string!
+Tsikhanau.Railway.Error.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>?
+Tsikhanau.Railway.Error.Metadata.init -> void
+Tsikhanau.Railway.Error.WithContext(string! code, string! message) -> Tsikhanau.Railway.Error!
+Tsikhanau.Railway.Error.WithMetadata(string! key, object? value) -> Tsikhanau.Railway.Error!
+Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Conflict = 4 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Failure = 0 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Forbidden = 6 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.NotFound = 3 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Unauthorized = 5 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Unexpected = 1 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.ErrorKind.Validation = 2 -> Tsikhanau.Railway.ErrorKind
+Tsikhanau.Railway.FieldError
+Tsikhanau.Railway.FieldError.Equals(Tsikhanau.Railway.FieldError other) -> bool
+Tsikhanau.Railway.FieldError.Field.get -> string!
+Tsikhanau.Railway.FieldError.FieldError() -> void
+Tsikhanau.Railway.FieldError.FieldError(string! field, string! message) -> void
+Tsikhanau.Railway.FieldError.Message.get -> string!
+Tsikhanau.Railway.Optional<T>
+Tsikhanau.Railway.Optional<T>.Equals(Tsikhanau.Railway.Optional<T> other) -> bool
+Tsikhanau.Railway.Optional<T>.GetValueOrDefault() -> T?
+Tsikhanau.Railway.Optional<T>.GetValueOrDefault(System.Func<T>! defaultValueFactory) -> T
+Tsikhanau.Railway.Optional<T>.GetValueOrDefault(T defaultValue) -> T
+Tsikhanau.Railway.Optional<T>.HasValue.get -> bool
+Tsikhanau.Railway.Optional<T>.IsNone.get -> bool
+Tsikhanau.Railway.Optional<T>.Optional() -> void
+Tsikhanau.Railway.Optional<T>.Value.get -> T
+Tsikhanau.Railway.OptionalConversions
+Tsikhanau.Railway.OptionalExtensions
+Tsikhanau.Railway.Result
+Tsikhanau.Railway.Result<T>
+Tsikhanau.Railway.Result<T>.Equals(Tsikhanau.Railway.Result<T> other) -> bool
+Tsikhanau.Railway.Result<T>.Error.get -> Tsikhanau.Railway.Error!
+Tsikhanau.Railway.Result<T>.IsFailure.get -> bool
+Tsikhanau.Railway.Result<T>.IsSuccess.get -> bool
+Tsikhanau.Railway.Result<T>.Result() -> void
+Tsikhanau.Railway.Result<T>.Value.get -> T
+Tsikhanau.Railway.ResultConversions
+Tsikhanau.Railway.ResultExtensions
+Tsikhanau.Railway.Unit
+Tsikhanau.Railway.Unit.Equals(Tsikhanau.Railway.Unit other) -> bool
+Tsikhanau.Railway.Unit.Unit() -> void
+Tsikhanau.Railway.ValidationError
+Tsikhanau.Railway.ValidationError.Equals(Tsikhanau.Railway.ValidationError? other) -> bool
+Tsikhanau.Railway.ValidationError.FieldErrors.get -> System.Collections.Generic.IReadOnlyList<Tsikhanau.Railway.FieldError>!
+Tsikhanau.Railway.ValidationError.Merge(Tsikhanau.Railway.ValidationError! other) -> Tsikhanau.Railway.ValidationError!
+virtual Tsikhanau.Railway.Error.<Clone>$() -> Tsikhanau.Railway.Error!
+virtual Tsikhanau.Railway.Error.EqualityContract.get -> System.Type!
+virtual Tsikhanau.Railway.Error.Equals(Tsikhanau.Railway.Error? other) -> bool
+virtual Tsikhanau.Railway.Error.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~override Tsikhanau.Railway.FieldError.Equals(object obj) -> bool

@@ -1,0 +1,46 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ModularMonolith.BuildingBlocks.Application.Commands;
+using ModularMonolith.BuildingBlocks.Application.Modules;
+using ModularMonolith.BuildingBlocks.Infrastructure.Dispatching;
+using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
+using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
+using Tsikhanau.Railway;
+
+namespace ModularMonolith.BuildingBlocks.Infrastructure.InternalCommands;
+
+public sealed class InternalCommandsPump<TModule>(
+    IServiceScopeFactory serviceScopeFactory,
+    IOptions<QueueSettings> options,
+    InternalCommandRegistry<TModule> internalCommandRegistry,
+    TimeProvider timeProvider,
+    ILogger<InternalCommandsPump<TModule>> logger)
+    : MessagePump<TModule, InternalCommandMessage>(serviceScopeFactory, options, timeProvider, logger)
+    where TModule : IModuleFacade
+{
+    protected override String Table => InternalCommandMessage.Table;
+
+    protected override String OrderColumn => "enqueued_on";
+
+    protected override Task<Result<Unit>> HandleAsync(
+        IServiceProvider serviceProvider,
+        ModuleDbContext dbContext,
+        InternalCommandMessage message,
+        DateTimeOffset processedOn,
+        CancellationToken cancellationToken) =>
+        internalCommandRegistry
+            .FindType(message.Type)
+            .ToResult(() => MessagingErrors.UnknownType(message.Type))
+            .Bind(type => MessageSerializer.Deserialize<InternalCommand>(message.Payload, type))
+            .Tap(_ => message.ProcessedOn = processedOn)
+            .BindAsync(command => SendAsync(command, serviceProvider, cancellationToken));
+
+    private static Task<Result<Unit>> SendAsync(
+        InternalCommand command,
+        IServiceProvider serviceProvider,
+        CancellationToken cancellationToken) =>
+        serviceProvider
+            .GetRequiredService<ModuleDispatcher<TModule>>()
+            .SendAsync(command, cancellationToken);
+}

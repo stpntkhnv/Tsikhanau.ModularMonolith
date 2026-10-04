@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>Tsikhanau.Railway</PackageId>
+        <Description>Result and Optional types with railway-oriented extensions (Bind, Map, Ensure, Tap, Combine, Match), full async support and Roslyn analyzers</Description>
+        <IsPackable>true</IsPackable>
+        <IsAotCompatible>true</IsAotCompatible>
+        <PackageTags>functional-programming;railway-oriented;result;optional;error-handling;analyzers;csharp;dotnet</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Tsikhanau.Railway.Analyzers\Tsikhanau.Railway.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" PrivateAssets="all" />
+        <ProjectReference Include="..\Tsikhanau.Railway.Analyzers.CodeFixes\Tsikhanau.Railway.Analyzers.CodeFixes.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\Tsikhanau.Railway.Analyzers\bin\$(Configuration)\netstandard2.0\Tsikhanau.Railway.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="..\Tsikhanau.Railway.Analyzers.CodeFixes\bin\$(Configuration)\netstandard2.0\Tsikhanau.Railway.Analyzers.CodeFixes.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
+
+</Project>

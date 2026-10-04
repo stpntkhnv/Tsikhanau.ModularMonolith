@@ -1,0 +1,41 @@
+#nullable enable
+static Tsikhanau.Railway.Result.Collect<T1>(Tsikhanau.Railway.Result<T1> first) -> Tsikhanau.Railway.Collected<T1>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>.Bind<TOut>(System.Func<T1, T2, T3, T4, T5, T6, T7, T8, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>.Map<TOut>(System.Func<T1, T2, T3, T4, T5, T6, T7, T8, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>.And<T8>(Tsikhanau.Railway.Result<T8> next) -> Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>.Bind<TOut>(System.Func<T1, T2, T3, T4, T5, T6, T7, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>.Map<TOut>(System.Func<T1, T2, T3, T4, T5, T6, T7, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>.And<T7>(Tsikhanau.Railway.Result<T7> next) -> Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>.Bind<TOut>(System.Func<T1, T2, T3, T4, T5, T6, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>.Map<TOut>(System.Func<T1, T2, T3, T4, T5, T6, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>.And<T6>(Tsikhanau.Railway.Result<T6> next) -> Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>.Bind<TOut>(System.Func<T1, T2, T3, T4, T5, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>.Map<TOut>(System.Func<T1, T2, T3, T4, T5, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4>.And<T5>(Tsikhanau.Railway.Result<T5> next) -> Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4>.Bind<TOut>(System.Func<T1, T2, T3, T4, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3, T4>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3, T4>.Map<TOut>(System.Func<T1, T2, T3, T4, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3>
+Tsikhanau.Railway.Collected<T1, T2, T3>.And<T4>(Tsikhanau.Railway.Result<T4> next) -> Tsikhanau.Railway.Collected<T1, T2, T3, T4>
+Tsikhanau.Railway.Collected<T1, T2, T3>.Bind<TOut>(System.Func<T1, T2, T3, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2, T3>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2, T3>.Map<TOut>(System.Func<T1, T2, T3, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2>
+Tsikhanau.Railway.Collected<T1, T2>.And<T3>(Tsikhanau.Railway.Result<T3> next) -> Tsikhanau.Railway.Collected<T1, T2, T3>
+Tsikhanau.Railway.Collected<T1, T2>.Bind<TOut>(System.Func<T1, T2, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1, T2>.Collected() -> void
+Tsikhanau.Railway.Collected<T1, T2>.Map<TOut>(System.Func<T1, T2, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1>
+Tsikhanau.Railway.Collected<T1>.And<T2>(Tsikhanau.Railway.Result<T2> next) -> Tsikhanau.Railway.Collected<T1, T2>
+Tsikhanau.Railway.Collected<T1>.Bind<TOut>(System.Func<T1, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.Collected<T1>.Collected() -> void
+Tsikhanau.Railway.Collected<T1>.Map<TOut>(System.Func<T1, TOut>! map) -> Tsikhanau.Railway.Result<TOut>

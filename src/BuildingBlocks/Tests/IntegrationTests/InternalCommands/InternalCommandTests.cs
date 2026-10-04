@@ -1,0 +1,135 @@
+using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
+using ModularMonolith.Testing.Database;
+using ModularMonolith.TestModules.Pings.Domain.Pings;
+using ModularMonolith.TestModules.Pings.Features.ScheduleTouch;
+using ModularMonolith.TestModules.Pings.Features.TouchPing;
+
+namespace ModularMonolith.BuildingBlocks.IntegrationTests.InternalCommands;
+
+public sealed class InternalCommandTests(PostgresFixture postgresFixture)
+{
+    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task Scheduled_command_runs_from_the_queue()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("later");
+        await testModulesHost.Pings.ExecuteCommandAsync(new ScheduleTouchCommand(pingId), CancellationToken);
+
+        var pingBefore = await testModulesHost.GetPingAsync(pingId);
+        var processedCount = await testModulesHost.RunInternalCommandsAsync();
+        var pingAfter = await testModulesHost.GetPingAsync(pingId);
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        pingBefore.Touches.ShouldBe(0);
+        processedCount.ShouldBe(1);
+        pingAfter.Touches.ShouldBe(1);
+        var row = rows.ShouldHaveSingleItem();
+        row.IsProcessed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Failing_scheduled_command_is_marked_failed_at_once()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("worn");
+        for (var touchNumber = 0; touchNumber < Ping.MaxTouches; touchNumber++)
+        {
+            await testModulesHost.Pings.ExecuteCommandAsync(new TouchPingCommand(pingId), CancellationToken);
+        }
+
+        await testModulesHost.Pings.ExecuteCommandAsync(new ScheduleTouchCommand(pingId), CancellationToken);
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+        var ping = await testModulesHost.GetPingAsync(pingId);
+
+        var row = rows.ShouldHaveSingleItem();
+        row.HasFailed.ShouldBeTrue();
+        row.Attempts.ShouldBe(1);
+        ping.Touches.ShouldBe(Ping.MaxTouches);
+    }
+
+    [Fact]
+    public async Task Concurrency_conflict_in_a_scheduled_command_is_retried()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("raced");
+        await testModulesHost.Pings.ExecuteCommandAsync(new ScheduleTouchCommand(pingId), CancellationToken);
+        var hasRaced = 0;
+        testModulesHost.PingHooks.AfterLoad = async () =>
+        {
+            if (Interlocked.Exchange(ref hasRaced, 1) == 0)
+            {
+                var touchResult = await testModulesHost.Pings.ExecuteCommandAsync(
+                    new TouchPingCommand(pingId),
+                    CancellationToken);
+
+                touchResult.IsSuccess.ShouldBeTrue();
+            }
+        };
+
+        var ranOn = testModulesHost.Time.GetUtcNow();
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var row = rows.ShouldHaveSingleItem();
+        row.Attempts.ShouldBe(1);
+        row.HasFailed.ShouldBeFalse();
+        row.NextAttemptOn.ShouldBe(ranOn.UtcDateTime.AddSeconds(1));
+
+        testModulesHost.PingHooks.AfterLoad = static () => Task.CompletedTask;
+        testModulesHost.Time.Advance(TimeSpan.FromSeconds(1));
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var retriedRows = await testModulesHost.ReadInternalCommandRowsAsync();
+        var ping = await testModulesHost.GetPingAsync(pingId);
+
+        var retriedRow = retriedRows.ShouldHaveSingleItem();
+        retriedRow.IsProcessed.ShouldBeTrue();
+        ping.Touches.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Unknown_command_type_fails_at_once()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await testModulesHost.Database.ExecuteAsync(
+            """
+            INSERT INTO pings.internal_commands (id, type, payload, attempts, next_attempt_on, enqueued_on)
+            VALUES (@id, 'ModularMonolith.Nowhere.Command', '{}'::jsonb, 0, @enqueuedOn, @enqueuedOn)
+            """,
+            new { id = Guid.CreateVersion7(), enqueuedOn = testModulesHost.Time.GetUtcNow() });
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var row = rows.ShouldHaveSingleItem();
+        row.HasFailed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Module_queues_take_turns()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("first");
+        await testModulesHost.CreatePingAsync("second");
+        await testModulesHost.CreatePingAsync("third");
+        await testModulesHost.Pings.ExecuteCommandAsync(new ScheduleTouchCommand(pingId), CancellationToken);
+        var deliveredCountBeforeTouch = -1;
+        testModulesHost.PingHooks.AfterLoad = async () =>
+            deliveredCountBeforeTouch = await testModulesHost.Database.ExecuteScalarAsync<Int32>(
+                "SELECT count(*)::int FROM pings.outbox_messages WHERE processed_on IS NOT NULL");
+
+        var processedCount = await testModulesHost.RunPingsQueuesAsync();
+
+        processedCount.ShouldBe(5);
+        deliveredCountBeforeTouch.ShouldBe(1);
+    }
+}

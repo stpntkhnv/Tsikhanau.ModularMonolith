@@ -1,0 +1,44 @@
+using Scalar.AspNetCore;
+
+namespace ModularMonolith.Bootstrapper.Defaults;
+
+internal static class ServiceDefaultsExtensions
+{
+    public static WebApplicationBuilder AddServiceDefaults(
+        this WebApplicationBuilder builder,
+        params String[] activitySources)
+    {
+        builder.AddTelemetry(activitySources);
+        builder.AddHealth();
+        builder.Services.AddProblemDetails();
+        builder.Services.AddOpenApi();
+
+        return builder;
+    }
+
+    public static WebApplication UseServiceDefaults(this WebApplication app)
+    {
+        app.UseExceptionHandler(
+            new ExceptionHandlerOptions
+            {
+                StatusCodeSelector = exception => exception is BadHttpRequestException badHttpRequestException
+                    ? badHttpRequestException.StatusCode
+                    : StatusCodes.Status500InternalServerError
+            });
+
+        app.UseStatusCodePages();
+        app.MapHealth();
+        if (app.Environment.IsDevelopment())
+        {
+            app
+                .MapOpenApi()
+                .AllowAnonymous();
+
+            app
+                .MapScalarApiReference()
+                .AllowAnonymous();
+        }
+
+        return app;
+    }
+}

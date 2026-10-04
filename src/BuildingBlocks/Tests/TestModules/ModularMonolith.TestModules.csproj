@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.IntegrationTests" />
+    <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.UnitTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Api\ModularMonolith.BuildingBlocks.Api.csproj" />
+  </ItemGroup>
+</Project>

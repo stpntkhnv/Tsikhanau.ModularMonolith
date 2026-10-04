@@ -1,0 +1,1 @@
+Copied from Tsikhanau.Packages at commit b30a962c443b6e157c6a404aaa1c6174a1d276cd (branch feature/result-collect, version 1.1.0): Tsikhanau.Railway, Tsikhanau.Railway.AspNetCore and the analyzers Tsikhanau.Railway.Analyzers (with its code fixes). Replace with the NuGet packages Tsikhanau.Railway and Tsikhanau.Railway.AspNetCore once they are published.

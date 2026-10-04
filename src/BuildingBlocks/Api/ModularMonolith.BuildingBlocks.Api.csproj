@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Application\ModularMonolith.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\Shared\ModularMonolith.Shared\ModularMonolith.Shared.csproj" />
+    <ProjectReference Include="..\..\Packages\Tsikhanau.Railway.AspNetCore\Tsikhanau.Railway.AspNetCore.csproj" />
+  </ItemGroup>
+</Project>

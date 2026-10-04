@@ -1,0 +1,60 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Bootstrapper/">
+    <Project Path="src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj" />
+  </Folder>
+  <Folder Name="/src/Analyzers/">
+    <Project Path="src/Analyzers/ModularMonolith.Analyzers.Tests/ModularMonolith.Analyzers.Tests.csproj" />
+    <Project Path="src/Analyzers/ModularMonolith.Analyzers/ModularMonolith.Analyzers.csproj" />
+  </Folder>
+  <Folder Name="/src/Aspire/">
+    <Project Path="src/Aspire/ModularMonolith.AppHost/ModularMonolith.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Api/">
+    <Project Path="src/BuildingBlocks/Api/ModularMonolith.BuildingBlocks.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Application/">
+    <Project Path="src/BuildingBlocks/Application/ModularMonolith.BuildingBlocks.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Domain/">
+    <Project Path="src/BuildingBlocks/Domain/ModularMonolith.BuildingBlocks.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Infrastructure/">
+    <Project Path="src/BuildingBlocks/Infrastructure/ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Contracts/">
+    <Project Path="src/BuildingBlocks/Contracts/ModularMonolith.BuildingBlocks.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Tests/" />
+  <Folder Name="/src/BuildingBlocks/Tests/IntegrationTests/">
+    <Project Path="src/BuildingBlocks/Tests/IntegrationTests/ModularMonolith.BuildingBlocks.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Tests/TestModules/">
+    <Project Path="src/BuildingBlocks/Tests/TestModules/ModularMonolith.TestModules.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Tests/UnitTests/">
+    <Project Path="src/BuildingBlocks/Tests/UnitTests/ModularMonolith.BuildingBlocks.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Packages/">
+    <Project Path="src/Packages/Tsikhanau.Railway.Analyzers.CodeFixes/Tsikhanau.Railway.Analyzers.CodeFixes.csproj" />
+    <Project Path="src/Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj" />
+    <Project Path="src/Packages/Tsikhanau.Railway.AspNetCore/Tsikhanau.Railway.AspNetCore.csproj" />
+    <Project Path="src/Packages/Tsikhanau.Railway/Tsikhanau.Railway.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/ModularMonolith.Shared.Tests/ModularMonolith.Shared.Tests.csproj" />
+    <Project Path="src/Shared/ModularMonolith.Shared/ModularMonolith.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Tests/" />
+  <Folder Name="/src/Tests/ArchTests/">
+    <Project Path="src/Tests/ArchTests/ModularMonolith.ArchTests.csproj" />
+  </Folder>
+  <Folder Name="/src/Tests/IntegrationTests/">
+    <Project Path="src/Tests/IntegrationTests/ModularMonolith.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/src/Tests/Testing/">
+    <Project Path="src/Tests/Testing/ModularMonolith.Testing.csproj" />
+  </Folder>
+</Solution>
