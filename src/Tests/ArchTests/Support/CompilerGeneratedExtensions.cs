@@ -1,14 +1,18 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace ModularMonolith.ArchTests.Support;
 
-public static class CompilerGeneratedExtensions
+public static partial class CompilerGeneratedExtensions
 {
+    [GeneratedRegex("^<[^>]+>F[0-9A-F]+__")]
+    private static partial Regex FileLocalTypeName { get; }
+
     extension(Type type)
     {
         public Boolean IsCompilerGenerated =>
-            type.Name.StartsWith('<')
+            (type.Name.StartsWith('<') && !FileLocalTypeName.IsMatch(type.Name))
                 || type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
                 || type.DeclaringType is { IsCompilerGenerated: true };
 
