@@ -13,3 +13,6 @@ generated_code = true
 dotnet_diagnostic.IDE0005.severity = none
 dotnet_diagnostic.IDE0049.severity = none
 dotnet_diagnostic.RCS0056.severity = none
+
+[src/BuildingBlocks/Tests/TestModules/{Pings/Features/ThrowAfterTouch/ThrowAfterTouchCommandHandler.cs,Pongs/Features/PingCreated/PingCreatedIntegrationEventHandler.cs}]
+dotnet_diagnostic.TS0005.severity = none
