@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+dotnet build ModularMonolith.slnx
+
+for project in \
+  src/Analyzers/ModularMonolith.Analyzers.Tests \
+  src/Shared/ModularMonolith.Shared.Tests \
+  src/BuildingBlocks/Tests/UnitTests \
+  src/Tests/ArchTests; do
+  dotnet test --project "$project" --no-build
+done
