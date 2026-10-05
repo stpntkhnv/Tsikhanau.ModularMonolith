@@ -5,6 +5,7 @@ using ModularMonolith.ArchTests.Support;
 using ModularMonolith.BuildingBlocks.Api.Endpoints;
 using ModularMonolith.BuildingBlocks.Application.Commands;
 using ModularMonolith.BuildingBlocks.Application.Events;
+using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Application.Queries;
 using ModularMonolith.BuildingBlocks.Contracts.Queries;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
@@ -67,7 +68,7 @@ public sealed class HandlerBoundaryTests
         Assert.SkipWhen(queryHandlers.Count == 0, $"{name} has no query handlers");
 
         queryHandlers
-            .SelectMany(type => GetMembersTyped(type, IsWriteSide))
+            .SelectMany(type => GetReferences(type, IsWriteSide))
             .ShouldBeEmpty("A query handler only reads; take ISqlConnectionFactory, not the write side");
     }
 
@@ -79,39 +80,84 @@ public sealed class HandlerBoundaryTests
         var facadeType = module.Types.Single(type => type.IsInterface && type.Name == $"I{name}Module");
         var subjects = module.Types
             .Where(type => module.Contains(type, "Domain") || module.Contains(type, "Features"))
-            .Where(type => !IsEdge(type.TopLevelType))
+            .Where(type => !type.IsCompilerGenerated && !IsEdge(type.TopLevelType))
             .ToList();
 
         Assert.SkipWhen(subjects.Count == 0, $"{name} has no Domain or Features types");
 
         subjects
-            .SelectMany(type => GetMembersTyped(type, memberType => memberType == facadeType))
+            .SelectMany(type => GetReferences(type, referencedType => referencedType == facadeType))
             .ShouldBeEmpty("A handler that calls its own facade leaves its transaction; call the domain directly");
     }
 
     private static Boolean IsEdge(Type type) => type.Implements<IEndpoint>() || type.Implements<IHostedService>();
 
-    private static IEnumerable<String> GetMembersTyped(Type type, Func<Type, Boolean> isForbidden)
+    private static IEnumerable<String> GetReferences(Type subjectType, Func<Type, Boolean> isForbidden) =>
+        subjectType.WithCompilerGeneratedNestedTypes
+            .SelectMany(GetTypeUses)
+            .Where(typeUse => IsOrWraps(typeUse.Type, isForbidden))
+            .Select(typeUse => $"{subjectType.FullName} {typeUse.Description}");
+
+    private static IEnumerable<TypeUse> GetTypeUses(Type type)
     {
-        var parameters = type
-            .GetConstructors(InstanceConstructors)
+        var methods = type
+            .GetConstructors(AllDeclaredMembers)
             .Concat<MethodBase>(type.GetMethods(AllDeclaredMembers))
+            .ToList();
+
+        var parameters = methods
             .SelectMany(method => method.GetParameters())
-            .Where(parameter => isForbidden(parameter.ParameterType))
-            .Select(parameter => $"{type.FullName} takes {parameter.ParameterType.Name} {parameter.Name}");
+            .Select(parameter => new TypeUse(parameter.ParameterType, "takes", parameter.Name));
+
+        var locals = methods.SelectMany(GetLocalUses);
 
         var fields = type
             .GetFields(AllDeclaredMembers)
-            .Where(field => isForbidden(field.FieldType))
-            .Select(field => $"{type.FullName} holds {field.FieldType.Name} {field.Name}");
+            .Select(field => new TypeUse(field.FieldType, "holds", field.Name));
 
         var properties = type
             .GetProperties(AllDeclaredMembers)
-            .Where(property => isForbidden(property.PropertyType))
-            .Select(property => $"{type.FullName} holds {property.PropertyType.Name} {property.Name}");
+            .Select(property => new TypeUse(property.PropertyType, "holds", property.Name));
 
-        return [.. parameters, .. fields, .. properties];
+        return [.. parameters, .. locals, .. fields, .. properties];
     }
+
+    private static IEnumerable<TypeUse> GetLocalUses(MethodBase method) =>
+        (method.GetMethodBody()?.LocalVariables ?? [])
+            .Select(local => new TypeUse(local.LocalType, "uses", $"in {method.DeclaringType?.Name}.{method.Name}"));
+
+    private static Boolean IsOrWraps(Type type, Func<Type, Boolean> isForbidden) =>
+        Unwrap(type)
+            .Any(isForbidden);
+
+    private static IEnumerable<Type> Unwrap(Type type) =>
+        GetWrappedTypes(type)
+            .SelectMany(Unwrap)
+            .Prepend(type);
+
+    private static IEnumerable<Type> GetWrappedTypes(Type type) =>
+        type.HasElementType ? [type.GetElementType()!] : GetTypeArgumentsExceptModuleNames(type);
+
+    private static IEnumerable<Type> GetTypeArgumentsExceptModuleNames(Type type)
+    {
+        if (!type.IsConstructedGenericType)
+        {
+            return [];
+        }
+
+        var typeParameters = type
+            .GetGenericTypeDefinition()
+            .GetGenericArguments();
+
+        return type
+            .GetGenericArguments()
+            .Where((_, index) => !NamesModule(typeParameters[index]));
+    }
+
+    private static Boolean NamesModule(Type typeParameter) =>
+        typeParameter
+            .GetGenericParameterConstraints()
+            .Contains(typeof(IModuleFacade));
 
     private static Boolean IsWriteSide(Type type) =>
         type.IsBuiltFrom(typeof(IUnitOfWork<>))
@@ -132,4 +178,9 @@ public sealed class HandlerBoundaryTests
 
     private static Boolean IsQueryMarker(Type type) =>
         type is { IsInterface: true, IsGenericTypeDefinition: true } && type.Implements(typeof(IQuery<>));
+
+    private sealed record TypeUse(Type Type, String Verb, String? Name)
+    {
+        public String Description => $"{Verb} {Type.Name} {Name}";
+    }
 }

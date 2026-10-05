@@ -18,6 +18,13 @@ public static partial class CompilerGeneratedExtensions
 
         public Type TopLevelType => type.DeclaringType is { } declaringType ? declaringType.TopLevelType : type;
 
+        public IEnumerable<Type> WithCompilerGeneratedNestedTypes =>
+            type
+                .GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(nestedType => nestedType.IsCompilerGenerated)
+                .SelectMany(nestedType => nestedType.WithCompilerGeneratedNestedTypes)
+                .Prepend(type);
+
         public Boolean IsRecord => type.GetMethod("<Clone>$") is not null;
     }
 

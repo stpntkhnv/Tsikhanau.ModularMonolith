@@ -55,6 +55,10 @@ public sealed class StaticStateTests
             .Where(property => property.SetMethod is not null)
             .Select(property => $"{type.FullName}.{property.Name}");
 
-        return [.. fields, .. properties];
+        var events = type
+            .GetEvents(StaticMembers)
+            .Select(staticEvent => $"{type.FullName}.{staticEvent.Name} (static event)");
+
+        return [.. fields, .. properties, .. events];
     }
 }
