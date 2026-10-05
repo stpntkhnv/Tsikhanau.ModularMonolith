@@ -33,6 +33,8 @@ public sealed class AppFixture : IAsyncLifetime
 
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);
 
+    public Task ProcessQueuesAllowingFailuresAsync() => QueueDriver.ProcessAllAllowingFailuresAsync(Services);
+
     public Task ResetAsync() =>
         _databaseResetter.HasValue ? _databaseResetter.Value.ResetAsync() : Task.CompletedTask;
 

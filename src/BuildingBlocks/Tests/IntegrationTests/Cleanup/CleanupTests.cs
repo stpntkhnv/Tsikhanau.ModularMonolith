@@ -12,10 +12,10 @@ public sealed class CleanupTests(PostgresFixture postgresFixture)
         testModulesHost.PongHooks.FailFor = ["broken"];
         await testModulesHost.CreatePingAsync("old");
         await testModulesHost.CreatePingAsync("broken");
-        await testModulesHost.ProcessQueuesAsync();
+        await testModulesHost.ProcessQueuesAllowingFailuresAsync();
         testModulesHost.Time.Advance(TimeSpan.FromDays(8));
         await testModulesHost.CreatePingAsync("fresh");
-        await testModulesHost.ProcessQueuesAsync();
+        await testModulesHost.ProcessQueuesAllowingFailuresAsync();
 
         var deletedCount = await testModulesHost.RunCleanupAsync();
 
@@ -37,7 +37,7 @@ public sealed class CleanupTests(PostgresFixture postgresFixture)
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         testModulesHost.PongHooks.ThrowFor = ["flaky"];
         await testModulesHost.CreatePingAsync("flaky");
-        await testModulesHost.ProcessQueuesAsync();
+        await testModulesHost.ProcessQueuesAllowingFailuresAsync();
         testModulesHost.Time.Advance(TimeSpan.FromDays(8));
 
         await testModulesHost.RunCleanupAsync();

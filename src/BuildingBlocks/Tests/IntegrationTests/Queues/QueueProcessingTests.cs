@@ -37,6 +37,55 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Processing_queues_reports_a_message_that_keeps_failing()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        testModulesHost.PongHooks.FailFor = ["broken"];
+        await testModulesHost.CreatePingAsync("broken");
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => testModulesHost.ProcessQueuesAsync());
+
+        exception.Message.ShouldContain("Pongs inbox_messages pings.ping-created after 1 attempts: Pong.Rejected");
+    }
+
+    [Fact]
+    public async Task Processing_queues_reports_a_message_waiting_for_a_retry()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        testModulesHost.PongHooks.ThrowFor = ["flaky"];
+        await testModulesHost.CreatePingAsync("flaky");
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => testModulesHost.ProcessQueuesAsync());
+
+        var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+
+        var inboxRow = inboxRows.ShouldHaveSingleItem();
+
+        exception.Message.ShouldContain("Pongs inbox_messages pings.ping-created after 1 attempts: Pong handler");
+        inboxRow.IsProcessed.ShouldBeFalse();
+        inboxRow.HasFailed.ShouldBeFalse();
+        inboxRow.Attempts.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Processing_queues_allowing_failures_leaves_the_failed_message_to_the_test()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        testModulesHost.PongHooks.FailFor = ["broken"];
+        await testModulesHost.CreatePingAsync("broken");
+
+        await testModulesHost.ProcessQueuesAllowingFailuresAsync();
+
+        var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+
+        inboxRows
+            .ShouldHaveSingleItem().HasFailed
+            .ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Two_pumps_never_take_the_same_message()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);

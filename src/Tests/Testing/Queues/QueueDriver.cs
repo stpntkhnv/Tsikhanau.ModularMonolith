@@ -10,6 +10,18 @@ public static class QueueDriver
 
     public static async Task ProcessAllAsync(IServiceProvider serviceProvider)
     {
+        await ProcessAllAllowingFailuresAsync(serviceProvider);
+        var unsettledMessages = await UnsettledMessages.ReadAsync(serviceProvider);
+        if (unsettledMessages.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Queues hold failed or retrying messages: {String.Join("; ", unsettledMessages)}. "
+                + "A test that expects a failure processes queues with ProcessQueuesAllowingFailuresAsync");
+        }
+    }
+
+    public static async Task ProcessAllAllowingFailuresAsync(IServiceProvider serviceProvider)
+    {
         var queuePumps = serviceProvider
             .GetServices<IQueuePump>()
             .ToList();

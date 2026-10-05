@@ -144,6 +144,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);
 
+    public Task ProcessQueuesAllowingFailuresAsync() => QueueDriver.ProcessAllAllowingFailuresAsync(Services);
+
     public Task<IReadOnlyList<QueueRow>> ReadOutboxRowsAsync() =>
         Database.ReadQueueRowsAsync(PingsDbContext.SchemaName, OutboxMessage.Table);
 
