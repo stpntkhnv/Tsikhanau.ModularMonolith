@@ -1,0 +1,10 @@
+P:System.DateTime.Now;Use the injected TimeProvider
+P:System.DateTime.UtcNow;Use the injected TimeProvider
+P:System.DateTime.Today;Use the injected TimeProvider
+P:System.DateTimeOffset.Now;Use the injected TimeProvider
+P:System.DateTimeOffset.UtcNow;Use the injected TimeProvider
+P:System.TimeProvider.System;Inject TimeProvider; only the platform registers TimeProvider.System
+M:System.Guid.NewGuid;Use Guid.CreateVersion7(createdOn)
+M:System.Guid.CreateVersion7;Use Guid.CreateVersion7(createdOn)
+P:System.Threading.Tasks.Task`1.Result;Await the task
+M:System.Threading.Tasks.Task.Wait;Await the task

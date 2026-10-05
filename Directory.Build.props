@@ -32,4 +32,7 @@
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
   </ItemGroup>
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'ModularMonolith.Perf'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
 </Project>

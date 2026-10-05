@@ -7,6 +7,21 @@ dotnet_diagnostic.IDE0005.severity = error
 dotnet_diagnostic.IDE0049.severity = error
 dotnet_diagnostic.RCS0056.severity = error
 roslynator_max_line_length = 120
+dotnet_code_quality.CA1852.ignore_internalsvisibleto = true
+dotnet_diagnostic.RS0030.severity = error
+dotnet_diagnostic.CA1031.severity = error
+dotnet_diagnostic.CA1849.severity = error
+dotnet_diagnostic.CA1852.severity = error
+dotnet_diagnostic.CA2012.severity = error
+dotnet_diagnostic.CA2016.severity = error
+dotnet_diagnostic.CA2100.severity = error
+dotnet_diagnostic.VSTHRD002.severity = error
+dotnet_diagnostic.VSTHRD100.severity = error
+dotnet_diagnostic.VSTHRD103.severity = error
+dotnet_diagnostic.VSTHRD110.severity = error
+dotnet_diagnostic.VSTHRD003.severity = none
+dotnet_diagnostic.VSTHRD111.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
 
 [**/Migrations/*.cs]
 generated_code = true
@@ -16,3 +31,16 @@ dotnet_diagnostic.RCS0056.severity = none
 
 [src/BuildingBlocks/Tests/TestModules/{Pings/Features/ThrowAfterTouch/ThrowAfterTouchCommandHandler.cs,Pongs/Features/PingCreated/PingCreatedIntegrationEventHandler.cs}]
 dotnet_diagnostic.TS0005.severity = none
+
+[src/BuildingBlocks/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs]
+dotnet_diagnostic.RS0030.severity = none
+
+[src/BuildingBlocks/Infrastructure/{Queues/ModuleQueueProcessor.cs,Cleanup/ModuleCleanupProcessor.cs}]
+dotnet_diagnostic.CA1031.severity = none
+
+[{src/Tests/**.cs,src/BuildingBlocks/Tests/IntegrationTests/**.cs,src/BuildingBlocks/Tests/UnitTests/**.cs,src/Analyzers/ModularMonolith.Analyzers.Tests/**.cs,src/Shared/ModularMonolith.Shared.Tests/**.cs}]
+dotnet_diagnostic.CA1031.severity = none
+dotnet_diagnostic.CA2100.severity = none
+dotnet_diagnostic.CA1849.severity = none
+dotnet_diagnostic.VSTHRD002.severity = none
+dotnet_diagnostic.VSTHRD103.severity = none
