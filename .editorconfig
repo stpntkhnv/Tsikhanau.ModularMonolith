@@ -44,3 +44,4 @@ dotnet_diagnostic.CA2100.severity = none
 dotnet_diagnostic.CA1849.severity = none
 dotnet_diagnostic.VSTHRD002.severity = none
 dotnet_diagnostic.VSTHRD103.severity = none
+dotnet_diagnostic.TS0005.severity = none
