@@ -33,7 +33,7 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
 
         await testModulesHost.ProcessQueuesAsync();
 
-        testModulesHost.PongHooks.LastTraceId.ShouldBe(traceId);
+        testModulesHost.PongHooks.LastTraceId.Value.ShouldBe(traceId);
     }
 
     [Fact]

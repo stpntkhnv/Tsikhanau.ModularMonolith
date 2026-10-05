@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using Tsikhanau.Railway;
 
 namespace ModularMonolith.TestModules.Pongs.Features;
 
@@ -32,11 +33,13 @@ internal sealed class PongTestHooks
 
     public ConcurrentQueue<String> ReceivedSecrets { get; } = new();
 
-    public ActivityTraceId? LastTraceId { get; private set; }
+    public Optional<ActivityTraceId> LastTraceId { get; private set; }
 
     public void Record(Guid pingId)
     {
         ReceivedPingIds.Enqueue(pingId);
-        LastTraceId = Activity.Current?.TraceId;
+        LastTraceId = Optional<Activity>
+            .FromNullable(Activity.Current)
+            .Map(activity => activity.TraceId);
     }
 }

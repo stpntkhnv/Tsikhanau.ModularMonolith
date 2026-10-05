@@ -5,6 +5,7 @@ using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
 using ModularMonolith.BuildingBlocks.Contracts.Queries;
 using ModularMonolith.BuildingBlocks.Domain.Aggregates;
 using ModularMonolith.BuildingBlocks.Domain.Events;
+using ModularMonolith.BuildingBlocks.Domain.Ids;
 using ModularMonolith.BuildingBlocks.Domain.ValueObjects;
 using ModularMonolith.Shared.Reflection;
 using Mono.Cecil;
@@ -69,6 +70,22 @@ public sealed class DomainRulesTests
 
     [Theory]
     [EveryModule]
+    public void Aggregates_entities_and_value_objects_are_created_through_their_factories(String name)
+    {
+        var modelTypes = ArchModules
+            .Get(name).Types
+            .Where(IsModelType)
+            .ToList();
+
+        Assert.SkipWhen(modelTypes.Count == 0, $"{name} has no aggregates, entities or value objects");
+
+        modelTypes
+            .SelectMany(GetOpenConstructors)
+            .ShouldBeEmpty("Make the constructor private and create through a factory that returns Result");
+    }
+
+    [Theory]
+    [EveryModule]
     public void Events_commands_and_queries_are_immutable(String name) =>
         ArchModules
             .Get(name).Types
@@ -103,6 +120,25 @@ public sealed class DomainRulesTests
 
         violations.ShouldBeEmpty();
     }
+
+    private static Boolean IsModelType(Type type) =>
+        type.IsConcrete
+            && !type.Implements(typeof(ITypedId<>))
+            && (type.Implements<IAggregateRoot>()
+                || type.DerivesFrom(typeof(Entity<>))
+                || type.Implements<IValueObject>());
+
+    private static IEnumerable<String> GetOpenConstructors(Type type) =>
+        type
+            .GetConstructors(InstanceMembers)
+            .Where(constructor => !constructor.IsPrivate && !IsCopyConstructor(constructor, type))
+            .Select(constructor => $"{type.FullName} has a {Describe(constructor)} constructor");
+
+    private static Boolean IsCopyConstructor(ConstructorInfo constructor, Type type) =>
+        type.IsRecord && constructor.GetParameters() is [{ } parameter] && parameter.ParameterType == type;
+
+    private static String Describe(ConstructorInfo constructor) =>
+        constructor.IsPublic ? "public" : constructor.IsFamily ? "protected" : "internal";
 
     private static Boolean IsMessage(Type type) =>
         type.Implements<DomainEvent>()

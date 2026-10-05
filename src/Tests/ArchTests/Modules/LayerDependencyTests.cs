@@ -13,6 +13,7 @@ public sealed class LayerDependencyTests
     private const String ConfigurationNamespace = "^Microsoft\\.Extensions\\.Configuration(\\..+)?$";
     private const String DatabaseConnectionTypes = "^Npgsql\\.(NpgsqlConnection|NpgsqlDataSource)$";
     private const String MigrationsNamespace = "(^|\\.)Migrations(\\..+)?$";
+    private const String FrameworksOutsideSystem = "^(Microsoft|Npgsql|NpgsqlTypes|Dapper)(\\..+)?$";
 
     private static readonly String WebAndDataFrameworks = BuildNamespacePattern(
         "Microsoft.EntityFrameworkCore",
@@ -60,6 +61,25 @@ public sealed class LayerDependencyTests
         var violations = rule.GetViolationsIn(Architecture);
 
         violations.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [EveryModule]
+    public void Domain_does_not_depend_on_frameworks_outside_system(String name)
+    {
+        var module = ArchModules.Get(name);
+        var rule = Types()
+            .That()
+            .ResideInNamespaceMatching(module.BuildLayerPattern("Domain"))
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(FrameworksOutsideSystem);
+
+        Assert.SkipUnless(module.HasTypesIn("Domain"), $"{name} has no types in Domain");
+
+        var violations = rule.GetViolationsIn(Architecture);
+
+        violations.ShouldBeEmpty("Domain sees only System, its own Domain, BuildingBlocks.Domain and Railway");
     }
 
     [Theory]
