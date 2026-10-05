@@ -28,12 +28,19 @@ public sealed class DomainRulesTests
 
     [Theory]
     [EveryModule]
-    public void Domain_types_have_no_public_setters(String name) =>
-        ArchModules
+    public void Domain_types_have_no_public_setters(String name)
+    {
+        var domainTypes = ArchModules
             .Get(name)
             .GetTypesIn("Domain")
+            .ToList();
+
+        Assert.SkipWhen(domainTypes.Count == 0, $"{name} has no types in Domain");
+
+        domainTypes
             .SelectMany(Mutability.GetPublicSetters)
             .ShouldBeEmpty();
+    }
 
     [Theory]
     [EveryModule]
@@ -86,21 +93,35 @@ public sealed class DomainRulesTests
 
     [Theory]
     [EveryModule]
-    public void Events_commands_and_queries_are_immutable(String name) =>
-        ArchModules
+    public void Events_commands_and_queries_are_immutable(String name)
+    {
+        var messageTypes = ArchModules
             .Get(name).Types
             .Where(IsMessage)
+            .ToList();
+
+        Assert.SkipWhen(messageTypes.Count == 0, $"{name} has no events, commands or queries");
+
+        messageTypes
             .SelectMany(type => Mutability.GetMutableMembers(type, allowInit: true))
             .ShouldBeEmpty();
+    }
 
     [Theory]
     [EveryModule]
-    public void Aggregates_reference_other_aggregates_only_by_id(String name) =>
-        ArchModules
+    public void Aggregates_reference_other_aggregates_only_by_id(String name)
+    {
+        var aggregateTypes = ArchModules
             .Get(name).Types
             .Implementing<IAggregateRoot>()
+            .ToList();
+
+        Assert.SkipWhen(aggregateTypes.Count == 0, $"{name} has no aggregates");
+
+        aggregateTypes
             .SelectMany(GetOtherAggregatesReferencedBy)
             .ShouldBeEmpty();
+    }
 
     [Theory]
     [EveryModule]
@@ -111,6 +132,8 @@ public sealed class DomainRulesTests
             .GetTypesIn("Domain")
             .Select(type => type.FullName)
             .ToHashSet();
+
+        Assert.SkipWhen(domainTypeNames.Count == 0, $"{name} has no types in Domain");
 
         var violations = module.Assemblies
             .Select(assembly => assembly.Location)

@@ -21,6 +21,8 @@ public sealed class NamingTests
             .Where(type => type.IsConcrete && !type.IsDefined(typeof(CompilerGeneratedAttribute)))
             .ToList();
 
+        Assert.SkipWhen(types.Count == 0, $"{name} has no concrete types");
+
         var violations = GetViolations(types, type => type.Implements(typeof(ICommandHandler<,>)), "CommandHandler")
             .Concat(GetViolations(types, type => type.Implements(typeof(IQueryHandler<,>)), "QueryHandler"))
             .Concat(GetViolations(types, type => type.Implements<DomainEvent>(), "DomainEvent"))

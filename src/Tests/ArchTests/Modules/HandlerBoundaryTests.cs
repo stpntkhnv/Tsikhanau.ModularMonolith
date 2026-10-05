@@ -23,11 +23,16 @@ public sealed class HandlerBoundaryTests
 
     [Theory]
     [EveryModule]
-    public void Module_takes_no_handler_in_a_constructor(String name) =>
-        ArchModules
-            .Get(name).Types
+    public void Module_takes_no_handler_in_a_constructor(String name)
+    {
+        var module = ArchModules.Get(name);
+
+        Assert.SkipUnless(module.HasTypes, $"{name} has no types");
+
+        module.Types
             .SelectMany(GetHandlerParameters)
             .ShouldBeEmpty();
+    }
 
     [Theory]
     [EveryModule]
