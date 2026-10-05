@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Mono.Cecil;
 
 namespace ModularMonolith.ArchTests.Support;
 
@@ -12,7 +13,7 @@ public static partial class CompilerGeneratedExtensions
     extension(Type type)
     {
         public Boolean IsCompilerGenerated =>
-            (type.Name.StartsWith('<') && !FileLocalTypeName.IsMatch(type.Name))
+            HasCompilerName(type.Name)
                 || type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
                 || type.DeclaringType is { IsCompilerGenerated: true };
 
@@ -28,9 +29,23 @@ public static partial class CompilerGeneratedExtensions
         public Boolean IsRecord => type.GetMethod("<Clone>$") is not null;
     }
 
+    extension(TypeDefinition type)
+    {
+        public Boolean IsCompilerGenerated =>
+            HasCompilerName(type.Name)
+                || type.CustomAttributes.Any(IsCompilerGeneratedAttribute)
+                || type.DeclaringType is { IsCompilerGenerated: true };
+    }
+
     extension(MemberInfo member)
     {
         public Boolean IsCompilerGenerated =>
             member.Name.StartsWith('<') || member.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false);
     }
+
+    private static Boolean HasCompilerName(String typeName) =>
+        typeName.StartsWith('<') && !FileLocalTypeName.IsMatch(typeName);
+
+    private static Boolean IsCompilerGeneratedAttribute(CustomAttribute attribute) =>
+        attribute.AttributeType.FullName == typeof(CompilerGeneratedAttribute).FullName;
 }

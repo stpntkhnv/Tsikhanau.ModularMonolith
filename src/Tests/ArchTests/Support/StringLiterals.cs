@@ -23,16 +23,16 @@ public static class StringLiterals
         using var assembly = AssemblyDefinition.ReadAssembly(location);
         return assembly.MainModule
             .GetTypes()
-            .Where(type => typeNames.Contains(GetTopLevelType(type).FullName))
+            .Where(type => typeNames.Contains(GetOwnerName(type)))
             .SelectMany(ReadLiteralsOf)
             .ToList();
     }
 
     private static IEnumerable<(String TypeName, String Literal)> ReadLiteralsOf(TypeDefinition type)
     {
-        var topLevelTypeName = GetTopLevelType(type).FullName;
+        var ownerName = GetOwnerName(type);
         return GetLiterals(type)
-            .Select(literal => (topLevelTypeName, literal));
+            .Select(literal => (ownerName, literal));
     }
 
     private static IEnumerable<String> GetLiterals(TypeDefinition type) =>
@@ -51,6 +51,10 @@ public static class StringLiterals
             .Select(field => field.Constant)
             .OfType<String>();
 
-    private static TypeDefinition GetTopLevelType(TypeDefinition type) =>
-        type.DeclaringType is null ? type : GetTopLevelType(type.DeclaringType);
+    private static String GetOwnerName(TypeDefinition type) =>
+        GetOwner(type).FullName
+            .Replace('/', '+');
+
+    private static TypeDefinition GetOwner(TypeDefinition type) =>
+        type is { IsCompilerGenerated: true, DeclaringType: { } declaringType } ? GetOwner(declaringType) : type;
 }

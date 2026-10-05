@@ -10,7 +10,14 @@ namespace ModularMonolith.ArchTests.Modules;
 public sealed partial class SqlTextTests
 {
     private const String SchemaNameField = "SchemaName";
+    private const String SampleNamespace = "ModularMonolith.ArchTests.Modules";
+    private const String LiteralOwnerName = "ModularMonolith.ArchTests.Modules.SqlTextTests+LiteralOwner";
     private const BindingFlags ConstantFields = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+    private const String WritingStatementPattern =
+        """\b(INSERT\s+INTO|UPDATE\s+[\w."]+(\s+(AS\s+)?[\w."]+)?\s+SET|DELETE\s+FROM|MERGE\s+INTO|TRUNCATE)\b""";
+
+    private static ArchModule SampleModule => new("Samples", SampleNamespace, [typeof(SqlTextTests).Assembly]);
 
     [Theory]
     [EveryModule]
@@ -65,6 +72,57 @@ public sealed partial class SqlTextTests
             "SELECT count(*)::int FROM pongs.pongs"));
     }
 
+    [Fact]
+    public void Literals_belong_to_the_nearest_handwritten_type()
+    {
+        var literals = StringLiterals.ReadFrom(SampleModule);
+
+        literals.ShouldContain((LiteralOwnerName, "read by the owner"));
+        literals.ShouldContain(($"{LiteralOwnerName}+NestedReader", "read by the nested reader"));
+        literals.ShouldContain(($"{LiteralOwnerName}+Row", "Update = "));
+        literals.ShouldNotContain((LiteralOwnerName, "Update = "));
+    }
+
+    [Theory]
+    [InlineData("INSERT INTO pongs.pongs (id) VALUES (@Id)")]
+    [InlineData("UPDATE pongs.pongs SET label = 'x'")]
+    [InlineData("update \"pongs\".\"pongs\" AS pong set label = @Label")]
+    [InlineData("DELETE FROM pongs.pongs WHERE id = @Id")]
+    [InlineData("MERGE INTO pongs.pongs USING pongs.incoming ON true WHEN MATCHED THEN DO NOTHING")]
+    [InlineData("TRUNCATE pongs.pongs")]
+    public void Sql_that_changes_rows_is_a_writing_statement(String sql) =>
+        WritingStatement
+            .IsMatch(sql)
+            .ShouldBeTrue();
+
+    [Theory]
+    [InlineData("Nothing to update")]
+    [InlineData("cannot delete a ping")]
+    [InlineData("Update = ")]
+    [InlineData("SELECT updated_on, deleted FROM pongs.pongs")]
+    public void Prose_and_reads_are_not_writing_statements(String text) =>
+        WritingStatement
+            .IsMatch(text)
+            .ShouldBeFalse();
+
+    [Theory]
+    [InlineData("SELECT * FROM pings.pings")]
+    [InlineData("SELECT * FROM pings.pings--comment")]
+    [InlineData("SELECT * FROM \"pings\".\"pings\"")]
+    [InlineData("SELECT label FROM PINGS.pings")]
+    public void Sql_that_reads_a_schema_names_it(String sql) =>
+        NamesSchema(sql, "pings")
+            .ShouldBeTrue();
+
+    [Theory]
+    [InlineData("SELECT own.pings.id FROM own.pings")]
+    [InlineData("ModularMonolith.TestModules.Pings.Features.GetPing")]
+    [InlineData("pings.ping-created")]
+    [InlineData("too many pings.")]
+    public void Text_that_only_mentions_a_schema_does_not_name_it(String text) =>
+        NamesSchema(text, "pings")
+            .ShouldBeFalse();
+
     private static String ReadSchema(String moduleName)
     {
         var dbContextType = ArchModules
@@ -79,9 +137,29 @@ public sealed partial class SqlTextTests
     private static Boolean NamesSchema(String sql, String schema) =>
         Regex.IsMatch(
             sql,
-            $"\\b\"?{Regex.Escape(schema)}\"?\\.\"?[a-z_][a-z0-9_]*\\b(?!-)",
+            $$"""(?<![\w."])"?{{Regex.Escape(schema)}}"?\."?[a-z_][a-z0-9_]*\b(?!-\w)""",
             RegexOptions.IgnoreCase);
 
-    [GeneratedRegex(@"\b(INSERT|UPDATE|DELETE|MERGE|TRUNCATE)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(WritingStatementPattern, RegexOptions.IgnoreCase)]
     private static partial Regex WritingStatement { get; }
+
+    private sealed class LiteralOwner
+    {
+        public static async Task<String> ReadAsync()
+        {
+            await Task.Yield();
+            return "read by the owner";
+        }
+
+        public sealed record Row(String Update);
+
+        public sealed class NestedReader
+        {
+            public static async Task<String> ReadAsync()
+            {
+                await Task.Yield();
+                return "read by the nested reader";
+            }
+        }
+    }
 }
