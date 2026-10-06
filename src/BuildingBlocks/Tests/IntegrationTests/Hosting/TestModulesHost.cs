@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using ModularMonolith.BuildingBlocks.Infrastructure.Cleanup;
 using ModularMonolith.BuildingBlocks.Infrastructure.Database;
@@ -62,14 +63,20 @@ internal sealed class TestModulesHost : IAsyncDisposable
     public static Task<TestModulesHost> StartAsync(
         PostgresFixture postgresFixture,
         Boolean runInBackground = false,
-        TimeSpan? handlerTimeout = null) =>
-        StartAsync(postgresFixture.ConnectionString, runInBackground, handlerTimeout: handlerTimeout);
+        TimeSpan? handlerTimeout = null,
+        Boolean writesLogs = true) =>
+        StartAsync(
+            postgresFixture.ConnectionString,
+            runInBackground,
+            handlerTimeout: handlerTimeout,
+            writesLogs: writesLogs);
 
     public static async Task<TestModulesHost> StartAsync(
         String connectionString,
         Boolean runInBackground = false,
         Int32 maxConnections = 20,
-        TimeSpan? handlerTimeout = null)
+        TimeSpan? handlerTimeout = null,
+        Boolean writesLogs = true)
     {
         var fakeTimeProvider = new FakeTimeProvider(TestStartedOn);
         var host = Build(
@@ -77,7 +84,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             fakeTimeProvider,
             runInBackground,
             maxConnections,
-            handlerTimeout ?? HandlerTimeout);
+            handlerTimeout ?? HandlerTimeout,
+            writesLogs);
 
         try
         {
@@ -98,7 +106,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             new FakeTimeProvider(TestStartedOn),
             runInBackground: false,
             maxConnections: 20,
-            HandlerTimeout);
+            HandlerTimeout,
+            writesLogs: true);
 
     public AsyncServiceScope CreateScope() => Services.CreateAsyncScope();
 
@@ -183,10 +192,16 @@ internal sealed class TestModulesHost : IAsyncDisposable
         FakeTimeProvider fakeTimeProvider,
         Boolean runInBackground,
         Int32 maxConnections,
-        TimeSpan handlerTimeout)
+        TimeSpan handlerTimeout,
+        Boolean writesLogs)
     {
         var builder = Host.CreateApplicationBuilder(
             new HostApplicationBuilderSettings { EnvironmentName = Environments.Development });
+
+        if (!writesLogs)
+        {
+            builder.Logging.ClearProviders();
+        }
 
         builder.Configuration[$"ConnectionStrings:{PlatformServiceCollectionExtensions.ConnectionName}"] =
             connectionString;
