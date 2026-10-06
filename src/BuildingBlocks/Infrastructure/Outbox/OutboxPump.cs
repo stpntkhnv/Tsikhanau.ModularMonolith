@@ -26,8 +26,18 @@ public sealed class OutboxPump<TModule>(
 
     protected override String OrderColumn => "occurred_on";
 
-    protected override async Task<Result<Unit>> HandleAsync(
+    protected override Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,
+        ModuleDbContext dbContext,
+        OutboxMessage message,
+        DateTimeOffset processedOn,
+        CancellationToken cancellationToken) =>
+        integrationEventRegistry
+            .FindType(message.Type)
+            .ToResult(() => MessagingErrors.UnknownType(message.Type))
+            .BindAsync(_ => DeliverAsync(dbContext, message, processedOn, cancellationToken));
+
+    private async Task<Result<Unit>> DeliverAsync(
         ModuleDbContext dbContext,
         OutboxMessage message,
         DateTimeOffset processedOn,

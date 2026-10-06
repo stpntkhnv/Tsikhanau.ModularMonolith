@@ -25,6 +25,10 @@ public sealed class SubscriptionRegistry
     public ImmutableArray<ModuleDescriptor> GetSubscribers(String eventName) =>
         _subscribers.GetValueOrDefault(eventName, []);
 
+    public Boolean HasSubscription(String eventName, Type moduleKey) =>
+        GetSubscribers(eventName)
+            .Any(subscriber => subscriber.Key == moduleKey);
+
     public Boolean RunsOutsideTransaction(String eventName, Type moduleKey) =>
         _runsOutsideTransaction.GetValueOrDefault((eventName, moduleKey));
 }

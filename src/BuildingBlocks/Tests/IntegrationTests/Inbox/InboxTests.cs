@@ -134,17 +134,52 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Unknown_event_name_fails_at_once()
+    public async Task Unknown_event_name_is_retried_then_fails()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
-        await InsertInboxRowAsync(testModulesHost, "pings.unknown", "{}");
+        await InsertInboxRowAsync(testModulesHost, Guid.CreateVersion7(), "pings.unknown", "{}");
+
+        await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+
+        var rowsAfterFirstAttempt = await testModulesHost.ReadInboxRowsAsync();
+
+        await RetryUntilGivenUpAsync(testModulesHost);
+
+        var rowsAfterLastAttempt = await testModulesHost.ReadInboxRowsAsync();
+
+        var firstAttemptRow = rowsAfterFirstAttempt.ShouldHaveSingleItem();
+        firstAttemptRow.HasFailed.ShouldBeFalse();
+        firstAttemptRow.Attempts.ShouldBe(1);
+        var lastAttemptRow = rowsAfterLastAttempt.ShouldHaveSingleItem();
+        lastAttemptRow.HasFailed.ShouldBeTrue();
+        lastAttemptRow.Attempts.ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task Event_this_module_does_not_subscribe_to_is_left_for_an_instance_that_does()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = Guid.CreateVersion7();
+        await InsertInboxRowAsync(
+            testModulesHost,
+            messageId,
+            "pings.ping-touched",
+            $$"""
+            {
+                "id": "{{messageId}}",
+                "occurredOn": "2026-09-28T08:00:00+00:00",
+                "pingId": "{{messageId}}",
+                "touches": 1
+            }
+            """);
 
         await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
 
         var rows = await testModulesHost.ReadInboxRowsAsync();
 
         var row = rows.ShouldHaveSingleItem();
-        row.HasFailed.ShouldBeTrue();
+        row.IsProcessed.ShouldBeFalse();
+        row.HasFailed.ShouldBeFalse();
         row.Attempts.ShouldBe(1);
     }
 
@@ -152,7 +187,11 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
     public async Task Unreadable_payload_fails_at_once()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
-        await InsertInboxRowAsync(testModulesHost, "pings.ping-created", """{"pingId": "not-a-guid"}""");
+        await InsertInboxRowAsync(
+            testModulesHost,
+            Guid.CreateVersion7(),
+            "pings.ping-created",
+            """{"pingId": "not-a-guid"}""");
 
         await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
 
@@ -196,11 +235,24 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
         return rows.Single(row => row.Payload.Contains($"\"{label}\"", StringComparison.Ordinal));
     }
 
-    private static Task InsertInboxRowAsync(TestModulesHost testModulesHost, String type, String payload) =>
+    private static async Task RetryUntilGivenUpAsync(TestModulesHost testModulesHost)
+    {
+        foreach (var seconds in new[] { 1, 10, 60, 300, 900, 1800 })
+        {
+            testModulesHost.Time.Advance(TimeSpan.FromSeconds(seconds));
+            await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    private static Task InsertInboxRowAsync(
+        TestModulesHost testModulesHost,
+        Guid messageId,
+        String type,
+        String payload) =>
         testModulesHost.Database.ExecuteAsync(
             """
             INSERT INTO pongs.inbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on, received_on)
-            VALUES (@id, @type, @payload::jsonb, 0, @receivedOn, @receivedOn, @receivedOn)
+            VALUES (@messageId, @type, @payload::jsonb, 0, @receivedOn, @receivedOn, @receivedOn)
             """,
-            new { id = Guid.CreateVersion7(), type, payload, receivedOn = testModulesHost.Time.GetUtcNow() });
+            new { messageId, type, payload, receivedOn = testModulesHost.Time.GetUtcNow() });
 }

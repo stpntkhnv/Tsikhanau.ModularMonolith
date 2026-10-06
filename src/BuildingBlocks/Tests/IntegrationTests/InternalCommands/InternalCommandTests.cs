@@ -110,22 +110,34 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Unknown_command_type_fails_at_once()
+    public async Task Unknown_command_type_is_retried_then_fails()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         await testModulesHost.Database.ExecuteAsync(
             """
             INSERT INTO pings.internal_commands (id, type, payload, attempts, next_attempt_on, enqueued_on)
-            VALUES (@id, 'ModularMonolith.Nowhere.Command', '{}'::jsonb, 0, @enqueuedOn, @enqueuedOn)
+            VALUES (@id, 'command-from-a-newer-release', '{}'::jsonb, 0, @enqueuedOn, @enqueuedOn)
             """,
             new { id = Guid.CreateVersion7(), enqueuedOn = testModulesHost.Time.GetUtcNow() });
 
         await testModulesHost.RunInternalCommandsAsync();
 
-        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+        var rowsAfterFirstAttempt = await testModulesHost.ReadInternalCommandRowsAsync();
 
-        var row = rows.ShouldHaveSingleItem();
-        row.HasFailed.ShouldBeTrue();
+        foreach (var seconds in new[] { 1, 10, 60, 300, 900, 1800 })
+        {
+            testModulesHost.Time.Advance(TimeSpan.FromSeconds(seconds));
+            await testModulesHost.RunInternalCommandsAsync();
+        }
+
+        var rowsAfterLastAttempt = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var firstAttemptRow = rowsAfterFirstAttempt.ShouldHaveSingleItem();
+        firstAttemptRow.HasFailed.ShouldBeFalse();
+        firstAttemptRow.Attempts.ShouldBe(1);
+        var lastAttemptRow = rowsAfterLastAttempt.ShouldHaveSingleItem();
+        lastAttemptRow.HasFailed.ShouldBeTrue();
+        lastAttemptRow.Attempts.ShouldBe(7);
     }
 
     [Fact]

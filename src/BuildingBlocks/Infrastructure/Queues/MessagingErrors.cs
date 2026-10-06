@@ -9,7 +9,10 @@ public static class MessagingErrors
         "Message payload could not be deserialized");
 
     public static Error UnknownType(String type) =>
-        Error.Failure("Messaging.UnknownType", $"No message type is registered as '{type}'");
+        Error.Unexpected("Messaging.UnknownType", $"This instance has no message type registered as '{type}'");
+
+    public static Error UnsubscribedType(String type) =>
+        Error.Unexpected("Messaging.UnsubscribedType", $"This instance of the module does not subscribe to '{type}'");
 
     public static Error ForeignPayload(Guid messageId) =>
         Error.Failure("Messaging.ForeignPayload", $"Payload does not carry the id of message {messageId}");

@@ -53,11 +53,15 @@ public sealed class InboxPump<TModule>(
         integrationEventRegistry
             .FindType(message.Type)
             .ToResult(() => MessagingErrors.UnknownType(message.Type))
+            .Ensure(_ => IsSubscribed(message), _ => MessagingErrors.UnsubscribedType(message.Type))
             .Bind(type => MessageSerializer.Deserialize<IntegrationEvent>(message.Payload, type))
             .Ensure(
                 integrationEvent => HasMessageId(integrationEvent, message),
                 _ => MessagingErrors.ForeignPayload(message.Id))
             .BindAsync(integrationEvent => InvokeAsync(integrationEvent, serviceProvider, cancellationToken));
+
+    private Boolean IsSubscribed(InboxMessage message) =>
+        subscriptionRegistry.HasSubscription(message.Type, typeof(TModule));
 
     private static Boolean HasMessageId(IntegrationEvent integrationEvent, InboxMessage message) =>
         integrationEvent.Id != Guid.Empty && integrationEvent.Id == message.Id;

@@ -66,6 +66,30 @@ public sealed class OutboxTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Event_type_this_instance_does_not_know_is_left_for_an_instance_that_does()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = Guid.CreateVersion7();
+        var publishedOn = testModulesHost.Time.GetUtcNow();
+        await testModulesHost.Database.ExecuteAsync(
+            """
+            INSERT INTO pings.outbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on)
+            VALUES (@messageId, 'pings.ping-from-a-newer-release', @payload::jsonb, 0, @publishedOn, @publishedOn)
+            """,
+            new { messageId, payload = $$"""{"id": "{{messageId}}"}""", publishedOn });
+
+        await testModulesHost.DeliverOutboxAsync();
+
+        var rows = await testModulesHost.ReadOutboxRowsAsync();
+
+        var row = rows.ShouldHaveSingleItem();
+        row.IsProcessed.ShouldBeFalse();
+        row.HasFailed.ShouldBeFalse();
+        row.Attempts.ShouldBe(1);
+        row.NextAttemptOn.ShouldBe(publishedOn.UtcDateTime.AddSeconds(1));
+    }
+
+    [Fact]
     public async Task Event_nobody_subscribes_to_is_still_marked_processed()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
