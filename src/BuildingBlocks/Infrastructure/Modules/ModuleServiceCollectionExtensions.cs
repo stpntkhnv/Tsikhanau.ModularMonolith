@@ -34,6 +34,7 @@ public static class ModuleServiceCollectionExtensions
     {
         var moduleTypes = GetModuleTypes<TQueryFacade>(definition);
         EnsureHandlersAreValid(definition, moduleTypes);
+        EnsureInternalCommandsAreNamed(definition, moduleTypes);
         var descriptor = Describe<TModule, TQueryFacade, TDbContext>(definition);
 
         return services
@@ -58,13 +59,26 @@ public static class ModuleServiceCollectionExtensions
     private static IEnumerable<Assembly> GetModuleAssemblies<TQueryFacade>(ModuleDefinition definition) =>
         new[] { definition.Assembly, typeof(TQueryFacade).Assembly }.Distinct();
 
-    private static void EnsureHandlersAreValid(ModuleDefinition definition, IReadOnlyCollection<Type> moduleTypes)
+    private static void EnsureHandlersAreValid(ModuleDefinition definition, IReadOnlyCollection<Type> moduleTypes) =>
+        EnsureNoProblems(
+            definition,
+            "handlers",
+            HandlerRegistrationValidator.CollectProblems(moduleTypes, definition.RootNamespace));
+
+    private static void EnsureInternalCommandsAreNamed(
+        ModuleDefinition definition,
+        IReadOnlyCollection<Type> moduleTypes) =>
+        EnsureNoProblems(
+            definition,
+            "internal command names",
+            InternalCommandNameValidator.CollectProblems(moduleTypes));
+
+    private static void EnsureNoProblems(ModuleDefinition definition, String subject, IReadOnlyList<String> problems)
     {
-        var problems = HandlerRegistrationValidator.CollectProblems(moduleTypes, definition.RootNamespace);
         if (problems.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Module {definition.Name} has invalid handlers: {String.Join("; ", problems)}");
+                $"Module {definition.Name} has invalid {subject}: {String.Join("; ", problems)}");
         }
     }
 

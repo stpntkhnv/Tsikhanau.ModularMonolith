@@ -30,6 +30,20 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Scheduled_command_is_stored_under_its_stable_name()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("named");
+
+        await testModulesHost.Pings.ExecuteCommandAsync(new ScheduleTouchCommand(pingId), CancellationToken);
+
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var row = rows.ShouldHaveSingleItem();
+        row.Type.ShouldBe("touch-ping");
+    }
+
+    [Fact]
     public async Task Failing_scheduled_command_is_marked_failed_at_once()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);

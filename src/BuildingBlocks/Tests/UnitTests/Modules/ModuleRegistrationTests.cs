@@ -6,6 +6,7 @@ using ModularMonolith.BuildingBlocks.Contracts.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Dispatching;
 using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
+using ModularMonolith.BuildingBlocks.UnitTests.Modules.Scenarios.SharedInternalCommandName;
 using ModularMonolith.TestModules.Pongs;
 using ModularMonolith.TestModules.Pongs.Contracts;
 using ModularMonolith.TestModules.Pongs.Features.CountPongs;
@@ -94,6 +95,35 @@ public sealed class ModuleRegistrationTests
         var exception = Should.Throw<InvalidOperationException>(() => Register("StrayMarker"));
 
         exception.Message.ShouldContain("StrayMarker runs outside a transaction but handles no integration event");
+    }
+
+    [Fact]
+    public void Rejects_an_internal_command_without_a_name()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => Register("UnnamedInternalCommand"));
+
+        exception.Message.ShouldContain(
+            $"{Scenarios}.UnnamedInternalCommand.UnnamedInternalCommand has no InternalCommandName attribute");
+    }
+
+    [Fact]
+    public void Rejects_an_internal_command_with_a_blank_name()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => Register("BlankInternalCommandName"));
+
+        exception.Message.ShouldContain(
+            $"{Scenarios}.BlankInternalCommandName.BlankNamedInternalCommand has a blank InternalCommandName");
+    }
+
+    [Fact]
+    public void Rejects_two_internal_commands_with_one_name()
+    {
+        var commandTypeNames =
+            $"{typeof(RemindInternalCommand).FullName} and {typeof(RemindAgainInternalCommand).FullName}";
+
+        var exception = Should.Throw<InvalidOperationException>(() => Register("SharedInternalCommandName"));
+
+        exception.Message.ShouldContain($"Internal command name 'remind' is used by {commandTypeNames}");
     }
 
     private static IServiceCollection Register(String scenario) =>

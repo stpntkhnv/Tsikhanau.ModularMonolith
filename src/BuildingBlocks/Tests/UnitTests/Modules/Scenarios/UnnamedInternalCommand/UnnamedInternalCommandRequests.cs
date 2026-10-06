@@ -1,0 +1,12 @@
+using ModularMonolith.BuildingBlocks.Application.Commands;
+using Tsikhanau.Railway;
+
+namespace ModularMonolith.BuildingBlocks.UnitTests.Modules.Scenarios.UnnamedInternalCommand;
+
+public sealed record UnnamedInternalCommand(Guid Id) : InternalCommand(Id);
+
+public sealed class UnnamedInternalCommandHandler : ICommandHandler<UnnamedInternalCommand, Unit>
+{
+    public Task<Result<Unit>> Handle(UnnamedInternalCommand command, CancellationToken cancellationToken) =>
+        Task.FromResult(Result.Success());
+}
