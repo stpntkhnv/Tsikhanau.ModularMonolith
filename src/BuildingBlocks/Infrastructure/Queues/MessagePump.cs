@@ -24,6 +24,8 @@ public abstract class MessagePump<TModule, TMessage>(
 {
     private static readonly TimeSpan PastEndedLeases = TimeSpan.FromMicroseconds(1);
 
+    private static readonly TimeSpan ShortCommandTimeout = TimeSpan.FromSeconds(5);
+
     protected abstract String Table { get; }
 
     protected abstract String OrderColumn { get; }
@@ -181,6 +183,7 @@ public abstract class MessagePump<TModule, TMessage>(
         cancellationToken.ThrowIfCancellationRequested();
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
+        moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
         var claimedOn = timeProvider.GetUtcNow();
         var rows = await moduleContext.DbContext
             .Set<TMessage>()
@@ -267,6 +270,7 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
+        moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
         await moduleContext.DbContext
             .Set<TMessage>()
             .Where(UntouchedSince(message))

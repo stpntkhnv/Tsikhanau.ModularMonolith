@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings.Features.SendSecret;
+using Npgsql;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
 
@@ -14,6 +16,10 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         """;
 
     private const String LastErrorSql = "SELECT last_error FROM pongs.inbox_messages WHERE id = @Id";
+
+    private const String HoldStuckRowSql = """
+        UPDATE pongs.inbox_messages SET last_error = last_error WHERE payload->>'secret' = 'stuck'
+        """;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -104,6 +110,32 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         row.IsProcessed.ShouldBeFalse();
         row.HasFailed.ShouldBeFalse();
         row.NextAttemptOn.ShouldBe((stoppedOn + TimeSpan.FromMicroseconds(1)).UtcDateTime);
+    }
+
+    [Fact]
+    public async Task Failure_is_written_to_a_row_held_by_someone_else_for_at_most_the_short_command_timeout()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await using var npgsqlDataSource = NpgsqlDataSource.Create(postgresFixture.ConnectionString);
+        var rowHeld = new TaskCompletionSource<UncommittedUpdate>(TaskCreationOptions.RunContinuationsAsynchronously);
+        testModulesHost.PongHooks.FailFor = ["stuck"];
+        testModulesHost.PongHooks.WhileHandlingSecret = async _ =>
+            rowHeld.SetResult(await UncommittedUpdate.ExecuteAsync(npgsqlDataSource, HoldStuckRowSql));
+
+        await SendSecretAsync(testModulesHost, "stuck");
+        await testModulesHost.DeliverOutboxAsync();
+        var stopwatch = Stopwatch.StartNew();
+
+        var processing = Should.ThrowAsync<Exception>(
+            () => testModulesHost.ProcessInboxAsync(CancellationToken));
+
+        await using var heldRow = await rowHeld.Task;
+        var exception = await processing;
+
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(15));
+        exception
+            .GetBaseException()
+            .ShouldBeOfType<TimeoutException>();
     }
 
     [Fact]
