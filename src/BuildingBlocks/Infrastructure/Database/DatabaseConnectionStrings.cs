@@ -7,6 +7,8 @@ internal sealed class DatabaseConnectionStrings
 {
     public const String Name = "modularmonolith";
 
+    private const Int32 MinCommandTimeoutSeconds = 30;
+
     private readonly NpgsqlConnectionStringBuilder _adminConnectionStringBuilder;
 
     private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder) =>
@@ -43,7 +45,11 @@ internal sealed class DatabaseConnectionStrings
     public ModuleLogin CreateModuleLogin(String schema) =>
         ModuleLogin.Create(schema, _adminConnectionStringBuilder.Password!);
 
-    public String BuildForModule(ModuleLogin login, String applicationName, Int32 maxPoolSize) =>
+    public String BuildForModule(
+        ModuleLogin login,
+        String applicationName,
+        Int32 maxPoolSize,
+        TimeSpan handlerTimeout) =>
         new NpgsqlConnectionStringBuilder(_adminConnectionStringBuilder.ConnectionString)
         {
             Username = login.Name,
@@ -51,5 +57,9 @@ internal sealed class DatabaseConnectionStrings
             ApplicationName = applicationName,
             Pooling = true,
             MaxPoolSize = maxPoolSize,
+            CommandTimeout = CalculateCommandTimeout(handlerTimeout),
         }.ConnectionString;
+
+    private static Int32 CalculateCommandTimeout(TimeSpan handlerTimeout) =>
+        Math.Max(MinCommandTimeoutSeconds, (Int32)Math.Ceiling(handlerTimeout.TotalSeconds));
 }

@@ -34,7 +34,7 @@ public sealed class DatabaseConnectionStringsTests
         var login = connectionStrings.CreateModuleLogin("pings");
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7));
+            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
 
         moduleConnectionStringBuilder.Host.ShouldBe("db");
         moduleConnectionStringBuilder.Port.ShouldBe(5433);
@@ -44,6 +44,26 @@ public sealed class DatabaseConnectionStringsTests
         moduleConnectionStringBuilder.ApplicationName.ShouldBe("modularmonolith-pings");
         moduleConnectionStringBuilder.MaxPoolSize.ShouldBe(7);
         moduleConnectionStringBuilder.Pooling.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(1.0, 30)]
+    [InlineData(60.0, 60)]
+    [InlineData(90.5, 91)]
+    public void Module_command_timeout_covers_the_handler_timeout_and_never_drops_below_the_driver_default(
+        Double handlerTimeoutSeconds,
+        Int32 commandTimeoutSeconds)
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p"));
+
+        var login = connectionStrings.CreateModuleLogin("pings");
+        var handlerTimeout = TimeSpan.FromSeconds(handlerTimeoutSeconds);
+
+        var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, handlerTimeout));
+
+        moduleConnectionStringBuilder.CommandTimeout.ShouldBe(commandTimeoutSeconds);
     }
 
     [Fact]
@@ -56,7 +76,7 @@ public sealed class DatabaseConnectionStringsTests
 
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionStrings.Admin);
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7));
+            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
 
         adminConnectionStringBuilder.Pooling.ShouldBeFalse();
         moduleConnectionStringBuilder.Pooling.ShouldBeTrue();
@@ -73,7 +93,7 @@ public sealed class DatabaseConnectionStringsTests
 
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionStrings.Admin);
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7));
+            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
 
         adminConnectionStringBuilder.PersistSecurityInfo.ShouldBeFalse();
         moduleConnectionStringBuilder.PersistSecurityInfo.ShouldBeFalse();

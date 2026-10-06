@@ -36,6 +36,7 @@ public static class ModuleServiceCollectionExtensions
         var moduleTypes = GetModuleTypes<TQueryFacade>(definition);
         EnsureHandlersAreValid(definition, moduleTypes);
         EnsureInternalCommandsAreNamed(definition, moduleTypes);
+        EnsureConstraintNamesFit(definition);
         var descriptor = Describe<TModule, TQueryFacade, TDbContext>(definition);
 
         return services
@@ -74,6 +75,12 @@ public static class ModuleServiceCollectionExtensions
             definition,
             "internal command names",
             InternalCommandNameValidator.CollectProblems(moduleTypes));
+
+    private static void EnsureConstraintNamesFit(ModuleDefinition definition) =>
+        EnsureNoProblems(
+            definition,
+            "constraint names",
+            ConstraintNameValidator.CollectProblems(definition.ConstraintErrors.Keys));
 
     private static void EnsureNoProblems(ModuleDefinition definition, String subject, IReadOnlyList<String> problems)
     {

@@ -21,5 +21,6 @@ internal readonly record struct HandlingFailure(String Reason, Boolean IsPermane
         new($"Gave up after {attempts - 1} attempts, the last did not finish", IsPermanent: true, Exception: null);
 
     private static Boolean IsTransient(Error error) =>
-        error.Kind == ErrorKind.Unexpected || error.Code == UnitOfWorkErrors.ConcurrencyConflict.Code;
+        (error.Kind == ErrorKind.Unexpected && error.Code != UnitOfWorkErrors.EventLoopCode)
+        || error.Code == UnitOfWorkErrors.ConcurrencyConflict.Code;
 }

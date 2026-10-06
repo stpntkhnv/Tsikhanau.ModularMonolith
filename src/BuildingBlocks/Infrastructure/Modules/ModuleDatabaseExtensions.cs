@@ -49,8 +49,8 @@ public static class ModuleDatabaseExtensions
 
     private static String BuildInboxDeliveryGrantsSql(String schema) =>
         $"""
-        GRANT USAGE ON SCHEMA "{schema}" TO {ModuleLogin.Group};
-        GRANT INSERT, SELECT (id) ON "{schema}".{InboxMessage.Table} TO {ModuleLogin.Group};
+        GRANT USAGE ON SCHEMA "{schema}" TO "{ModuleLogin.Group}";
+        GRANT INSERT, SELECT (id) ON "{schema}".{InboxMessage.Table} TO "{ModuleLogin.Group}";
         """;
 
     private static DbContext ResolveDbContext(ModuleDescriptor module, IServiceProvider serviceProvider) =>

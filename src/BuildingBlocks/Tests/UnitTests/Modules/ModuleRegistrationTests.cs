@@ -119,6 +119,30 @@ public sealed class ModuleRegistrationTests
     }
 
     [Fact]
+    public void Rejects_a_constraint_name_postgres_would_cut()
+    {
+        var constraintName = new String('x', 64);
+
+        var exception = Should.Throw<InvalidOperationException>(() => RegisterWithConstraint(constraintName));
+
+        exception.Message.ShouldContain($"'{constraintName}' is 64 bytes long, PostgreSQL cuts names to 63 bytes");
+    }
+
+    [Fact]
+    public void Constraint_name_length_is_counted_in_utf8_bytes()
+    {
+        const String TwoByteLetter = "\u00e9";
+        var fittingName = $"{new String('x', 61)}{TwoByteLetter}";
+        var cutName = $"{new String('x', 62)}{TwoByteLetter}";
+
+        var exception = Should.Throw<InvalidOperationException>(() => RegisterWithConstraint(cutName));
+
+        cutName.Length.ShouldBe(63);
+        exception.Message.ShouldContain($"'{cutName}' is 64 bytes long");
+        Should.NotThrow(() => RegisterWithConstraint(fittingName));
+    }
+
+    [Fact]
     public void Rejects_an_internal_command_without_a_name()
     {
         var exception = Should.Throw<InvalidOperationException>(() => Register("UnnamedInternalCommand"));
@@ -156,6 +180,16 @@ public sealed class ModuleRegistrationTests
         where TFacade : class, TModule =>
         new ServiceCollection().AddModuleInfrastructure<TModule, TQueryFacade, TFacade, TestDbContext>(
             new ModuleDefinition("Test", "test", typeof(ModuleRegistrationTests).Assembly, rootNamespace));
+
+    private static IServiceCollection RegisterWithConstraint(String constraintName) =>
+        new ServiceCollection().AddModuleInfrastructure<ITestModule, ITestQueryFacade, TestModuleFacade, TestDbContext>(
+            new ModuleDefinition("Test", "test", typeof(ModuleRegistrationTests).Assembly, $"{Scenarios}.Valid")
+            {
+                ConstraintErrors = new Dictionary<String, Error>
+                {
+                    [constraintName] = Error.Conflict("Tests.Taken", "Already taken"),
+                },
+            });
 
     private interface ITestQueryFacade : IModuleQueryFacade;
 
