@@ -98,6 +98,18 @@ public sealed class ModuleRegistrationTests
     }
 
     [Fact]
+    public void Rejects_an_internal_command_that_commits_on_failure()
+    {
+        const String Problem =
+            "is an internal command and cannot commit on failure; the queue records attempts and errors itself";
+
+        var exception = Should.Throw<InvalidOperationException>(() => Register("CommittingInternalCommand"));
+
+        exception.Message.ShouldContain(
+            $"{Scenarios}.CommittingInternalCommand.RecordRejectionInternalCommand {Problem}");
+    }
+
+    [Fact]
     public void Rejects_an_internal_command_without_a_name()
     {
         var exception = Should.Throw<InvalidOperationException>(() => Register("UnnamedInternalCommand"));
