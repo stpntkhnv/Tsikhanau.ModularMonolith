@@ -98,6 +98,15 @@ public sealed class ModuleRegistrationTests
     }
 
     [Fact]
+    public void Rejects_an_integration_event_without_a_name_even_when_nobody_handles_it()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => Register("UnnamedIntegrationEvent"));
+
+        exception.Message.ShouldContain(
+            $"{Scenarios}.UnnamedIntegrationEvent.NamelessIntegrationEvent has no IntegrationEventName attribute");
+    }
+
+    [Fact]
     public void Rejects_an_internal_command_that_commits_on_failure()
     {
         const String Problem =

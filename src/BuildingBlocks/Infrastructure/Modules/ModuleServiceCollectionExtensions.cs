@@ -6,6 +6,7 @@ using ModularMonolith.BuildingBlocks.Application.Commands;
 using ModularMonolith.BuildingBlocks.Application.Events;
 using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Application.Queries;
+using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
 using ModularMonolith.BuildingBlocks.Contracts.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Cleanup;
 using ModularMonolith.BuildingBlocks.Infrastructure.Database;
@@ -47,6 +48,7 @@ public static class ModuleServiceCollectionExtensions
             .AddQueueProcessing<TModule>()
             .AddCleanup<TModule>()
             .AddHandlers(moduleTypes)
+            .AddIntegrationEvents(moduleTypes)
             .AddIntegrationEventHandlers(moduleTypes, descriptor);
     }
 
@@ -205,6 +207,18 @@ public static class ModuleServiceCollectionExtensions
         GetImplementations(moduleTypes, openGeneric)
             .ForEach(implementationAndService =>
                 services.AddScoped(implementationAndService.ServiceType, implementationAndService.ImplementationType));
+
+        return services;
+    }
+
+    private static IServiceCollection AddIntegrationEvents(
+        this IServiceCollection services,
+        IEnumerable<Type> moduleTypes)
+    {
+        var integrationEventRegistry = services.GetOrAddInstance<IntegrationEventRegistry>();
+        moduleTypes
+            .Implementing<IntegrationEvent>()
+            .ForEach(integrationEventRegistry.Register);
 
         return services;
     }

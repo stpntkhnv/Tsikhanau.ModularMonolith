@@ -1,5 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using ModularMonolith.BuildingBlocks.Infrastructure.Outbox;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
+using ModularMonolith.TestModules.Pings;
+using ModularMonolith.TestModules.Pings.Features.IssueToken;
 using ModularMonolith.TestModules.Pings.Features.SendSecret;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
@@ -7,6 +11,7 @@ namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
 public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
 {
     private const String PingSecretSentType = "pings.ping-secret-sent";
+    private const String PingTokenIssuedType = "pings.ping-token-issued";
     private const String PingCreatedType = "pings.ping-created";
     private const String ErasedPayload = "{}";
 
@@ -55,6 +60,27 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
         var inboxRow = await GetSingleRowAsync(testModulesHost.ReadInboxRowsAsync(), PingSecretSentType);
         inboxRow.HasFailed.ShouldBeTrue();
         inboxRow.Payload.ShouldContain("doomed");
+    }
+
+    [Fact]
+    public async Task Secret_payload_nobody_subscribes_to_is_erased_by_an_instance_that_never_published_it()
+    {
+        await using var publishingInstance = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await publishingInstance.CreatePingAsync("token holder");
+        var issueResult = await publishingInstance.Pings.ExecuteCommandAsync(
+            new IssueTokenCommand(pingId, "t0ken"),
+            CancellationToken);
+
+        using var deliveringInstance = TestModulesHost.BuildUnstarted(postgresFixture.ConnectionString);
+
+        await deliveringInstance.Services
+            .GetRequiredService<OutboxPump<IPingsModule>>()
+            .RunOnceAsync(CancellationToken);
+
+        var outboxRow = await GetSingleRowAsync(publishingInstance.ReadOutboxRowsAsync(), PingTokenIssuedType);
+        issueResult.IsSuccess.ShouldBeTrue();
+        outboxRow.IsProcessed.ShouldBeTrue();
+        outboxRow.Payload.ShouldBe(ErasedPayload);
     }
 
     [Fact]
