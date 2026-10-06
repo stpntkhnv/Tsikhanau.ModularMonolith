@@ -6,6 +6,7 @@ using ModularMonolith.TestModules.Pings.Domain.Pings;
 using ModularMonolith.TestModules.Pings.Features.CreatePing;
 using ModularMonolith.TestModules.Pings.Features.LoopPing;
 using ModularMonolith.TestModules.Pings.Features.RejectAfterTouch;
+using ModularMonolith.TestModules.Pings.Features.RelayEcho;
 using ModularMonolith.TestModules.Pings.Features.ThrowAfterTouch;
 using ModularMonolith.TestModules.Pings.Features.TouchPing;
 using Tsikhanau.Railway;
@@ -150,6 +151,27 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
 
         result.Error.ShouldBe(UnitOfWorkErrors.EventLoop(roundCount: 10));
         ping.Version.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Change_a_domain_event_handler_makes_to_another_ping_is_saved_and_moves_its_version()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("relaying");
+        var targetPingId = await testModulesHost.CreatePingAsync("target");
+
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new RelayEchoCommand(pingId, targetPingId, Guid.CreateVersion7(), "relayed"),
+            CancellationToken);
+
+        var targetPing = await testModulesHost.GetPingAsync(targetPingId);
+        var targetEchoTexts = await testModulesHost.Database.QueryAsync<String>(
+            "SELECT text FROM pings.echoes WHERE ping_id = @PingId",
+            new { PingId = targetPingId });
+
+        result.IsSuccess.ShouldBeTrue();
+        targetEchoTexts.ShouldBe(["relayed"]);
+        targetPing.Version.ShouldBe(2);
     }
 
     [Fact]

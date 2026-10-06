@@ -55,6 +55,12 @@ internal sealed class Ping : AggregateRoot<PingId>
         return Unit.Value;
     }
 
+    public Result<Unit> RelayEcho(PingId targetPingId, EchoId echoId, String text, DateTimeOffset relayedOn)
+    {
+        Raise(new EchoRelayedDomainEvent(relayedOn, Id, targetPingId, echoId, text));
+        return Unit.Value;
+    }
+
     public Result<Unit> AddEcho(EchoId echoId, String text)
     {
         _echoes.Add(Echo.Create(echoId, text));

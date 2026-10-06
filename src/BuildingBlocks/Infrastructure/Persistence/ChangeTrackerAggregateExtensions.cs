@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using ModularMonolith.BuildingBlocks.Domain.Aggregates;
+using ModularMonolith.Shared.Collections;
 
 namespace ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 
@@ -16,12 +17,9 @@ internal static class ChangeTrackerAggregateExtensions
                 .Entries()
                 .ToList();
 
-            var rootsWithChangedParts = new HashSet<Object>(
-                entries
-                    .Where(IsChangedPart)
-                    .Select(partEntry => GetRootEntry(partEntry, entries).Entity)
-                    .Concat(rootsWithEvents),
-                ReferenceEqualityComparer.Instance);
+            var rootsWithChangedParts = GetRootsWithChangedParts(entries)
+                .Concat(rootsWithEvents)
+                .ToHashSet(ReferenceEqualityComparer.Instance);
 
             return entries
                 .Select(entry => entry.Entity)
@@ -32,6 +30,21 @@ internal static class ChangeTrackerAggregateExtensions
         }
     }
 
+    private static IEnumerable<Object> GetRootsWithChangedParts(IReadOnlyList<EntityEntry> entries)
+    {
+        var changedParts = entries
+            .Where(IsChangedPart)
+            .ToList();
+
+        if (changedParts.Count == 0)
+        {
+            return [];
+        }
+
+        var entriesByKey = IndexBySingleKey(entries);
+        return changedParts.Select(partEntry => GetRootEntry(partEntry, entries, entriesByKey).Entity);
+    }
+
     private static Boolean IsChanged(EntityEntry<IAggregateRoot> rootEntry, HashSet<Object> rootsWithChangedParts) =>
         rootEntry.State is EntityState.Added or EntityState.Modified
             || (rootEntry.State is EntityState.Unchanged && rootsWithChangedParts.Contains(rootEntry.Entity));
@@ -40,24 +53,59 @@ internal static class ChangeTrackerAggregateExtensions
         entry.Metadata.IsOwned()
             && entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted;
 
-    private static EntityEntry GetRootEntry(EntityEntry partEntry, IReadOnlyList<EntityEntry> entries)
+    private static Dictionary<(IEntityType EntityType, Object? Key), EntityEntry> IndexBySingleKey(
+        IReadOnlyList<EntityEntry> entries)
     {
-        var ownerEntry = GetOwnerEntry(partEntry, entries);
-        return ownerEntry.Metadata.IsOwned() ? GetRootEntry(ownerEntry, entries) : ownerEntry;
+        var entriesByKey = new Dictionary<(IEntityType EntityType, Object? Key), EntityEntry>();
+        entries
+            .Where(entry => HasSingleKey(entry.Metadata))
+            .ForEach(entry => entriesByKey.TryAdd(GetSingleKey(entry), entry));
+
+        return entriesByKey;
     }
 
-    private static EntityEntry GetOwnerEntry(EntityEntry partEntry, IReadOnlyList<EntityEntry> entries)
+    private static Boolean HasSingleKey(IEntityType entityType) => GetKeyProperties(entityType).Count == 1;
+
+    private static (IEntityType EntityType, Object? Key) GetSingleKey(EntityEntry entry) =>
+        (entry.Metadata, entry.CurrentValues[GetKeyProperties(entry.Metadata)[0]]);
+
+    private static IReadOnlyList<IProperty> GetKeyProperties(IEntityType entityType) =>
+        entityType.FindPrimaryKey()!.Properties;
+
+    private static EntityEntry GetRootEntry(
+        EntityEntry partEntry,
+        IReadOnlyList<EntityEntry> entries,
+        Dictionary<(IEntityType EntityType, Object? Key), EntityEntry> entriesByKey)
+    {
+        var ownerEntry = GetOwnerEntry(partEntry, entries, entriesByKey);
+        return ownerEntry.Metadata.IsOwned() ? GetRootEntry(ownerEntry, entries, entriesByKey) : ownerEntry;
+    }
+
+    private static EntityEntry GetOwnerEntry(
+        EntityEntry partEntry,
+        IReadOnlyList<EntityEntry> entries,
+        Dictionary<(IEntityType EntityType, Object? Key), EntityEntry> entriesByKey)
     {
         var ownership = partEntry.Metadata.FindOwnership()!;
+        if (IsOwnedThroughSingleKey(ownership))
+        {
+            return entriesByKey[(ownership.PrincipalEntityType, GetKeyValue(partEntry, ownership.Properties[0]))];
+        }
+
         var ownerKey = ownership.Properties
-            .Select(foreignKeyProperty => GetKeyValue(partEntry.Property(foreignKeyProperty.Name), partEntry.State))
+            .Select(foreignKeyProperty => GetKeyValue(partEntry, foreignKeyProperty))
             .ToList();
 
         return entries.First(candidateEntry => IsOwner(candidateEntry, ownership, ownerKey));
     }
 
-    private static Object? GetKeyValue(PropertyEntry propertyEntry, EntityState state) =>
-        state is EntityState.Deleted ? propertyEntry.OriginalValue : propertyEntry.CurrentValue;
+    private static Boolean IsOwnedThroughSingleKey(IForeignKey ownership) =>
+        ownership.Properties.Count == 1 && ownership.PrincipalKey.IsPrimaryKey();
+
+    private static Object? GetKeyValue(EntityEntry partEntry, IProperty foreignKeyProperty) =>
+        partEntry.State is EntityState.Deleted
+            ? partEntry.OriginalValues[foreignKeyProperty]
+            : partEntry.CurrentValues[foreignKeyProperty];
 
     private static Boolean IsOwner(
         EntityEntry candidateEntry,
@@ -65,6 +113,6 @@ internal static class ChangeTrackerAggregateExtensions
         IReadOnlyList<Object?> ownerKey) =>
         candidateEntry.Metadata == ownership.PrincipalEntityType
             && ownership.PrincipalKey.Properties
-                .Select(principalKeyProperty => candidateEntry.Property(principalKeyProperty.Name).CurrentValue)
+                .Select(principalKeyProperty => candidateEntry.CurrentValues[principalKeyProperty])
                 .SequenceEqual(ownerKey);
 }

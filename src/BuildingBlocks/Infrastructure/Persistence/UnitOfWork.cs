@@ -30,10 +30,21 @@ public sealed class UnitOfWork<TModule>(
                 .Entries<IAggregateRoot>()
                 .Any(entry => entry.Entity.DomainEvents.Count > 0);
 
-    public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken) =>
-        DispatchDomainEventsAsync(cancellationToken)
-            .TapAsync(BumpVersions)
-            .BindAsync(roots => SaveAsync(roots, cancellationToken));
+    public async Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken)
+    {
+        DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
+        {
+            return await DispatchDomainEventsAsync(cancellationToken)
+                .TapAsync(_ => DbContext.ChangeTracker.DetectChanges())
+                .TapAsync(BumpVersions)
+                .BindAsync(roots => SaveAsync(roots, cancellationToken));
+        }
+        finally
+        {
+            DbContext.ChangeTracker.AutoDetectChangesEnabled = true;
+        }
+    }
 
     private async Task<Result<IReadOnlyCollection<IAggregateRoot>>> DispatchDomainEventsAsync(
         CancellationToken cancellationToken)
