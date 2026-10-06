@@ -67,6 +67,20 @@ public sealed class DatabaseConnectionStringsTests
     }
 
     [Fact]
+    public void Module_connection_prepares_its_frequent_statements()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p"));
+
+        var login = connectionStrings.CreateModuleLogin("pings");
+
+        var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
+
+        moduleConnectionStringBuilder.MaxAutoPrepare.ShouldBe(20);
+    }
+
+    [Fact]
     public void Admin_connection_is_never_pooled_and_module_connections_always_are()
     {
         var connectionStrings = DatabaseConnectionStrings.From(

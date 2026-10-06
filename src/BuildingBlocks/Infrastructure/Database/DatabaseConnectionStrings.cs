@@ -9,6 +9,8 @@ internal sealed class DatabaseConnectionStrings
 
     private const Int32 MinCommandTimeoutSeconds = 30;
 
+    private const Int32 MaxAutoPreparedStatements = 20;
+
     private readonly NpgsqlConnectionStringBuilder _adminConnectionStringBuilder;
 
     private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder) =>
@@ -58,6 +60,7 @@ internal sealed class DatabaseConnectionStrings
             Pooling = true,
             MaxPoolSize = maxPoolSize,
             CommandTimeout = CalculateCommandTimeout(handlerTimeout),
+            MaxAutoPrepare = MaxAutoPreparedStatements,
         }.ConnectionString;
 
     private static Int32 CalculateCommandTimeout(TimeSpan handlerTimeout) =>
