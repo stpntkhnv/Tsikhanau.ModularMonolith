@@ -2,8 +2,10 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using ModularMonolith.ArchTests.Support;
 using ModularMonolith.BuildingBlocks.Application.Queries;
+using ModularMonolith.BuildingBlocks.Contracts.Queries;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Railway;
 
 namespace ModularMonolith.ArchTests.Modules;
 
@@ -12,10 +14,12 @@ public sealed partial class SqlTextTests
     private const String SchemaNameField = "SchemaName";
     private const String SampleNamespace = "ModularMonolith.ArchTests.Modules";
     private const String LiteralOwnerName = "ModularMonolith.ArchTests.Modules.SqlTextTests+LiteralOwner";
+    private const String SampleQueryHandlerName = "ModularMonolith.ArchTests.Modules.SqlTextTests+SampleQueryHandler";
     private const BindingFlags ConstantFields = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     private const String WritingStatementPattern =
-        """\b(INSERT\s+INTO|UPDATE\s+[\w."]+(\s+(AS\s+)?[\w."]+)?\s+SET|DELETE\s+FROM|MERGE\s+INTO|TRUNCATE)\b""";
+        """\b(INSERT\s+INTO|UPDATE\s+[\w."]+(\s+(AS\s+)?[\w."]+)?\s+SET|DELETE\s+FROM|MERGE\s+INTO"""
+            + """|TRUNCATE\s+(TABLE\s+)?(ONLY\s+)?[\w."]+)\b""";
 
     private static ArchModule SampleModule => new("Samples", SampleNamespace, [typeof(SqlTextTests).Assembly]);
 
@@ -23,16 +27,7 @@ public sealed partial class SqlTextTests
     [EveryModule]
     public void Query_handlers_only_read(String name)
     {
-        var module = ArchModules.Get(name);
-        var queryHandlerNames = module.Types
-            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
-            .Select(type => type.FullName)
-            .ToHashSet();
-
-        var queryHandlerLiterals = StringLiterals
-            .ReadFrom(module)
-            .Where(literal => queryHandlerNames.Contains(literal.TypeName))
-            .ToList();
+        var queryHandlerLiterals = ReadQueryHandlerLiterals(ArchModules.Get(name));
 
         Assert.SkipWhen(queryHandlerLiterals.Count == 0, $"{name} has no SQL in query handlers");
 
@@ -83,6 +78,14 @@ public sealed partial class SqlTextTests
         literals.ShouldNotContain((LiteralOwnerName, "Update = "));
     }
 
+    [Fact]
+    public void Sql_of_a_type_nested_in_a_query_handler_is_checked()
+    {
+        var literals = ReadQueryHandlerLiterals(SampleModule);
+
+        literals.ShouldContain(($"{SampleQueryHandlerName}+Sql", "UPDATE samples.rows SET label = 'renamed'"));
+    }
+
     [Theory]
     [InlineData("INSERT INTO pongs.pongs (id) VALUES (@Id)")]
     [InlineData("UPDATE pongs.pongs SET label = 'x'")]
@@ -90,6 +93,7 @@ public sealed partial class SqlTextTests
     [InlineData("DELETE FROM pongs.pongs WHERE id = @Id")]
     [InlineData("MERGE INTO pongs.pongs USING pongs.incoming ON true WHEN MATCHED THEN DO NOTHING")]
     [InlineData("TRUNCATE pongs.pongs")]
+    [InlineData("truncate table only \"pongs\".\"pongs\"")]
     public void Sql_that_changes_rows_is_a_writing_statement(String sql) =>
         WritingStatement
             .IsMatch(sql)
@@ -99,6 +103,7 @@ public sealed partial class SqlTextTests
     [InlineData("Nothing to update")]
     [InlineData("cannot delete a ping")]
     [InlineData("Update = ")]
+    [InlineData("Truncate = ")]
     [InlineData("SELECT updated_on, deleted FROM pongs.pongs")]
     public void Prose_and_reads_are_not_writing_statements(String text) =>
         WritingStatement
@@ -122,6 +127,23 @@ public sealed partial class SqlTextTests
     public void Text_that_only_mentions_a_schema_does_not_name_it(String text) =>
         NamesSchema(text, "pings")
             .ShouldBeFalse();
+
+    private static List<(String TypeName, String Literal)> ReadQueryHandlerLiterals(ArchModule module)
+    {
+        var queryHandlerNames = module.Types
+            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
+            .Select(type => type.FullName)
+            .OfType<String>()
+            .ToList();
+
+        return StringLiterals
+            .ReadFrom(module)
+            .Where(literal => queryHandlerNames.Any(handlerName => IsOrIsNestedIn(literal.TypeName, handlerName)))
+            .ToList();
+    }
+
+    private static Boolean IsOrIsNestedIn(String typeName, String handlerName) =>
+        typeName == handlerName || typeName.StartsWith($"{handlerName}+", StringComparison.Ordinal);
 
     private static String ReadSchema(String moduleName)
     {
@@ -160,6 +182,19 @@ public sealed partial class SqlTextTests
                 await Task.Yield();
                 return "read by the nested reader";
             }
+        }
+    }
+
+    private sealed record SampleQuery : IQuery<String>;
+
+    private sealed class SampleQueryHandler : IQueryHandler<SampleQuery, String>
+    {
+        public Task<Result<String>> Handle(SampleQuery query, CancellationToken cancellationToken) =>
+            Task.FromResult<Result<String>>(Sql.Rename);
+
+        private static class Sql
+        {
+            public static String Rename => "UPDATE samples.rows SET label = 'renamed'";
         }
     }
 }
