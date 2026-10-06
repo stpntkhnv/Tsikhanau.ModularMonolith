@@ -103,7 +103,63 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         row.Attempts.ShouldBe(0);
         row.IsProcessed.ShouldBeFalse();
         row.HasFailed.ShouldBeFalse();
-        row.NextAttemptOn.ShouldBe(stoppedOn.UtcDateTime);
+        row.NextAttemptOn.ShouldBe((stoppedOn + TimeSpan.FromMicroseconds(1)).UtcDateTime);
+    }
+
+    [Fact]
+    public async Task Stale_owner_does_not_mark_a_message_another_instance_claimed_and_gave_back()
+    {
+        await using var staleInstance = await TestModulesHost.StartAsync(postgresFixture);
+        await using var otherInstance = await TestModulesHost.StartAsync(postgresFixture);
+        var givenBackOn = LetOtherInstanceTakeOverDuringHandling(staleInstance, otherInstance);
+        await SendSecretAsync(staleInstance, "stale");
+        await staleInstance.DeliverOutboxAsync();
+
+        await staleInstance.ProcessInboxAsync(CancellationToken);
+
+        var row = await ReadSecretRowAsync(staleInstance);
+        row.IsProcessed.ShouldBeFalse();
+        row.HasFailed.ShouldBeFalse();
+        row.Attempts.ShouldBe(1);
+        row.NextAttemptOn.ShouldBe((givenBackOn + TimeSpan.FromMicroseconds(1)).UtcDateTime);
+    }
+
+    [Fact]
+    public async Task Stale_owner_does_not_record_a_failure_on_a_message_another_instance_claimed_and_gave_back()
+    {
+        await using var staleInstance = await TestModulesHost.StartAsync(postgresFixture);
+        await using var otherInstance = await TestModulesHost.StartAsync(postgresFixture);
+        var givenBackOn = LetOtherInstanceTakeOverDuringHandling(staleInstance, otherInstance);
+        staleInstance.PongHooks.FailFor = ["stale"];
+        await SendSecretAsync(staleInstance, "stale");
+        await staleInstance.DeliverOutboxAsync();
+
+        await staleInstance.ProcessInboxAsync(CancellationToken);
+
+        var row = await ReadSecretRowAsync(staleInstance);
+        var lastError = await staleInstance.Database.ExecuteScalarAsync<String?>(LastErrorSql, new { row.Id });
+        row.HasFailed.ShouldBeFalse();
+        row.Attempts.ShouldBe(1);
+        row.NextAttemptOn.ShouldBe((givenBackOn + TimeSpan.FromMicroseconds(1)).UtcDateTime);
+        lastError.ShouldBeNull();
+    }
+
+    private static DateTimeOffset LetOtherInstanceTakeOverDuringHandling(
+        TestModulesHost staleInstance,
+        TestModulesHost otherInstance)
+    {
+        otherInstance.Time.Advance(2 * TestModulesHost.HandlerTimeout);
+        otherInstance.PongHooks.WhileHandlingSecret = async cancellationToken =>
+        {
+            await otherInstance.PongHooks.Cancellation.CancelAsync();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        };
+
+        staleInstance.PongHooks.WhileHandlingSecret = _ =>
+            Should.ThrowAsync<OperationCanceledException>(
+                () => otherInstance.ProcessInboxAsync(otherInstance.PongHooks.Cancellation.Token));
+
+        return otherInstance.Time.GetUtcNow();
     }
 
     private static async Task<QueueRow> ReadSecretRowAsync(TestModulesHost testModulesHost)

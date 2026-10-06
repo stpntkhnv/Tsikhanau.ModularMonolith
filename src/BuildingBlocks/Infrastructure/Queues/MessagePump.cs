@@ -22,6 +22,8 @@ public abstract class MessagePump<TModule, TMessage>(
     where TModule : IModuleFacade
     where TMessage : QueueMessage
 {
+    private static readonly TimeSpan PastEndedLeases = TimeSpan.FromMicroseconds(1);
+
     protected abstract String Table { get; }
 
     protected abstract String OrderColumn { get; }
@@ -209,7 +211,11 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         var rows = await moduleContext.DbContext
             .Set<TMessage>()
-            .FromSqlRaw(BuildLockSql(moduleContext.Descriptor.Schema), message.Id, message.Attempts)
+            .FromSqlRaw(
+                BuildLockSql(moduleContext.Descriptor.Schema),
+                message.Id,
+                message.Attempts,
+                message.NextAttemptOn)
             .AsTracking()
             .ToListAsync(cancellationToken);
 
@@ -219,7 +225,7 @@ public abstract class MessagePump<TModule, TMessage>(
     private String BuildLockSql(String schema) =>
         $$"""
         SELECT * FROM "{{schema}}".{{Table}}
-        WHERE id = {0} AND attempts = {1} AND processed_on IS NULL AND failed_on IS NULL
+        WHERE id = {0} AND attempts = {1} AND next_attempt_on = {2} AND processed_on IS NULL AND failed_on IS NULL
         FOR UPDATE
         """;
 
@@ -253,7 +259,9 @@ public abstract class MessagePump<TModule, TMessage>(
             message,
             setters => setters
                 .SetProperty(candidate => candidate.Attempts, message.Attempts - 1)
-                .SetProperty(candidate => candidate.NextAttemptOn, timeProvider.GetUtcNow()));
+                .SetProperty(candidate => candidate.NextAttemptOn, CalculateGivenBackDueOn()));
+
+    private DateTimeOffset CalculateGivenBackDueOn() => timeProvider.GetUtcNow() + PastEndedLeases;
 
     private async Task UpdateClaimedRowAsync(TMessage message, Action<UpdateSettersBuilder<TMessage>> setPropertyCalls)
     {
@@ -268,6 +276,7 @@ public abstract class MessagePump<TModule, TMessage>(
     private static Expression<Func<TMessage, Boolean>> UntouchedSince(TMessage message) =>
         candidate => candidate.Id == message.Id
             && candidate.Attempts == message.Attempts
+            && candidate.NextAttemptOn == message.NextAttemptOn
             && candidate.ProcessedOn == null
             && candidate.FailedOn == null;
 

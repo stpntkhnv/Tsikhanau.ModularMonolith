@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
+using ModularMonolith.TestModules.Pings.Features.SendSecret;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
 
@@ -31,6 +32,49 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
         rowSeenFromOutside.ShouldNotBeNull();
         rowSeenFromOutside.Attempts.ShouldBe(1);
         rowSeenFromOutside.NextAttemptOn.ShouldBe(claimedOn.UtcDateTime + 2 * TestModulesHost.HandlerTimeout);
+    }
+
+    [Fact]
+    public async Task Message_whose_lease_ran_out_is_not_taken_while_its_transaction_still_holds_it()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await testModulesHost.CreatePingAsync("held");
+        await testModulesHost.DeliverOutboxAsync();
+        var processedBySecondPump = -1;
+        testModulesHost.PongHooks.BeforeHandle = async () =>
+        {
+            testModulesHost.PongHooks.BeforeHandle = static () => Task.CompletedTask;
+            testModulesHost.Time.Advance(2 * TestModulesHost.HandlerTimeout + TimeSpan.FromSeconds(1));
+            processedBySecondPump = await testModulesHost.ProcessInboxAsync(CancellationToken);
+        };
+
+        await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        processedBySecondPump.ShouldBe(0);
+        testModulesHost.PongHooks.ReceivedPingIds.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Claim_token_matches_when_the_clock_has_fractions_of_a_microsecond()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        testModulesHost.Time.Advance(TimeSpan.FromTicks(1_234_567));
+        testModulesHost.PongHooks.FailFor = ["refused"];
+        var pingId = await testModulesHost.CreatePingAsync("kept");
+        await testModulesHost.CreatePingAsync("refused");
+        await testModulesHost.Pings.ExecuteCommandAsync(new SendSecretCommand(pingId, "kept"), CancellationToken);
+        await testModulesHost.DeliverOutboxAsync();
+
+        await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        var rows = await testModulesHost.ReadInboxRowsAsync();
+        var processedCount = rows.Count(row => row.IsProcessed);
+        var failedCount = rows.Count(row => row.HasFailed);
+
+        rows.Count.ShouldBe(3);
+        rows.ShouldAllBe(row => row.Attempts == 1);
+        processedCount.ShouldBe(2);
+        failedCount.ShouldBe(1);
     }
 
     [Fact]

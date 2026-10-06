@@ -28,6 +28,24 @@ public sealed class RetryOnConflictTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Retried_command_leaves_no_outbox_rows_from_the_attempt_that_lost()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("retried once");
+        TouchFromOutsideAfterFirstLoad(testModulesHost, pingId);
+
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new TouchPingWithRetryCommand(pingId),
+            CancellationToken);
+
+        var outboxRows = await testModulesHost.ReadOutboxRowsAsync();
+        result.IsSuccess.ShouldBeTrue();
+        outboxRows
+            .Count(row => row.Type == "pings.ping-touched")
+            .ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Command_without_the_marker_still_answers_the_conflict()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
