@@ -142,15 +142,15 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         {
             var inboxRows = await testModulesHost.ReadInboxRowsAsync();
             claimedCounts.Add(inboxRows.Count(row => row.Attempts == 1 && !row.IsProcessed));
-            if (claimedCounts.Count == 1)
+            var handlerDuration = claimedCounts.Count switch
             {
-                testModulesHost.Time.Advance(pollInterval + TimeSpan.FromSeconds(1));
-            }
+                1 => pollInterval + TimeSpan.FromSeconds(1),
+                2 => pollInterval - TimeSpan.FromSeconds(1),
+                3 => TimeSpan.FromSeconds(1),
+                _ => TimeSpan.Zero
+            };
 
-            if (claimedCounts.Count == 2)
-            {
-                testModulesHost.Time.Advance(pollInterval);
-            }
+            testModulesHost.Time.Advance(handlerDuration);
         };
 
         testModulesHost.Time.AutoAdvanceAmount = TimeSpan.FromMilliseconds(1);
@@ -158,7 +158,30 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         var processedCount = await testModulesHost.ProcessInboxAsync(CancellationToken);
 
         processedCount.ShouldBe(5);
-        claimedCounts.ShouldBe([5, 1, 3, 2, 1]);
+        claimedCounts.ShouldBe([5, 1, 1, 2, 1]);
+    }
+
+    [Fact]
+    public async Task Queue_whose_handlers_are_slower_than_the_poll_interval_keeps_claiming_one_message_at_a_time()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pollInterval = testModulesHost.Services.GetRequiredService<IOptions<QueueSettings>>().Value.PollInterval;
+        await CreatePingsAsync(testModulesHost, "slow", 5);
+        await testModulesHost.DeliverOutboxAsync();
+        var claimedCounts = new List<Int32>();
+        testModulesHost.PongHooks.BeforeHandle = async () =>
+        {
+            var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+            claimedCounts.Add(inboxRows.Count(row => row.Attempts == 1 && !row.IsProcessed));
+            testModulesHost.Time.Advance(pollInterval + TimeSpan.FromSeconds(1));
+        };
+
+        testModulesHost.Time.AutoAdvanceAmount = TimeSpan.FromMilliseconds(1);
+
+        var processedCount = await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        processedCount.ShouldBe(5);
+        claimedCounts.ShouldBe([5, 1, 1, 1, 1]);
     }
 
     [Fact]

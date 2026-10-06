@@ -102,14 +102,23 @@ internal sealed class MessageBuffer<TModule, TMessage>(
     {
         if (!CanStart(_messages.Peek(), timeProvider.GetUtcNow()))
         {
-            _claimsOneAtATimeUntil = timeProvider.GetUtcNow() + queueSettings.PollInterval;
+            ClaimOneAtATimeForAPollInterval();
             await GiveBackAsync();
             return false;
         }
 
-        await messagePump.ProcessClaimedAsync(_messages.Dequeue(), cancellationToken);
+        var message = _messages.Dequeue();
+        await messagePump.ProcessClaimedAsync(message, cancellationToken);
+        if (!CanStart(message, timeProvider.GetUtcNow()))
+        {
+            ClaimOneAtATimeForAPollInterval();
+        }
+
         return true;
     }
+
+    private void ClaimOneAtATimeForAPollInterval() =>
+        _claimsOneAtATimeUntil = timeProvider.GetUtcNow() + queueSettings.PollInterval;
 
     private Boolean CanStart(TMessage message, DateTimeOffset startedOn) =>
         message.NextAttemptOn - startedOn >= LeaseNeededToStart
