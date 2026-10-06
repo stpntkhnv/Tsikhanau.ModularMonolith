@@ -1,4 +1,6 @@
 using ModularMonolith.BuildingBlocks.Application.Modules;
+using ModularMonolith.BuildingBlocks.Contracts.Secrets;
+using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.BuildingBlocks.Infrastructure.InternalCommands;
@@ -24,4 +26,17 @@ public sealed class InternalCommandRegistry<TModule>
             : throw new InvalidOperationException($"{commandType.FullName} is not an internal command of {ModuleName}");
 
     public Optional<Type> FindType(String name) => _commandTypes.GetValueOrDefault(name);
+
+    public void EraseSecretsOf(QueueMessage message)
+    {
+        if (ContainsSecrets(message.Type))
+        {
+            message.ErasePayload();
+        }
+    }
+
+    private Boolean ContainsSecrets(String name) =>
+        FindType(name)
+            .Map(type => type.IsDefined(typeof(ContainsSecretsAttribute), inherit: false))
+            .GetValueOrDefault(false);
 }

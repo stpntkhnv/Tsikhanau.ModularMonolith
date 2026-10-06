@@ -4,6 +4,7 @@ using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings;
 using ModularMonolith.TestModules.Pings.Features.IssueToken;
+using ModularMonolith.TestModules.Pings.Features.MailToken;
 using ModularMonolith.TestModules.Pings.Features.SendSecret;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
@@ -84,6 +85,49 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Secret_payload_of_a_scheduled_command_leaves_the_queue_once_handled()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await ScheduleTokenMailAsync(testModulesHost, "t0ken");
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var rows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var row = rows.ShouldHaveSingleItem();
+        row.IsProcessed.ShouldBeTrue();
+        row.Payload.ShouldBe(ErasedPayload);
+        testModulesHost.PingHooks.MailedTokens.ShouldBe(["t0ken"]);
+    }
+
+    [Fact]
+    public async Task Secret_payload_of_a_failed_scheduled_command_is_kept_for_the_retry()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await ScheduleTokenMailAsync(testModulesHost, "t0ken");
+        testModulesHost.PingHooks.AfterLoad = static () => throw new InvalidOperationException("Mail server is down");
+
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var failedRows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        testModulesHost.PingHooks.AfterLoad = static () => Task.CompletedTask;
+        testModulesHost.Time.Advance(TimeSpan.FromSeconds(1));
+        await testModulesHost.RunInternalCommandsAsync();
+
+        var retriedRows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var failedRow = failedRows.ShouldHaveSingleItem();
+        failedRow.IsProcessed.ShouldBeFalse();
+        failedRow.HasFailed.ShouldBeFalse();
+        failedRow.Payload.ShouldContain("t0ken");
+        var retriedRow = retriedRows.ShouldHaveSingleItem();
+        retriedRow.IsProcessed.ShouldBeTrue();
+        retriedRow.Payload.ShouldBe(ErasedPayload);
+        testModulesHost.PingHooks.MailedTokens.ShouldBe(["t0ken"]);
+    }
+
+    [Fact]
     public async Task Ordinary_payload_is_kept_after_delivery_and_handling()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
@@ -102,6 +146,16 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
         var pingId = await testModulesHost.CreatePingAsync($"secret-{secret}");
         var result = await testModulesHost.Pings.ExecuteCommandAsync(
             new SendSecretCommand(pingId, secret),
+            CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+    }
+
+    private static async Task ScheduleTokenMailAsync(TestModulesHost testModulesHost, String token)
+    {
+        var pingId = await testModulesHost.CreatePingAsync($"mail-{token}");
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new ScheduleTokenMailCommand(pingId, token),
             CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();

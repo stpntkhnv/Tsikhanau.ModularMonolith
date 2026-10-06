@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
+using ModularMonolith.BuildingBlocks.Contracts.Secrets;
 using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
 using Tsikhanau.Railway;
 

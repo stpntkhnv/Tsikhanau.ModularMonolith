@@ -1,4 +1,5 @@
 using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
+using ModularMonolith.BuildingBlocks.Contracts.Secrets;
 
 namespace ModularMonolith.TestModules.Pings.Contracts.IntegrationEvents;
 

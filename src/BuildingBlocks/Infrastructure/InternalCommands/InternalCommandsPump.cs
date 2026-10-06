@@ -34,6 +34,7 @@ public sealed class InternalCommandsPump<TModule>(
             .ToResult(() => MessagingErrors.UnknownType(message.Type))
             .Bind(type => MessageSerializer.Deserialize<InternalCommand>(message.Payload, type))
             .Tap(_ => message.ProcessedOn = processedOn)
+            .Tap(_ => internalCommandRegistry.EraseSecretsOf(message))
             .BindAsync(command => SendAsync(command, serviceProvider, cancellationToken));
 
     private static Task<Result<Unit>> SendAsync(

@@ -1,4 +1,5 @@
 using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
+using ModularMonolith.BuildingBlocks.Contracts.Secrets;
 using ModularMonolith.BuildingBlocks.Infrastructure.EventBus;
 
 namespace ModularMonolith.BuildingBlocks.UnitTests.EventBus;
