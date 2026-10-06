@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ModularMonolith.BuildingBlocks.Infrastructure.Inbox;
+using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings.Features.ScheduleTouch;
@@ -81,7 +83,7 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
     [Theory]
     [InlineData(60, 6)]
     [InlineData(2, 1.5)]
-    public async Task Queue_whose_batch_went_back_claims_one_message_at_a_time_for_the_rest_of_the_run(
+    public async Task Queue_whose_batch_went_back_claims_one_message_at_a_time_for_a_poll_interval(
         Double handlerTimeoutSeconds,
         Double firstHandlerSeconds)
     {
@@ -126,6 +128,37 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         processedCount.ShouldBe(2);
         unclaimedCount.ShouldBe(2);
         claimedByOther.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Queue_claims_full_batches_again_a_poll_interval_after_its_batch_went_back()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pollInterval = testModulesHost.Services.GetRequiredService<IOptions<QueueSettings>>().Value.PollInterval;
+        await CreatePingsAsync(testModulesHost, "full-again", 5);
+        await testModulesHost.DeliverOutboxAsync();
+        var claimedCounts = new List<Int32>();
+        testModulesHost.PongHooks.BeforeHandle = async () =>
+        {
+            var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+            claimedCounts.Add(inboxRows.Count(row => row.Attempts == 1 && !row.IsProcessed));
+            if (claimedCounts.Count == 1)
+            {
+                testModulesHost.Time.Advance(pollInterval + TimeSpan.FromSeconds(1));
+            }
+
+            if (claimedCounts.Count == 2)
+            {
+                testModulesHost.Time.Advance(pollInterval);
+            }
+        };
+
+        testModulesHost.Time.AutoAdvanceAmount = TimeSpan.FromMilliseconds(1);
+
+        var processedCount = await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        processedCount.ShouldBe(5);
+        claimedCounts.ShouldBe([5, 1, 3, 2, 1]);
     }
 
     [Fact]

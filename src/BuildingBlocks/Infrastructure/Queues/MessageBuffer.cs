@@ -74,11 +74,12 @@ internal sealed class MessageBuffer<TModule, TMessage>(
 {
     private readonly Queue<TMessage> _messages = new();
     private DateTimeOffset _claimedOn;
-    private Boolean _claimsOneAtATime;
+    private DateTimeOffset _claimsOneAtATimeUntil;
 
     protected override Boolean HasMessages => _messages.Count > 0;
 
-    private Int32 ClaimBatchSize => _claimsOneAtATime ? 1 : queueSettings.ClaimBatchSize;
+    private Int32 ClaimBatchSize =>
+        timeProvider.GetUtcNow() < _claimsOneAtATimeUntil ? 1 : queueSettings.ClaimBatchSize;
 
     private TimeSpan LeaseNeededToStart => queueSettings.HandlerTimeout * 1.5;
 
@@ -101,7 +102,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
     {
         if (!CanStart(_messages.Peek(), timeProvider.GetUtcNow()))
         {
-            _claimsOneAtATime = true;
+            _claimsOneAtATimeUntil = timeProvider.GetUtcNow() + queueSettings.PollInterval;
             await GiveBackAsync();
             return false;
         }
