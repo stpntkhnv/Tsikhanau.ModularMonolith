@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/perf/">
+    <Project Path="perf/ModularMonolith.Perf/ModularMonolith.Perf.csproj" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Bootstrapper/">
     <Project Path="src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj" />

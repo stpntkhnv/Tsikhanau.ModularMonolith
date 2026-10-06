@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "perf": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_gcServer": "1",
+        "DOTNET_GCConserveMemory": "0"
+      }
+    }
+  }
+}

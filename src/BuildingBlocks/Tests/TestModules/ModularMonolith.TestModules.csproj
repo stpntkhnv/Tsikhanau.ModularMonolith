@@ -2,6 +2,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.IntegrationTests" />
     <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.UnitTests" />
+    <InternalsVisibleTo Include="ModularMonolith.Perf" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\ModularMonolith.BuildingBlocks.Infrastructure.csproj" />

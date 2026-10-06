@@ -3,6 +3,7 @@
     <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.IntegrationTests" />
     <InternalsVisibleTo Include="ModularMonolith.BuildingBlocks.UnitTests" />
     <InternalsVisibleTo Include="ModularMonolith.IntegrationTests" />
+    <InternalsVisibleTo Include="ModularMonolith.Perf" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Application\ModularMonolith.BuildingBlocks.Application.csproj" />
