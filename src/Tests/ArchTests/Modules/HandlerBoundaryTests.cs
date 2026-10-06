@@ -5,7 +5,6 @@ using ModularMonolith.ArchTests.Support;
 using ModularMonolith.BuildingBlocks.Api.Endpoints;
 using ModularMonolith.BuildingBlocks.Application.Commands;
 using ModularMonolith.BuildingBlocks.Application.Events;
-using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Application.Queries;
 using ModularMonolith.BuildingBlocks.Contracts.Queries;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
@@ -127,37 +126,8 @@ public sealed class HandlerBoundaryTests
             .Select(local => new TypeUse(local.LocalType, "uses", $"in {method.DeclaringType?.Name}.{method.Name}"));
 
     private static Boolean IsOrWraps(Type type, Func<Type, Boolean> isForbidden) =>
-        Unwrap(type)
+        type.WithWrappedTypes
             .Any(isForbidden);
-
-    private static IEnumerable<Type> Unwrap(Type type) =>
-        GetWrappedTypes(type)
-            .SelectMany(Unwrap)
-            .Prepend(type);
-
-    private static IEnumerable<Type> GetWrappedTypes(Type type) =>
-        type.HasElementType ? [type.GetElementType()!] : GetTypeArgumentsExceptModuleNames(type);
-
-    private static IEnumerable<Type> GetTypeArgumentsExceptModuleNames(Type type)
-    {
-        if (!type.IsConstructedGenericType)
-        {
-            return [];
-        }
-
-        var typeParameters = type
-            .GetGenericTypeDefinition()
-            .GetGenericArguments();
-
-        return type
-            .GetGenericArguments()
-            .Where((_, index) => !NamesModule(typeParameters[index]));
-    }
-
-    private static Boolean NamesModule(Type typeParameter) =>
-        typeParameter
-            .GetGenericParameterConstraints()
-            .Contains(typeof(IModuleFacade));
 
     private static Boolean IsWriteSide(Type type) =>
         type.IsBuiltFrom(typeof(IUnitOfWork<>))

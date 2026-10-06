@@ -171,7 +171,7 @@ public sealed class DomainRulesTests
 
     private static IEnumerable<String> GetOtherAggregatesReferencedBy(Type aggregateType) =>
         GetMemberTypes(aggregateType)
-            .SelectMany(Expand)
+            .SelectMany(memberType => memberType.WithWrappedTypes)
             .Where(memberType => memberType.Implements<IAggregateRoot>() && memberType != aggregateType)
             .Select(memberType => $"{aggregateType.FullName} holds {memberType.FullName}");
 
@@ -186,18 +186,6 @@ public sealed class DomainRulesTests
         type
             .GetProperties(InstanceMembers)
             .Select(property => property.PropertyType);
-
-    private static IEnumerable<Type> Expand(Type type) =>
-        type.IsArray
-            ? [type, .. Expand(type.GetElementType()!)]
-            : type.IsGenericType
-                ? [type, .. ExpandGenericArguments(type)]
-                : [type];
-
-    private static IEnumerable<Type> ExpandGenericArguments(Type type) =>
-        type
-            .GetGenericArguments()
-            .SelectMany(Expand);
 
     private static List<String> ReadForbiddenCallsIn(String location, HashSet<String?> domainTypeNames)
     {
