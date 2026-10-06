@@ -118,7 +118,7 @@ public static class ModuleServiceCollectionExtensions
             .AddKeyedSingleton(
                 descriptor.Key,
                 (serviceProvider, _) => ModuleDataSourceFactory.Create(serviceProvider, descriptor))
-            .AddDbContext<TDbContext>(
+            .AddDbContextPool<TDbContext>(
                 (serviceProvider, dbContextOptionsBuilder) =>
                     ConfigureDbContext(serviceProvider, dbContextOptionsBuilder, descriptor))
             .AddScoped(
