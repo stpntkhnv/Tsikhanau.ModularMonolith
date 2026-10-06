@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using ModularMonolith.BuildingBlocks.Infrastructure.Inbox;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings.Features.SendSecret;
+using ModularMonolith.TestModules.Pongs;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
 
@@ -52,6 +55,37 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
 
         processedBySecondPump.ShouldBe(0);
         testModulesHost.PongHooks.ReceivedPingIds.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Stale_owner_does_not_lock_a_message_another_instance_claimed_and_gave_back()
+    {
+        await using var staleInstance = await TestModulesHost.StartAsync(postgresFixture);
+        await using var otherInstance = await TestModulesHost.StartAsync(postgresFixture);
+        otherInstance.Time.Advance(2 * TestModulesHost.HandlerTimeout);
+        await staleInstance.CreatePingAsync("first");
+        await staleInstance.CreatePingAsync("second");
+        await staleInstance.DeliverOutboxAsync();
+        staleInstance.PongHooks.BeforeHandle = async () =>
+        {
+            staleInstance.PongHooks.BeforeHandle = static () => Task.CompletedTask;
+            var otherInboxPump = otherInstance.Services.GetRequiredService<InboxPump<IPongsModule>>();
+            var claimedByOther = await otherInboxPump.ClaimBatchAsync(
+                TestModulesHost.ClaimBatchSize,
+                CancellationToken);
+
+            await otherInboxPump.GiveBackAsync(claimedByOther);
+        };
+
+        await staleInstance.ProcessInboxAsync(CancellationToken);
+
+        var rows = await staleInstance.ReadInboxRowsAsync();
+        var givenBackRow = rows.Single(row => !row.IsProcessed);
+
+        staleInstance.PongHooks.ReceivedPingIds.Count.ShouldBe(1);
+        givenBackRow.Attempts.ShouldBe(1);
+        givenBackRow.NextAttemptOn.ShouldBe(
+            (otherInstance.Time.GetUtcNow() + TimeSpan.FromMicroseconds(1)).UtcDateTime);
     }
 
     [Fact]

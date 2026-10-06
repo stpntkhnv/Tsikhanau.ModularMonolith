@@ -95,11 +95,16 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
         }
 
         await testModulesHost.DeliverOutboxAsync();
+        var claimedCountTask = HoldFirstTwoHandlersUntilBothRun(testModulesHost);
 
         var processedCounts = await Task.WhenAll(
             testModulesHost.ProcessInboxAsync(CancellationToken),
             testModulesHost.ProcessInboxAsync(CancellationToken));
 
+        var claimedCountWhileBothHandle = await claimedCountTask;
+
+        claimedCountWhileBothHandle.ShouldBe(20);
+        processedCounts.ShouldAllBe(processedCount => processedCount > 0);
         processedCounts
             .Sum()
             .ShouldBe(20);
@@ -125,5 +130,27 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
             stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(15));
             await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken);
         }
+    }
+
+    private static Task<Int32> HoldFirstTwoHandlersUntilBothRun(TestModulesHost testModulesHost)
+    {
+        var arrivedCount = 0;
+        var claimedCount = new TaskCompletionSource<Int32>(TaskCreationOptions.RunContinuationsAsynchronously);
+        testModulesHost.PongHooks.BeforeHandle = async () =>
+        {
+            var arrivedNumber = Interlocked.Increment(ref arrivedCount);
+            if (arrivedNumber == 2)
+            {
+                var rows = await testModulesHost.ReadInboxRowsAsync();
+                claimedCount.SetResult(rows.Count(row => row.Attempts == 1 && !row.IsProcessed));
+            }
+
+            if (arrivedNumber <= 2)
+            {
+                await claimedCount.Task;
+            }
+        };
+
+        return claimedCount.Task;
     }
 }

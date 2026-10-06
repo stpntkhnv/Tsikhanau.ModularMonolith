@@ -28,6 +28,8 @@ namespace ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 
 internal sealed class TestModulesHost : IAsyncDisposable
 {
+    public const Int32 ClaimBatchSize = 16;
+
     public static readonly DateTimeOffset TestStartedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     public static readonly TimeSpan HandlerTimeout = TimeSpan.FromMinutes(1);
@@ -195,6 +197,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.PollInterval)}"] = "00:00:05";
         builder.Configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.HandlerTimeout)}"] =
             handlerTimeout.ToString("c", CultureInfo.InvariantCulture);
+
+        builder.Configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.ClaimBatchSize)}"] =
+            ClaimBatchSize.ToString(CultureInfo.InvariantCulture);
 
         builder.Configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.RunInBackground)}"] = "false";
         builder.Configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.Interval)}"] = "01:00:00";

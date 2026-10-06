@@ -38,29 +38,45 @@ public abstract class MessagePump<TModule, TMessage>(
 
     public async Task<Int32> RunOnceAsync(CancellationToken cancellationToken)
     {
-        var processedCount = 0;
-        while (await TryProcessNextAsync(cancellationToken))
-        {
-            processedCount++;
-        }
-
-        return processedCount;
+        await using var messageBuffer = CreateBuffer();
+        return await MessageBuffer.ProcessInRoundsAsync([messageBuffer], cancellationToken);
     }
 
-    public async Task<Boolean> TryProcessNextAsync(CancellationToken cancellationToken)
-    {
-        var claimedMessage = await ClaimAsync(cancellationToken);
-        if (claimedMessage.IsNone)
-        {
-            return false;
-        }
+    internal MessageBuffer CreateBuffer() => new MessageBuffer<TModule, TMessage>(this, options.Value, timeProvider);
 
-        var message = claimedMessage.Value;
+    internal async Task<IReadOnlyList<TMessage>> ClaimBatchAsync(
+        Int32 claimBatchSize,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
+        moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
+        var claimedOn = timeProvider.GetUtcNow();
+        return await moduleContext.DbContext
+            .Set<TMessage>()
+            .FromSqlRaw(
+                BuildClaimSql(moduleContext.Descriptor.Schema),
+                claimedOn,
+                claimedOn + Lease,
+                claimBatchSize)
+            .AsNoTracking()
+            .ToListAsync(CancellationToken.None);
+    }
+
+    internal async Task ProcessClaimedAsync(TMessage message, CancellationToken cancellationToken)
+    {
         using var activity = StartActivity(message);
         using var logScope = PumpLog.BeginMessageScope(logger, ModuleName, Table, message.Id, message.Type);
         await ProcessAsync(message, cancellationToken);
-        return true;
     }
+
+    internal Task GiveBackAsync(IReadOnlyCollection<TMessage> messages) =>
+        UpdateClaimedRowsAsync(
+            UntouchedSince(messages),
+            setters => setters
+                .SetProperty(candidate => candidate.Attempts, candidate => candidate.Attempts - 1)
+                .SetProperty(candidate => candidate.NextAttemptOn, CalculateGivenBackDueOn()));
 
     protected abstract Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,
@@ -178,33 +194,25 @@ public abstract class MessagePump<TModule, TMessage>(
         return Optional<HandlingFailure>.None();
     }
 
-    private async Task<Optional<TMessage>> ClaimAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        await using var scope = serviceScopeFactory.CreateAsyncScope();
-        var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
-        moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
-        var claimedOn = timeProvider.GetUtcNow();
-        var rows = await moduleContext.DbContext
-            .Set<TMessage>()
-            .FromSqlRaw(BuildClaimSql(moduleContext.Descriptor.Schema), claimedOn, claimedOn + Lease)
-            .AsNoTracking()
-            .ToListAsync(CancellationToken.None);
-
-        return rows.FirstOrDefault();
-    }
-
     private String BuildClaimSql(String schema) =>
         $$"""
-        UPDATE "{{schema}}".{{Table}} AS claimed
-        SET attempts = claimed.attempts + 1, next_attempt_on = {1}
-        WHERE claimed.id = (
-            SELECT id FROM "{{schema}}".{{Table}}
+        WITH candidates AS (
+            SELECT id, attempts, next_attempt_on, {{OrderColumn}}
+            FROM "{{schema}}".{{Table}}
             WHERE processed_on IS NULL AND failed_on IS NULL AND next_attempt_on <= {0}
             ORDER BY next_attempt_on, {{OrderColumn}}, id
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED)
-        RETURNING claimed.*
+            LIMIT {2}
+            FOR UPDATE SKIP LOCKED),
+        ranked AS (
+            SELECT id, attempts, row_number() OVER (ORDER BY next_attempt_on, {{OrderColumn}}, id) AS claim_order
+            FROM candidates),
+        batch AS (
+            UPDATE "{{schema}}".{{Table}} AS claimed
+            SET attempts = claimed.attempts + 1, next_attempt_on = {1}
+            FROM ranked
+            WHERE claimed.id = ranked.id AND (ranked.attempts = 0 OR ranked.claim_order = 1)
+            RETURNING claimed.*, ranked.claim_order)
+        SELECT * FROM batch ORDER BY claim_order
         """;
 
     private async Task<Optional<TMessage>> LockAsync(
@@ -242,8 +250,8 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         var decision = RetryPolicy.Decide(message.Attempts, failure, timeProvider.GetUtcNow());
         LogFailure(failure, decision);
-        return UpdateClaimedRowAsync(
-            message,
+        return UpdateClaimedRowsAsync(
+            UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.LastError, failure.Reason)
                 .SetProperty(candidate => candidate.NextAttemptOn, decision.NextAttemptOn)
@@ -251,29 +259,31 @@ public abstract class MessagePump<TModule, TMessage>(
     }
 
     private Task MarkProcessedAsync(TMessage message, DateTimeOffset processedOn) =>
-        UpdateClaimedRowAsync(
-            message,
+        UpdateClaimedRowsAsync(
+            UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.ProcessedOn, processedOn)
                 .SetProperty(candidate => candidate.Payload, message.Payload));
 
     private Task GiveBackAsync(TMessage message) =>
-        UpdateClaimedRowAsync(
-            message,
+        UpdateClaimedRowsAsync(
+            UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.Attempts, message.Attempts - 1)
                 .SetProperty(candidate => candidate.NextAttemptOn, CalculateGivenBackDueOn()));
 
     private DateTimeOffset CalculateGivenBackDueOn() => timeProvider.GetUtcNow() + PastEndedLeases;
 
-    private async Task UpdateClaimedRowAsync(TMessage message, Action<UpdateSettersBuilder<TMessage>> setPropertyCalls)
+    private async Task UpdateClaimedRowsAsync(
+        Expression<Func<TMessage, Boolean>> untouchedSinceClaimed,
+        Action<UpdateSettersBuilder<TMessage>> setPropertyCalls)
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
         moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
         await moduleContext.DbContext
             .Set<TMessage>()
-            .Where(UntouchedSince(message))
+            .Where(untouchedSinceClaimed)
             .ExecuteUpdateAsync(setPropertyCalls, CancellationToken.None);
     }
 
@@ -283,6 +293,22 @@ public abstract class MessagePump<TModule, TMessage>(
             && candidate.NextAttemptOn == message.NextAttemptOn
             && candidate.ProcessedOn == null
             && candidate.FailedOn == null;
+
+    private static Expression<Func<TMessage, Boolean>> UntouchedSince(IReadOnlyCollection<TMessage> messages)
+    {
+        var messageIds = messages
+            .Select(message => message.Id)
+            .ToList();
+
+        var leaseEnd = messages
+            .First()
+            .NextAttemptOn;
+
+        return candidate => messageIds.Contains(candidate.Id)
+            && candidate.NextAttemptOn == leaseEnd
+            && candidate.ProcessedOn == null
+            && candidate.FailedOn == null;
+    }
 
     private void LogFailure(HandlingFailure failure, RetryDecision decision)
     {

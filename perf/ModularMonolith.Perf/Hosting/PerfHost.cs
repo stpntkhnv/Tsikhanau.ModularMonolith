@@ -61,6 +61,7 @@ internal static class PerfHost
             settings.PollInterval.ToString("c", CultureInfo.InvariantCulture);
 
         configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.HandlerTimeout)}"] = "00:01:00";
+        configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.ClaimBatchSize)}"] = "16";
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.RunInBackground)}"] = "false";
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.Interval)}"] = "01:00:00";
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.KeepFor)}"] = "7.00:00:00";

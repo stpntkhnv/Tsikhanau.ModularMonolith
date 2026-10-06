@@ -50,6 +50,7 @@ public sealed class CleanupSettingsTests
         {
             ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
             ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
+            ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
         };
 
         var configuration = new ConfigurationBuilder()

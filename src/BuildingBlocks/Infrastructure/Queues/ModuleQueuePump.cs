@@ -14,23 +14,11 @@ public sealed class ModuleQueuePump<TModule>(
 {
     public async Task<Int32> RunOnceAsync(CancellationToken cancellationToken)
     {
-        var total = 0;
-        while (true)
-        {
-            var processedCount = await ProcessRoundAsync(cancellationToken);
-            if (processedCount == 0)
-            {
-                return total;
-            }
-
-            total += processedCount;
-        }
+        await using var outboxBuffer = outboxPump.CreateBuffer();
+        await using var inboxBuffer = inboxPump.CreateBuffer();
+        await using var internalCommandsBuffer = internalCommandsPump.CreateBuffer();
+        return await MessageBuffer.ProcessInRoundsAsync(
+            [outboxBuffer, inboxBuffer, internalCommandsBuffer],
+            cancellationToken);
     }
-
-    private async Task<Int32> ProcessRoundAsync(CancellationToken cancellationToken) =>
-        Count(await outboxPump.TryProcessNextAsync(cancellationToken))
-        + Count(await inboxPump.TryProcessNextAsync(cancellationToken))
-        + Count(await internalCommandsPump.TryProcessNextAsync(cancellationToken));
-
-    private static Int32 Count(Boolean isProcessed) => isProcessed ? 1 : 0;
 }

@@ -13,4 +13,7 @@ public sealed record QueueSettings
 
     [Range(typeof(TimeSpan), "00:00:01", "01:00:00")]
     public required TimeSpan HandlerTimeout { get; init; }
+
+    [Range(1, 100)]
+    public required Int32 ClaimBatchSize { get; init; }
 }

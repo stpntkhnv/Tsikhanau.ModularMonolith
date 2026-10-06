@@ -113,7 +113,7 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Failure_is_written_to_a_row_held_by_someone_else_for_at_most_the_short_command_timeout()
+    public async Task Failure_write_to_a_row_held_by_someone_else_times_out_and_the_rest_of_the_batch_goes_back()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         await using var npgsqlDataSource = NpgsqlDataSource.Create(postgresFixture.ConnectionString);
@@ -122,7 +122,12 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         testModulesHost.PongHooks.WhileHandlingSecret = async _ =>
             rowHeld.SetResult(await UncommittedUpdate.ExecuteAsync(npgsqlDataSource, HoldStuckRowSql));
 
-        await SendSecretAsync(testModulesHost, "stuck");
+        var pingId = await testModulesHost.CreatePingAsync("holder");
+        testModulesHost.Time.Advance(TimeSpan.FromMilliseconds(1));
+        await SendSecretToAsync(testModulesHost, pingId, "stuck");
+        testModulesHost.Time.Advance(TimeSpan.FromMilliseconds(1));
+        await SendSecretToAsync(testModulesHost, pingId, "later-1");
+        await SendSecretToAsync(testModulesHost, pingId, "later-2");
         await testModulesHost.DeliverOutboxAsync();
         var stopwatch = Stopwatch.StartNew();
 
@@ -131,11 +136,15 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
 
         await using var heldRow = await rowHeld.Task;
         var exception = await processing;
+        var laterRows = await ReadSecretRowsAsync(testModulesHost, "later");
 
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(15));
         exception
             .GetBaseException()
             .ShouldBeOfType<TimeoutException>();
+
+        laterRows.Count.ShouldBe(2);
+        laterRows.ShouldAllBe(row => row.Attempts == 0 && !row.IsProcessed && !row.HasFailed);
     }
 
     [Fact]
@@ -199,6 +208,26 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         var rows = await testModulesHost.ReadInboxRowsAsync();
 
         return rows.Single(row => row.Type == SecretSentType);
+    }
+
+    private static async Task<IReadOnlyList<QueueRow>> ReadSecretRowsAsync(
+        TestModulesHost testModulesHost,
+        String secretPrefix)
+    {
+        var rows = await testModulesHost.ReadInboxRowsAsync();
+
+        return rows
+            .Where(row => row.Type == SecretSentType && row.Payload.Contains(secretPrefix, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    private static async Task SendSecretToAsync(TestModulesHost testModulesHost, Guid pingId, String secret)
+    {
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new SendSecretCommand(pingId, secret),
+            CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
     }
 
     private static async Task SendSecretAsync(TestModulesHost testModulesHost, String secret)
