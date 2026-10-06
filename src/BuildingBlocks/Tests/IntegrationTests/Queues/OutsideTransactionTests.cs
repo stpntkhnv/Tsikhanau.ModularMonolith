@@ -21,6 +21,8 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         UPDATE pongs.inbox_messages SET last_error = last_error WHERE payload->>'secret' = 'stuck'
         """;
 
+    private static readonly TimeSpan BarrierDeadline = TimeSpan.FromSeconds(30);
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -134,7 +136,7 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         var processing = Should.ThrowAsync<Exception>(
             () => testModulesHost.ProcessInboxAsync(CancellationToken));
 
-        await using var heldRow = await rowHeld.Task;
+        await using var heldRow = await rowHeld.Task.WaitAsync(BarrierDeadline, CancellationToken);
         var exception = await processing;
         var laterRows = await ReadSecretRowsAsync(testModulesHost, "later");
 

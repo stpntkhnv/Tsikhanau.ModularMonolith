@@ -7,6 +7,8 @@ namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
 
 public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
 {
+    private static readonly TimeSpan BarrierDeadline = TimeSpan.FromSeconds(30);
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -95,13 +97,13 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
         }
 
         await testModulesHost.DeliverOutboxAsync();
-        var claimedCountTask = HoldFirstTwoHandlersUntilBothRun(testModulesHost);
+        var claimedCountTask = HoldFirstTwoHandlersUntilBothRunAsync(testModulesHost);
 
         var processedCounts = await Task.WhenAll(
             testModulesHost.ProcessInboxAsync(CancellationToken),
             testModulesHost.ProcessInboxAsync(CancellationToken));
 
-        var claimedCountWhileBothHandle = await claimedCountTask;
+        var claimedCountWhileBothHandle = await claimedCountTask.WaitAsync(BarrierDeadline, CancellationToken);
 
         claimedCountWhileBothHandle.ShouldBe(20);
         processedCounts.ShouldAllBe(processedCount => processedCount > 0);
@@ -132,7 +134,7 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
         }
     }
 
-    private static Task<Int32> HoldFirstTwoHandlersUntilBothRun(TestModulesHost testModulesHost)
+    private static Task<Int32> HoldFirstTwoHandlersUntilBothRunAsync(TestModulesHost testModulesHost)
     {
         var arrivedCount = 0;
         var claimedCount = new TaskCompletionSource<Int32>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -147,7 +149,7 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
 
             if (arrivedNumber <= 2)
             {
-                await claimedCount.Task;
+                await claimedCount.Task.WaitAsync(BarrierDeadline, CancellationToken);
             }
         };
 
