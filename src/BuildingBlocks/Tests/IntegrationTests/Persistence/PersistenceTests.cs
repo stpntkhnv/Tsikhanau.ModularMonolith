@@ -11,6 +11,17 @@ namespace ModularMonolith.BuildingBlocks.IntegrationTests.Persistence;
 
 public sealed class PersistenceTests(PostgresFixture postgresFixture)
 {
+    private const String QueueTableStorageParametersSql = """
+        SELECT n.nspname || '.' || c.relname || ' ' || coalesce(array_to_string(c.reloptions, ','), '')
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('pings', 'pongs')
+          AND c.relname IN ('outbox_messages', 'inbox_messages', 'internal_commands')
+        """;
+
+    private const String VacuumAfterFixedDeadRows =
+        "autovacuum_vacuum_scale_factor=0,autovacuum_vacuum_threshold=10000";
+
     private static readonly DateTimeOffset TestStartedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -24,6 +35,25 @@ public sealed class PersistenceTests(PostgresFixture postgresFixture)
 
         tableNames.ShouldBe(
             ["__ef_migrations_history", "echoes", "inbox_messages", "internal_commands", "outbox_messages", "pings"],
+            ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Queue_tables_are_vacuumed_after_a_fixed_number_of_dead_rows()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+
+        var storageParameters = await testModulesHost.Database.QueryAsync<String>(QueueTableStorageParametersSql);
+
+        storageParameters.ShouldBe(
+            [
+                $"pings.outbox_messages {VacuumAfterFixedDeadRows}",
+                $"pings.inbox_messages {VacuumAfterFixedDeadRows}",
+                $"pings.internal_commands {VacuumAfterFixedDeadRows}",
+                $"pongs.outbox_messages {VacuumAfterFixedDeadRows}",
+                $"pongs.inbox_messages {VacuumAfterFixedDeadRows}",
+                $"pongs.internal_commands {VacuumAfterFixedDeadRows}",
+            ],
             ignoreOrder: true);
     }
 

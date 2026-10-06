@@ -79,6 +79,10 @@ namespace ModularMonolith.TestModules.Pongs.Infrastructure.Migrations
                         .HasFilter("processed_on IS NULL AND failed_on IS NULL");
 
                     b.ToTable("inbox_messages", "pongs");
+
+                    b
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_scale_factor", 0.0)
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_threshold", 10000);
                 });
 
             modelBuilder.Entity("ModularMonolith.BuildingBlocks.Infrastructure.InternalCommands.InternalCommandMessage", b =>
@@ -133,6 +137,10 @@ namespace ModularMonolith.TestModules.Pongs.Infrastructure.Migrations
                         .HasFilter("processed_on IS NULL AND failed_on IS NULL");
 
                     b.ToTable("internal_commands", "pongs");
+
+                    b
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_scale_factor", 0.0)
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_threshold", 10000);
                 });
 
             modelBuilder.Entity("ModularMonolith.BuildingBlocks.Infrastructure.Outbox.OutboxMessage", b =>
@@ -187,6 +195,10 @@ namespace ModularMonolith.TestModules.Pongs.Infrastructure.Migrations
                         .HasFilter("processed_on IS NULL AND failed_on IS NULL");
 
                     b.ToTable("outbox_messages", "pongs");
+
+                    b
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_scale_factor", 0.0)
+                        .HasAnnotation("Npgsql:StorageParameter:autovacuum_vacuum_threshold", 10000);
                 });
 
             modelBuilder.Entity("ModularMonolith.TestModules.Pongs.Domain.Pongs.Pong", b =>

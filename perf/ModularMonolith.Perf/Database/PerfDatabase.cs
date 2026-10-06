@@ -17,6 +17,8 @@ internal sealed class PerfDatabase : IAsyncDisposable
         ORDER BY s.calls DESC, s.total_exec_time DESC
         """;
 
+    private const Int32 WithoutTimeout = 0;
+
     private readonly PerfServer _server;
 
     private PerfDatabase(PerfServer server, String name)
@@ -68,6 +70,19 @@ internal sealed class PerfDatabase : IAsyncDisposable
         await using var connection = await OpenAsync(ConnectionString, cancellationToken);
         return await connection.ExecuteScalarAsync<Int64>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
+    public async Task ExecuteAsync(String sql, CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(ConnectionString, cancellationToken);
+        await connection.ExecuteAsync(
+            new CommandDefinition(sql, commandTimeout: WithoutTimeout, cancellationToken: cancellationToken));
+    }
+
+    public async Task<T> QuerySingleAsync<T>(String sql, CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(ConnectionString, cancellationToken);
+        return await connection.QuerySingleAsync<T>(new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
 
     public async ValueTask DisposeAsync()
