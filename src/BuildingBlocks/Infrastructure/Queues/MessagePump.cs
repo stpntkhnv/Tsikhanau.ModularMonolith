@@ -146,7 +146,6 @@ public abstract class MessagePump<TModule, TMessage>(
         var dbContext = moduleContext.DbContext;
         dbContext.Database.AutoSavepointsEnabled = false;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        await dbContext.Database.ExecuteSqlRawAsync(BuildTransactionLimitsSql(), cancellationToken);
         var lockedMessage = await LockAsync(moduleContext, message, cancellationToken);
         if (lockedMessage.IsNone)
         {
@@ -235,6 +234,7 @@ public abstract class MessagePump<TModule, TMessage>(
 
     private String BuildLockSql(String schema) =>
         $$"""
+        {{BuildTransactionLimitsSql()}};
         SELECT * FROM "{{schema}}".{{Table}}
         WHERE id = {0} AND attempts = {1} AND next_attempt_on = {2} AND processed_on IS NULL AND failed_on IS NULL
         FOR UPDATE
