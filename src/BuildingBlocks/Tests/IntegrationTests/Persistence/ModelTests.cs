@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using ModularMonolith.BuildingBlocks.Domain.Aggregates;
+using ModularMonolith.BuildingBlocks.Domain.Ids;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using ModularMonolith.TestModules.Pings.Domain.Pings;
 using ModularMonolith.TestModules.Pings.Infrastructure.Persistence;
@@ -76,10 +78,71 @@ public sealed class ModelTests
         fieldProperty.IsNullable.ShouldBeTrue();
     }
 
+    [Fact]
+    public void Child_entity_that_is_not_owned_fails_the_model()
+    {
+        var dbContextOptionsBuilder = new DbContextOptionsBuilder<BasketsDbContext>();
+        ModuleDbContextOptions.Configure(dbContextOptionsBuilder, "Host=localhost", BasketsDbContext.SchemaName);
+        using var dbContext = new BasketsDbContext(dbContextOptionsBuilder.Options);
+
+        var exception = Should.Throw<InvalidOperationException>(() => dbContext.Model);
+
+        exception.Message.ShouldBe(
+            $"Entity {typeof(BasketItem).FullName} is not owned by an aggregate; map it with OwnsOne or OwnsMany");
+    }
+
     private static PingsDbContext CreatePingsDbContext()
     {
         var dbContextOptionsBuilder = new DbContextOptionsBuilder<PingsDbContext>();
         ModuleDbContextOptions.Configure(dbContextOptionsBuilder, "Host=localhost", PingsDbContext.SchemaName);
         return new PingsDbContext(dbContextOptionsBuilder.Options);
+    }
+
+    private readonly record struct BasketId(Guid Value) : ITypedId<BasketId>
+    {
+        public static BasketId From(Guid value) => new(value);
+    }
+
+    private readonly record struct BasketItemId(Guid Value) : ITypedId<BasketItemId>
+    {
+        public static BasketItemId From(Guid value) => new(value);
+    }
+
+    private sealed class Basket : AggregateRoot<BasketId>
+    {
+        private readonly List<BasketItem> _items = [];
+
+        private Basket(BasketId id) : base(id) { }
+
+        public IReadOnlyList<BasketItem> Items => _items;
+    }
+
+    private sealed class BasketItem : Entity<BasketItemId>
+    {
+        private BasketItem(BasketItemId id) : base(id) { }
+    }
+
+    private sealed class BasketsDbContext(DbContextOptions<BasketsDbContext> dbContextOptions)
+        : ModuleDbContext(dbContextOptions)
+    {
+        public const String SchemaName = "baskets";
+
+        protected override String Schema => SchemaName;
+
+        protected override void ConfigureModule(ModelBuilder modelBuilder)
+        {
+            modelBuilder
+                .Entity<Basket>()
+                .HasKey(basket => basket.Id);
+
+            modelBuilder
+                .Entity<BasketItem>()
+                .HasKey(basketItem => basketItem.Id);
+
+            modelBuilder
+                .Entity<Basket>()
+                .HasMany(basket => basket.Items)
+                .WithOne();
+        }
     }
 }

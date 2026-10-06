@@ -14,6 +14,9 @@ namespace ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 
 public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbContext(dbContextOptions)
 {
+    private const String UnownedChildEntityProblem =
+        "is not owned by an aggregate; map it with OwnsOne or OwnsMany";
+
     protected abstract String Schema { get; }
 
     protected virtual IReadOnlyList<Assembly> SharedKernelAssemblies => [];
@@ -29,6 +32,7 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
         ConfigureModule(modelBuilder);
         ConfigureAggregates(modelBuilder);
         NeverGenerateEntityKeys(modelBuilder);
+        EnsureChildEntitiesAreOwned(modelBuilder);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -86,6 +90,23 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
             .ToList()
             .ForEach(idProperty => idProperty.ValueGenerated = ValueGenerated.Never);
 
+    private static void EnsureChildEntitiesAreOwned(ModelBuilder modelBuilder)
+    {
+        var problems = modelBuilder.Model
+            .GetEntityTypes()
+            .Where(IsUnownedChildEntity)
+            .Select(entityType => $"Entity {entityType.ClrType.FullName} {UnownedChildEntityProblem}")
+            .ToList();
+
+        if (problems.Count > 0)
+        {
+            throw new InvalidOperationException(String.Join("; ", problems));
+        }
+    }
+
     private static Boolean IsDomainEntity(IMutableEntityType entityType) =>
         entityType.ClrType.DerivesFrom(typeof(Entity<>));
+
+    private static Boolean IsUnownedChildEntity(IMutableEntityType entityType) =>
+        IsDomainEntity(entityType) && !entityType.ClrType.Implements<IAggregateRoot>() && !entityType.IsOwned();
 }
