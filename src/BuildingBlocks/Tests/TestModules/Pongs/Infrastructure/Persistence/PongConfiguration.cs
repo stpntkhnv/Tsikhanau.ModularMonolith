@@ -13,6 +13,6 @@ internal sealed class PongConfiguration : IEntityTypeConfiguration<Pong>
 
         builder
             .Property(pong => pong.Label)
-            .HasMaxLength(Pong.MaxLabelLength);
+            .HasMaxLength(PongLabel.MaxLength);
     }
 }

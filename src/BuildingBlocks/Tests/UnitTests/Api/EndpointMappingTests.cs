@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using ModularMonolith.BuildingBlocks.Api.Endpoints;
+using ModularMonolith.BuildingBlocks.UnitTests.Api.Scenarios.Owner;
 
 namespace ModularMonolith.BuildingBlocks.UnitTests.Api;
 
@@ -17,7 +18,21 @@ public sealed class EndpointMappingTests
 
         var routes = GetRoutes(app);
 
-        routes.ShouldBe(["/sample"]);
+        routes.ShouldBe(["/sample", "/owner", "/neighbour"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Maps_only_the_endpoints_in_the_namespace_of_the_module_class()
+    {
+        await using var app = WebApplication
+            .CreateSlimBuilder()
+            .Build();
+
+        app.MapEndpointsOf<OwnerModule>();
+
+        var routes = GetRoutes(app);
+
+        routes.ShouldBe(["/owner"]);
     }
 
     private static IEnumerable<String?> GetRoutes(IEndpointRouteBuilder endpoints) =>

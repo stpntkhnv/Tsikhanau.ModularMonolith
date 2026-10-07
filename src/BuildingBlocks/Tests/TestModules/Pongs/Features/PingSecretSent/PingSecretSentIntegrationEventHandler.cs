@@ -25,7 +25,7 @@ internal sealed class PingSecretSentIntegrationEventHandler(
                 Pong.Create(
                     PongId.From(integrationEvent.PingId),
                     integrationEvent.PingId,
-                    "secret",
+                    PongLabel.Secret,
                     timeProvider.GetUtcNow()));
         }
 

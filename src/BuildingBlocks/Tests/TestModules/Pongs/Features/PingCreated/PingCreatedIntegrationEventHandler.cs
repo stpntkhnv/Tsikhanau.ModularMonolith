@@ -32,35 +32,45 @@ internal sealed class PingCreatedIntegrationEventHandler(
             await KeepTransactionBusyAsync(PongId.From(integrationEvent.PingId));
         }
 
-        var pongId = PongId.From(integrationEvent.PingId);
+        return await PongLabel
+            .Create(integrationEvent.Label, "label")
+            .TapAsync(label => AddPongOnceAsync(integrationEvent.PingId, label, cancellationToken))
+            .BindAsync(_ => AnswerAsync(integrationEvent.Label, cancellationToken));
+    }
+
+    private async Task AddPongOnceAsync(Guid pingId, PongLabel label, CancellationToken cancellationToken)
+    {
+        var pongId = PongId.From(pingId);
         if (!await pongRepository.ExistsAsync(pongId, cancellationToken))
         {
-            pongRepository.Add(
-                Pong.Create(pongId, integrationEvent.PingId, integrationEvent.Label, timeProvider.GetUtcNow()));
+            pongRepository.Add(Pong.Create(pongId, pingId, label, timeProvider.GetUtcNow()));
         }
+    }
 
-        if (pongTestHooks.CancelFor.Contains(integrationEvent.Label))
+    private async Task<Result<Unit>> AnswerAsync(String label, CancellationToken cancellationToken)
+    {
+        if (pongTestHooks.CancelFor.Contains(label))
         {
             await pongTestHooks.Cancellation.CancelAsync();
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        if (pongTestHooks.ThrowFor.Contains(integrationEvent.Label))
+        if (pongTestHooks.ThrowFor.Contains(label))
         {
-            throw new InvalidOperationException($"Pong handler failed for {integrationEvent.Label}");
+            throw new InvalidOperationException($"Pong handler failed for {label}");
         }
 
-        if (pongTestHooks.RejectAsInvalidFor.Contains(integrationEvent.Label))
+        if (pongTestHooks.RejectAsInvalidFor.Contains(label))
         {
             return Error.Validation("label", "Pong refused this label");
         }
 
-        if (pongTestHooks.FailUnexpectedlyFor.Contains(integrationEvent.Label))
+        if (pongTestHooks.FailUnexpectedlyFor.Contains(label))
         {
             return Broken;
         }
 
-        return pongTestHooks.FailFor.Contains(integrationEvent.Label) ? Rejected : Unit.Value;
+        return pongTestHooks.FailFor.Contains(label) ? Rejected : Unit.Value;
     }
 
     private async Task KeepTransactionBusyAsync(PongId pongId)

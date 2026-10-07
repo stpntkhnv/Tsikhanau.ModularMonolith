@@ -9,7 +9,7 @@ namespace ModularMonolith.TestModules.Pings.Features.GetPing;
 
 internal sealed class GetPingEndpoint : IEndpoint
 {
-    public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/pings/{pingId:guid}", GetAsync);
+    public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{pingId:guid}", GetAsync);
 
     private static Task<IResult> GetAsync(Guid pingId, IPingsModule pingsModule, CancellationToken cancellationToken) =>
         pingsModule
