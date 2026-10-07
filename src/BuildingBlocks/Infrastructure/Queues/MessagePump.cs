@@ -10,6 +10,7 @@ using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Diagnostics;
 using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
+using Npgsql;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.BuildingBlocks.Infrastructure.Queues;
@@ -80,6 +81,9 @@ public abstract class MessagePump<TModule, TMessage>(
     internal void LogClaimingOneAtATime(String reason) =>
         PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, givenBackCount: 0);
 
+    internal Task GiveBackOnExitAsync(IReadOnlyCollection<TMessage> messages) =>
+        WarnIfGiveBackFailsAsync(() => GiveBackAsync(messages), messages.Count);
+
     internal Task GiveBackAsync(IReadOnlyCollection<TMessage> messages) =>
         UpdateClaimedRowsAsync(
             UntouchedSince(messages),
@@ -122,7 +126,7 @@ public abstract class MessagePump<TModule, TMessage>(
         }
         catch (Exception) when (cancellationToken.IsCancellationRequested)
         {
-            await GiveBackAsync(message);
+            await GiveBackOnExitAsync(message);
             throw;
         }
     }
@@ -273,6 +277,25 @@ public abstract class MessagePump<TModule, TMessage>(
             setters => setters
                 .SetProperty(candidate => candidate.ProcessedOn, processedOn)
                 .SetProperty(candidate => candidate.Payload, message.Payload));
+
+    private Task GiveBackOnExitAsync(TMessage message) =>
+        WarnIfGiveBackFailsAsync(() => GiveBackAsync(message), count: 1);
+
+    private async Task WarnIfGiveBackFailsAsync(Func<Task> giveBackAsync, Int32 count)
+    {
+        try
+        {
+            await giveBackAsync();
+        }
+        catch (NpgsqlException exception)
+        {
+            PumpLog.GiveBackFailed(logger, ModuleName, Table, count, exception);
+        }
+        catch (InvalidOperationException exception) when (exception.InnerException is NpgsqlException)
+        {
+            PumpLog.GiveBackFailed(logger, ModuleName, Table, count, exception);
+        }
+    }
 
     private Task GiveBackAsync(TMessage message) =>
         UpdateClaimedRowsAsync(

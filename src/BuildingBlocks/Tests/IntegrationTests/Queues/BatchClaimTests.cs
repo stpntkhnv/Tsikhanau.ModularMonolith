@@ -2,11 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModularMonolith.BuildingBlocks.Infrastructure.Inbox;
+using ModularMonolith.BuildingBlocks.Infrastructure.Outbox;
 using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings.Features.ScheduleTouch;
+using ModularMonolith.TestModules.Pings.Infrastructure.Persistence;
 using ModularMonolith.TestModules.Pongs;
+using ModularMonolith.TestModules.Pongs.Infrastructure.Persistence;
 using Npgsql;
 
 namespace ModularMonolith.BuildingBlocks.IntegrationTests.Queues;
@@ -29,6 +32,12 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
 
     private const String SwitchWithNothingGivenBack =
         $"IPongsModule inbox_messages {OneAtATime} (older than PollInterval); gave back 0 message(s)";
+
+    private const String RefusedGiveBackWarning =
+        "IPingsModule outbox_messages could not give back 2 message(s); they return after their lease";
+
+    private const String RefusedInFlightGiveBackWarning =
+        "IPongsModule inbox_messages could not give back 1 message(s); they return after their lease";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -325,6 +334,70 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         givenBackRows.ShouldAllBe(row => row.Attempts == 0 && !row.HasFailed);
     }
 
+    [Theory]
+    [InlineData("P0001")]
+    [InlineData(PostgresErrorCodes.AdminShutdown)]
+    public async Task Give_back_that_fails_on_exit_leaves_the_original_exception_to_the_caller(String giveBackSqlState)
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
+
+        await using var giveBackRefusal = await GiveBackRefusal.InstallAsync(
+            testModulesHost.Database,
+            PingsDbContext.SchemaName,
+            OutboxMessage.Table,
+            giveBackSqlState);
+
+        await CreatePingsAsync(testModulesHost, "refused", 3);
+        await testModulesHost.Database.ExecuteAsync(
+            InsertUnclaimableInboxRowSql,
+            new { id = Guid.CreateVersion7(), receivedOn = testModulesHost.Time.GetUtcNow() });
+
+        var exception = await Should.ThrowAsync<PostgresException>(() => testModulesHost.RunPingsQueuesAsync());
+
+        var warnings = capturingLoggerProvider.Entries
+            .Where(entry => entry.Level == LogLevel.Warning)
+            .Select(entry => entry.Message)
+            .ToList();
+
+        exception.SqlState.ShouldBe(PostgresErrorCodes.NumericValueOutOfRange);
+        warnings.ShouldBe([RefusedGiveBackWarning]);
+    }
+
+    [Theory]
+    [InlineData("P0001")]
+    [InlineData(PostgresErrorCodes.AdminShutdown)]
+    public async Task Give_back_that_fails_on_cancellation_leaves_the_cancellation_to_the_caller(
+        String giveBackSqlState)
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
+
+        await using var giveBackRefusal = await GiveBackRefusal.InstallAsync(
+            testModulesHost.Database,
+            PongsDbContext.SchemaName,
+            InboxMessage.Table,
+            giveBackSqlState);
+
+        testModulesHost.PongHooks.CancelFor = ["cancelled-0"];
+        await CreatePingsAsync(testModulesHost, "cancelled", 1);
+        await testModulesHost.DeliverOutboxAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => testModulesHost.ProcessInboxAsync(testModulesHost.PongHooks.Cancellation.Token));
+
+        var warnings = capturingLoggerProvider.Entries
+            .Where(entry => entry.Level == LogLevel.Warning)
+            .Select(entry => entry.Message)
+            .ToList();
+
+        warnings.ShouldBe([RefusedInFlightGiveBackWarning]);
+    }
+
     [Fact]
     public async Task Batch_dropped_by_a_crash_comes_back_after_its_lease_and_is_claimed_one_message_at_a_time()
     {
@@ -468,4 +541,50 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
                 builder.Configuration[ClaimBatchSizeKey] = "2";
                 builder.Logging.AddProvider(capturingLoggerProvider);
             });
+
+    private sealed class GiveBackRefusal : IAsyncDisposable
+    {
+        private readonly DatabaseProbe _databaseProbe;
+        private readonly String _schema;
+        private readonly String _table;
+
+        private GiveBackRefusal(DatabaseProbe databaseProbe, String schema, String table)
+        {
+            _databaseProbe = databaseProbe;
+            _schema = schema;
+            _table = table;
+        }
+
+        public static async Task<GiveBackRefusal> InstallAsync(
+            DatabaseProbe databaseProbe,
+            String schema,
+            String table,
+            String sqlState)
+        {
+            await databaseProbe.ExecuteAsync(BuildInstallSql(schema, table, sqlState));
+            return new GiveBackRefusal(databaseProbe, schema, table);
+        }
+
+        public async ValueTask DisposeAsync() => await _databaseProbe.ExecuteAsync(BuildDropSql());
+
+        private static String BuildInstallSql(String schema, String table, String sqlState) =>
+            $$"""
+            CREATE FUNCTION {{schema}}.refuse_give_back() RETURNS trigger LANGUAGE plpgsql AS $body$
+            BEGIN
+                IF NEW.attempts < OLD.attempts THEN
+                    RAISE EXCEPTION 'give-back refused' USING ERRCODE = '{{sqlState}}';
+                END IF;
+                RETURN NEW;
+            END
+            $body$;
+            CREATE TRIGGER refuse_give_back BEFORE UPDATE ON {{schema}}.{{table}}
+                FOR EACH ROW EXECUTE FUNCTION {{schema}}.refuse_give_back();
+            """;
+
+        private String BuildDropSql() =>
+            $"""
+            DROP TRIGGER refuse_give_back ON {_schema}.{_table};
+            DROP FUNCTION {_schema}.refuse_give_back();
+            """;
+    }
 }

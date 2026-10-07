@@ -91,7 +91,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
     {
         if (HasMessages)
         {
-            await messagePump.GiveBackAsync(TakeAll());
+            await messagePump.GiveBackOnExitAsync(TakeAll());
         }
     }
 

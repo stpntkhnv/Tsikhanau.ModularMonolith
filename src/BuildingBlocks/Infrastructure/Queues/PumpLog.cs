@@ -35,6 +35,16 @@ internal static partial class PumpLog
         String reason,
         Int32 givenBackCount);
 
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "{Module} {Table} could not give back {Count} message(s); they return after their lease")]
+    public static partial void GiveBackFailed(
+        ILogger logger,
+        String module,
+        String table,
+        Int32 count,
+        Exception exception);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "{Module} queue loop failed")]
     public static partial void LoopFailed(ILogger logger, String module, Exception exception);
 
