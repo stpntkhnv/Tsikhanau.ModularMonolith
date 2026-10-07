@@ -75,6 +75,26 @@ public sealed class CallChainAnalyzerTests
         lines.ShouldBe([1, 1]);
     }
 
+    [Fact]
+    public async Task Call_on_the_result_of_a_call_without_a_receiver_is_reported()
+    {
+        var lines = await GetReportedLinesAsync("Double(2).ShouldBe(4);");
+
+        lines.ShouldBe([1]);
+    }
+
+    [Fact]
+    public async Task Call_after_a_call_without_a_receiver_passes_on_its_own_line()
+    {
+        var lines = await GetReportedLinesAsync(
+            """
+            Double(2)
+                .ShouldBe(4);
+            """);
+
+        lines.ShouldBeEmpty();
+    }
+
     private static Task<IReadOnlyList<Int32>> GetReportedLinesAsync(String statements) =>
         AnalyzerRunner.GetReportedLinesAsync(new CallChainAnalyzer(), statements);
 }

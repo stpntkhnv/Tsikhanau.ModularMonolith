@@ -19,7 +19,10 @@ internal static class AnalyzerRunner
             .WithAnalyzers([analyzer])
             .GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
 
-        return [.. diagnostics.Select(GetLineNumber)];
+        return diagnostics
+            .Select(GetLineNumber)
+            .Order()
+            .ToList();
     }
 
     private static Int32 GetLineNumber(Diagnostic diagnostic) =>
