@@ -7,6 +7,7 @@ using ModularMonolith.TestModules.Pings.Features.CreatePing;
 using ModularMonolith.TestModules.Pings.Features.LoopPing;
 using ModularMonolith.TestModules.Pings.Features.RejectAfterTouch;
 using ModularMonolith.TestModules.Pings.Features.RelayEcho;
+using ModularMonolith.TestModules.Pings.Features.ReschedulePing;
 using ModularMonolith.TestModules.Pings.Features.ThrowAfterTouch;
 using ModularMonolith.TestModules.Pings.Features.TouchPing;
 using Tsikhanau.Railway;
@@ -46,6 +47,22 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
         error.FieldErrors
             .Select(fieldError => fieldError.Field)
             .ShouldBe(["pingId", "label"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Invalid_composite_value_returns_an_error_for_each_of_its_fields()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("unscheduled");
+
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new ReschedulePingCommand(pingId, TimeSpan.Zero, PingSchedule.MaxRepeats + 1),
+            CancellationToken);
+
+        var error = result.Error.ShouldBeOfType<ValidationError>();
+        error.FieldErrors
+            .Select(fieldError => fieldError.Field)
+            .ShouldBe(["scheduleInterval", "scheduleRepeats"], ignoreOrder: true);
     }
 
     [Fact]

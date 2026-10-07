@@ -13,13 +13,13 @@ public sealed class AllocationBudgetTests(PostgresFixture postgresFixture)
 
     private const Int32 WarmupCommands = 50;
     private const Int32 MeasuredCommands = 200;
-    private const Int64 MaxAllocatedBytesPerCommand = 45_000;
+    private const Int64 MaxAllocatedBytesPerCommand = 48_000;
 
     private static Boolean IsReleaseBuild =>
         typeof(UnitOfWork<>).Assembly.GetCustomAttribute<DebuggableAttribute>() is not { IsJITOptimizerDisabled: true };
 
     [Fact]
-    public async Task Create_ping_allocates_on_average_at_most_45_kilobytes_per_command()
+    public async Task Create_ping_allocates_on_average_at_most_48_kilobytes_per_command()
     {
         Assert.SkipUnless(IsReleaseBuild, DebugBuildReason);
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture, writesLogs: false);

@@ -29,11 +29,19 @@ internal sealed class PingConfiguration : IEntityTypeConfiguration<Ping>
             .HasOptional(ping => ping.Nickname)
             .HasMaxLength(PingLabel.MaxLength);
 
+        builder.ComplexProperty(ping => ping.Schedule, ConfigureSchedule);
+
         builder.OwnsMany(ping => ping.Echoes, ConfigureEchoes);
 
         builder
             .Navigation(ping => ping.Echoes)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+
+    private static void ConfigureSchedule(ComplexPropertyBuilder<PingSchedule> builder)
+    {
+        builder.Property(schedule => schedule.Interval);
+        builder.Property(schedule => schedule.Repeats);
     }
 
     private static void ConfigureEchoes(OwnedNavigationBuilder<Ping, Echo> builder)

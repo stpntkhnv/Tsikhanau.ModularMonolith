@@ -4,6 +4,7 @@ using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using ModularMonolith.BuildingBlocks.IntegrationTests.Hosting;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.TestModules.Pings.Domain.Pings;
+using ModularMonolith.TestModules.Pings.Features.ReschedulePing;
 using ModularMonolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Railway;
 
@@ -120,6 +121,19 @@ public sealed class PersistenceTests(PostgresFixture postgresFixture)
         columns.ShouldBe(["archived_on:YES", "nickname:YES"], ignoreOrder: true);
     }
 
+    [Fact]
+    public async Task Composite_value_object_round_trips_through_columns_of_its_owner()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("scheduled");
+        await RescheduleAsync(testModulesHost, pingId, TimeSpan.FromSeconds(30), 5);
+        await using var scope = testModulesHost.CreateScope();
+
+        var loadedPing = await LoadAsync(ResolvePingsDbContext(scope), PingId.From(pingId));
+
+        loadedPing.Schedule.ShouldBe(CreateSchedule(TimeSpan.FromSeconds(30), 5));
+    }
+
     private static PingsDbContext ResolvePingsDbContext(AsyncServiceScope scope) =>
         scope.ServiceProvider.GetRequiredService<PingsDbContext>();
 
@@ -169,5 +183,21 @@ public sealed class PersistenceTests(PostgresFixture postgresFixture)
         await dbContext.SaveChangesAsync(CancellationToken);
     }
 
+    private static async Task RescheduleAsync(
+        TestModulesHost testModulesHost,
+        Guid pingId,
+        TimeSpan interval,
+        Int32 repeats)
+    {
+        var result = await testModulesHost.Pings.ExecuteCommandAsync(
+            new ReschedulePingCommand(pingId, interval, repeats),
+            CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+    }
+
     private static PingLabel CreateLabel(String value) => PingLabel.Create(value, "label").Value;
+
+    private static PingSchedule CreateSchedule(TimeSpan interval, Int32 repeats) =>
+        PingSchedule.Create(interval, repeats, "schedule").Value;
 }

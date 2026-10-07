@@ -20,6 +20,8 @@ internal sealed class Ping : AggregateRoot<PingId>
 
     public Int32 Touches { get; private set; }
 
+    public PingSchedule Schedule { get; private set; }
+
     public IReadOnlyList<Echo> Echoes => _echoes;
 
     public Optional<DateTimeOffset> ArchivedOn => _archivedOn.AsOptional();
@@ -28,7 +30,7 @@ internal sealed class Ping : AggregateRoot<PingId>
 
     public static Ping Create(PingId id, PingLabel label, DateTimeOffset createdOn)
     {
-        var ping = new Ping(id) { Label = label };
+        var ping = new Ping(id) { Label = label, Schedule = PingSchedule.Default };
         ping.Raise(new PingCreatedDomainEvent(createdOn, id, label));
         return ping;
     }
@@ -84,6 +86,12 @@ internal sealed class Ping : AggregateRoot<PingId>
     public Result<Unit> GiveNickname(PingLabel nickname)
     {
         _nickname = nickname;
+        return Unit.Value;
+    }
+
+    public Result<Unit> Reschedule(PingSchedule schedule)
+    {
+        Schedule = schedule;
         return Unit.Value;
     }
 }
