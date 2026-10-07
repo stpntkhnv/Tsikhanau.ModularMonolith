@@ -26,4 +26,9 @@ internal static partial class PumpLog
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Module} queue loop failed")]
     public static partial void LoopFailed(ILogger logger, String module, Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "{Module} handler abandoned at shutdown; the message returns after its lease")]
+    public static partial void AbandonedAtShutdown(ILogger logger, String module);
 }

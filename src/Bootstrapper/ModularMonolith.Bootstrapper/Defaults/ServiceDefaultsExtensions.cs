@@ -4,12 +4,15 @@ namespace ModularMonolith.Bootstrapper.Defaults;
 
 internal static class ServiceDefaultsExtensions
 {
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(25);
+
     public static WebApplicationBuilder AddServiceDefaults(
         this WebApplicationBuilder builder,
         params String[] activitySources)
     {
         builder.AddTelemetry(activitySources);
         builder.AddHealth();
+        builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
         builder.Services.AddProblemDetails();
         builder.Services.AddOpenApi();
 

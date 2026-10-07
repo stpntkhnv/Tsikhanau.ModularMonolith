@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
 using ModularMonolith.Testing.App;
 using Npgsql;
@@ -48,6 +49,14 @@ public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
         hostEnvironment.EnvironmentName.ShouldBe(Environments.Production);
         healthResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         aliveResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void Host_gives_a_graceful_stop_25_seconds()
+    {
+        var hostOptions = App.Services.GetRequiredService<IOptions<HostOptions>>().Value;
+
+        hostOptions.ShutdownTimeout.ShouldBe(TimeSpan.FromSeconds(25));
     }
 
     [Fact]

@@ -15,6 +15,17 @@ public sealed class ModuleQueueProcessor<TModule>(
     : BackgroundService
     where TModule : IModuleFacade
 {
+    private Boolean IsStillProcessing => ExecuteTask is { IsCompleted: false };
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await base.StopAsync(cancellationToken);
+        if (IsStillProcessing)
+        {
+            PumpLog.AbandonedAtShutdown(logger, typeof(TModule).Name);
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.RunInBackground)

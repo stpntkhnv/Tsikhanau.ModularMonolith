@@ -4,18 +4,37 @@ using ModularMonolith.BuildingBlocks.Api.Modules;
 using ModularMonolith.BuildingBlocks.Infrastructure.Diagnostics;
 using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
 
-var builder = WebApplication.CreateBuilder(args);
+await using var app = BuildApp(args);
+try
+{
+    await app.Services.PrepareModuleDatabasesAsync(CancellationToken.None);
+    app.UseServiceDefaults();
+    app.UseModules();
+    app.MapModules();
+    await app.StartAsync();
+    await app.WaitForShutdownAsync();
+}
+catch (Exception exception)
+{
+    HostLog.Terminated(app.Logger, exception);
+    throw;
+}
 
-builder.AddServiceDefaults(AppDiagnostics.SourceName);
-builder.AddPlatform();
+static WebApplication BuildApp(String[] args)
+{
+    try
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
-
-await app.Services.PrepareModuleDatabasesAsync(CancellationToken.None);
-app.UseServiceDefaults();
-app.UseModules();
-app.MapModules();
-
-await app.RunAsync();
+        builder.AddServiceDefaults(AppDiagnostics.SourceName);
+        builder.AddPlatform();
+        return builder.Build();
+    }
+    catch (Exception exception) when (exception is not HostAbortedException)
+    {
+        HostLog.TerminatedBeforeTheHostWasBuilt(exception);
+        throw;
+    }
+}
 
 public partial class Program;
