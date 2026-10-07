@@ -127,6 +127,9 @@ public static class ModuleServiceCollectionExtensions
             .AddScoped<IUnitOfWork<TModule>, UnitOfWork<TModule>>()
             .AddSingleton<ISqlConnectionFactory<TModule>>(
                 serviceProvider => new SqlConnectionFactory<TModule>(ResolveDataSource(serviceProvider, descriptor)))
+            .AddKeyedSingleton(
+                descriptor.Key,
+                (serviceProvider, _) => new ModuleDatabaseHealthCheck(ResolveDataSource(serviceProvider, descriptor)))
             .AddDatabaseHealth(descriptor);
 
     private static NpgsqlDataSource ResolveDataSource(IServiceProvider serviceProvider, ModuleDescriptor descriptor) =>
@@ -152,9 +155,10 @@ public static class ModuleServiceCollectionExtensions
     private static HealthCheckRegistration CreateDatabaseHealthCheckRegistration(ModuleDescriptor descriptor) =>
         new(
             $"database-{descriptor.Schema}",
-            serviceProvider => new ModuleDatabaseHealthCheck(ResolveDataSource(serviceProvider, descriptor)),
+            serviceProvider => serviceProvider.GetRequiredKeyedService<ModuleDatabaseHealthCheck>(descriptor.Key),
             failureStatus: null,
-            tags: null);
+            tags: null,
+            timeout: ModuleDatabaseHealthCheck.CheckTimeout);
 
     private static IServiceCollection AddDispatching<TModule, TQueryFacade, TFacade>(this IServiceCollection services)
         where TModule : class, IModuleFacade, TQueryFacade
