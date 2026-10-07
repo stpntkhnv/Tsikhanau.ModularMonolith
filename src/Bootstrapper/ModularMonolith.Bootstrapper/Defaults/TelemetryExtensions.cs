@@ -2,6 +2,7 @@ using OpenTelemetry;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace ModularMonolith.Bootstrapper.Defaults;
@@ -17,6 +18,7 @@ internal static class TelemetryExtensions
 
         var openTelemetryBuilder = builder.Services
             .AddOpenTelemetry()
+            .ConfigureResource(resourceBuilder => DescribeService(resourceBuilder, builder.Environment.ApplicationName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
@@ -36,6 +38,16 @@ internal static class TelemetryExtensions
 
         return builder;
     }
+
+    private static void DescribeService(ResourceBuilder resourceBuilder, String applicationName) =>
+        resourceBuilder
+            .Clear()
+            .AddService(
+                applicationName,
+                autoGenerateServiceInstanceId: false,
+                serviceInstanceId: Environment.MachineName)
+            .AddTelemetrySdk()
+            .AddEnvironmentVariableDetector();
 
     private static void IncludeMessagesAndScopes(OpenTelemetryLoggerOptions loggerOptions)
     {
