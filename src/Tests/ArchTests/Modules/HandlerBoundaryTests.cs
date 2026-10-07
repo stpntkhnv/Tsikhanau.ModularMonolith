@@ -6,14 +6,19 @@ using ModularMonolith.BuildingBlocks.Api.Endpoints;
 using ModularMonolith.BuildingBlocks.Application.Commands;
 using ModularMonolith.BuildingBlocks.Application.Events;
 using ModularMonolith.BuildingBlocks.Application.Queries;
+using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Contracts.Queries;
 using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Railway;
 
 namespace ModularMonolith.ArchTests.Modules;
 
 public sealed class HandlerBoundaryTests
 {
+    private const String SampleNamespace = "ModularMonolith.ArchTests.Modules";
+    private const String SampleQueryHandlerName = $"{SampleNamespace}.HandlerBoundaryTests+SampleQueryHandler";
+
     private const BindingFlags InstanceConstructors =
         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
@@ -59,16 +64,21 @@ public sealed class HandlerBoundaryTests
     [EveryModule]
     public void Query_handlers_take_no_write_side_dependencies(String name)
     {
-        var queryHandlers = ArchModules
-            .Get(name).Types
-            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
-            .ToList();
+        var module = ArchModules.Get(name);
 
-        Assert.SkipWhen(queryHandlers.Count == 0, $"{name} has no query handlers");
+        Assert.SkipWhen(GetQueryHandlers(module).Count == 0, $"{name} has no query handlers");
 
-        queryHandlers
-            .SelectMany(type => GetReferences(type, IsWriteSide))
+        ReadQueryHandlerReferences(module)
             .ShouldBeEmpty("A query handler only reads; take ISqlConnectionFactory, not the write side");
+    }
+
+    [Fact]
+    public void Write_side_taken_by_a_type_nested_in_a_query_handler_is_checked()
+    {
+        var sampleModule = new ArchModule("Samples", SampleNamespace, [typeof(HandlerBoundaryTests).Assembly]);
+
+        ReadQueryHandlerReferences(sampleModule)
+            .ShouldContain($"{SampleQueryHandlerName}+OutboxWriter takes IOutbox`1 outbox");
     }
 
     [Theory]
@@ -88,6 +98,24 @@ public sealed class HandlerBoundaryTests
             .SelectMany(type => GetReferences(type, referencedType => referencedType == facadeType))
             .ShouldBeEmpty("A handler that calls its own facade leaves its transaction; call the domain directly");
     }
+
+    private static List<Type> GetQueryHandlers(ArchModule module) =>
+        module.Types
+            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
+            .ToList();
+
+    private static List<String> ReadQueryHandlerReferences(ArchModule module)
+    {
+        var queryHandlers = GetQueryHandlers(module);
+
+        return module.Types
+            .Where(type => !type.IsCompilerGenerated && IsOrIsNestedIn(type, queryHandlers))
+            .SelectMany(type => GetReferences(type, IsWriteSide))
+            .ToList();
+    }
+
+    private static Boolean IsOrIsNestedIn(Type type, List<Type> handlers) =>
+        handlers.Contains(type) || type.DeclaringType is { } declaringType && IsOrIsNestedIn(declaringType, handlers);
 
     private static Boolean IsEdge(Type type) => type.Implements<IEndpoint>() || type.Implements<IHostedService>();
 
@@ -152,5 +180,20 @@ public sealed class HandlerBoundaryTests
     private sealed record TypeUse(Type Type, String Verb, String? Name)
     {
         public String Description => $"{Verb} {Type.Name} {Name}";
+    }
+
+    private interface ISampleModule : IModuleFacade;
+
+    private sealed record SampleQuery : IQuery<String>;
+
+    private sealed class SampleQueryHandler : IQueryHandler<SampleQuery, String>
+    {
+        public Task<Result<String>> Handle(SampleQuery query, CancellationToken cancellationToken) =>
+            Task.FromResult<Result<String>>("read");
+
+        private sealed class OutboxWriter(IOutbox<ISampleModule> outbox)
+        {
+            public IOutbox<ISampleModule> Outbox => outbox;
+        }
     }
 }
