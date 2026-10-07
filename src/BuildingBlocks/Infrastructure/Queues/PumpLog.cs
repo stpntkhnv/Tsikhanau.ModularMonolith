@@ -24,6 +24,17 @@ internal static partial class PumpLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Message failed after {Attempts} attempts: {Reason}")]
     public static partial void GaveUp(ILogger logger, Int32 attempts, String reason, Exception? exception);
 
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "{Module} {Table} claims one message at a time for a poll interval ({Reason}); "
+            + "gave back {GivenBackCount} message(s)")]
+    public static partial void ClaimsOneAtATime(
+        ILogger logger,
+        String module,
+        String table,
+        String reason,
+        Int32 givenBackCount);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "{Module} queue loop failed")]
     public static partial void LoopFailed(ILogger logger, String module, Exception exception);
 

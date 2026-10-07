@@ -71,6 +71,15 @@ public abstract class MessagePump<TModule, TMessage>(
         await ProcessAsync(message, cancellationToken);
     }
 
+    internal async Task GiveBackUnstartedAsync(IReadOnlyCollection<TMessage> messages, String reason)
+    {
+        await GiveBackAsync(messages);
+        PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, messages.Count);
+    }
+
+    internal void LogClaimingOneAtATime(String reason) =>
+        PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, givenBackCount: 0);
+
     internal Task GiveBackAsync(IReadOnlyCollection<TMessage> messages) =>
         UpdateClaimedRowsAsync(
             UntouchedSince(messages),

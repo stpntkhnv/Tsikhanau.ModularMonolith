@@ -72,14 +72,18 @@ internal sealed class MessageBuffer<TModule, TMessage>(
     where TModule : IModuleFacade
     where TMessage : QueueMessage
 {
+    private const String ShortLease = "under 1.5 x HandlerTimeout of the lease left";
+
+    private const String OldBatch = "older than PollInterval";
+
     private readonly Queue<TMessage> _messages = new();
     private DateTimeOffset _claimedOn;
     private DateTimeOffset _claimsOneAtATimeUntil;
+    private Boolean _claimsOneAtATime;
 
     protected override Boolean HasMessages => _messages.Count > 0;
 
-    private Int32 ClaimBatchSize =>
-        timeProvider.GetUtcNow() < _claimsOneAtATimeUntil ? 1 : queueSettings.ClaimBatchSize;
+    private Int32 ClaimBatchSize => _claimsOneAtATime ? 1 : queueSettings.ClaimBatchSize;
 
     private TimeSpan LeaseNeededToStart => queueSettings.HandlerTimeout * 1.5;
 
@@ -87,12 +91,13 @@ internal sealed class MessageBuffer<TModule, TMessage>(
     {
         if (HasMessages)
         {
-            await GiveBackAsync();
+            await messagePump.GiveBackAsync(TakeAll());
         }
     }
 
     protected override async Task ClaimAsync(CancellationToken cancellationToken)
     {
+        _claimsOneAtATime = timeProvider.GetUtcNow() < _claimsOneAtATimeUntil;
         var claimedMessages = await messagePump.ClaimBatchAsync(ClaimBatchSize, cancellationToken);
         _claimedOn = timeProvider.GetUtcNow();
         claimedMessages.ForEach(_messages.Enqueue);
@@ -100,34 +105,58 @@ internal sealed class MessageBuffer<TModule, TMessage>(
 
     protected override async Task<Boolean> TryProcessNextAsync(CancellationToken cancellationToken)
     {
-        if (!CanStart(_messages.Peek(), timeProvider.GetUtcNow()))
+        var nextMessage = _messages.Peek();
+        var startedOn = timeProvider.GetUtcNow();
+        if (!CanStart(nextMessage, startedOn))
         {
             ClaimOneAtATimeForAPollInterval();
-            await GiveBackAsync();
+            await messagePump.GiveBackUnstartedAsync(TakeAll(), BuildReasonNotToStart(nextMessage, startedOn));
             return false;
         }
 
         var message = _messages.Dequeue();
         await messagePump.ProcessClaimedAsync(message, cancellationToken);
-        if (!CanStart(message, timeProvider.GetUtcNow()))
+        var finishedOn = timeProvider.GetUtcNow();
+        if (!CanStart(message, finishedOn))
         {
             ClaimOneAtATimeForAPollInterval();
+            LogSwitchWithNothingToGiveBack(message, finishedOn);
         }
 
         return true;
+    }
+
+    private void LogSwitchWithNothingToGiveBack(TMessage message, DateTimeOffset finishedOn)
+    {
+        if (!_claimsOneAtATime && !HasMessages)
+        {
+            messagePump.LogClaimingOneAtATime(BuildReasonNotToStart(message, finishedOn));
+        }
     }
 
     private void ClaimOneAtATimeForAPollInterval() =>
         _claimsOneAtATimeUntil = timeProvider.GetUtcNow() + queueSettings.PollInterval;
 
     private Boolean CanStart(TMessage message, DateTimeOffset startedOn) =>
-        message.NextAttemptOn - startedOn >= LeaseNeededToStart
-        && startedOn - _claimedOn <= queueSettings.PollInterval;
+        HasLeaseToStart(message, startedOn) && IsFresh(startedOn);
 
-    private Task GiveBackAsync()
+    private Boolean HasLeaseToStart(TMessage message, DateTimeOffset startedOn) =>
+        message.NextAttemptOn - startedOn >= LeaseNeededToStart;
+
+    private Boolean IsFresh(DateTimeOffset startedOn) => startedOn - _claimedOn <= queueSettings.PollInterval;
+
+    private String BuildReasonNotToStart(TMessage message, DateTimeOffset startedOn) =>
+        (HasLeaseToStart(message, startedOn), IsFresh(startedOn)) switch
+        {
+            (false, false) => $"{ShortLease}, {OldBatch}",
+            (false, true) => ShortLease,
+            _ => OldBatch,
+        };
+
+    private List<TMessage> TakeAll()
     {
         var messages = _messages.ToList();
         _messages.Clear();
-        return messagePump.GiveBackAsync(messages);
+        return messages;
     }
 }

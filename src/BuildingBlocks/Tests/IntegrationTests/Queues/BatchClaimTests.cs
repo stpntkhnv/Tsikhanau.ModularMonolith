@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModularMonolith.BuildingBlocks.Infrastructure.Inbox;
 using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
@@ -21,6 +22,13 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         INSERT INTO pings.inbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on, received_on)
         VALUES (@id, 'pongs.unclaimable', '{}'::jsonb, 2147483647, @receivedOn, @receivedOn, @receivedOn)
         """;
+
+    private const String OneAtATime = "claims one message at a time for a poll interval";
+
+    private const String ClaimBatchSizeKey = $"{QueueSettings.Section}:{nameof(QueueSettings.ClaimBatchSize)}";
+
+    private const String SwitchWithNothingGivenBack =
+        $"IPongsModule inbox_messages {OneAtATime} (older than PollInterval); gave back 0 message(s)";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -78,6 +86,67 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         givenBackRows.Count.ShouldBe(2);
         givenBackRows.ShouldAllBe(row => row.Attempts == 0 && row.NextAttemptOn == dueOn.UtcDateTime);
         claimedCountInTheNextRun.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(2, 1.5, "under 1.5 x HandlerTimeout of the lease left")]
+    [InlineData(60, 6, "older than PollInterval")]
+    [InlineData(8, 6, "under 1.5 x HandlerTimeout of the lease left, older than PollInterval")]
+    public async Task Batch_that_goes_back_is_logged_with_the_reason_and_the_number_of_messages(
+        Double handlerTimeoutSeconds,
+        Double firstHandlerSeconds,
+        String reason)
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            handlerTimeout: TimeSpan.FromSeconds(handlerTimeoutSeconds),
+            configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
+
+        await CreatePingsAsync(testModulesHost, "logged", 3);
+        await testModulesHost.DeliverOutboxAsync();
+
+        await ProcessInboxWithASlowFirstHandlerAsync(testModulesHost, TimeSpan.FromSeconds(firstHandlerSeconds));
+
+        var giveBackEntries = capturingLoggerProvider.Entries
+            .Where(entry => entry.Message.Contains("gave back", StringComparison.Ordinal))
+            .Select(entry => (entry.Level, entry.Message))
+            .ToList();
+
+        giveBackEntries.ShouldBe(
+        [
+            (LogLevel.Information, $"IPongsModule inbox_messages {OneAtATime} ({reason}); gave back 2 message(s)"),
+        ]);
+    }
+
+    [Fact]
+    public async Task Slow_last_message_of_a_batch_logs_the_switch_to_one_message_at_a_time()
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await StartClaimingTwoAtATimeAsync(capturingLoggerProvider);
+        await CreatePingsAsync(testModulesHost, "last-slow", 4);
+        await testModulesHost.DeliverOutboxAsync();
+
+        await ProcessInboxWithSlowHandlersAsync(testModulesHost, [2]);
+
+        var oneAtATimeEntries = ReadOneAtATimeEntries(capturingLoggerProvider);
+
+        oneAtATimeEntries.ShouldBe([(LogLevel.Information, SwitchWithNothingGivenBack)]);
+    }
+
+    [Fact]
+    public async Task Slow_message_while_already_claiming_one_at_a_time_logs_nothing_new()
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await StartClaimingTwoAtATimeAsync(capturingLoggerProvider);
+        await CreatePingsAsync(testModulesHost, "still-slow", 4);
+        await testModulesHost.DeliverOutboxAsync();
+
+        await ProcessInboxWithSlowHandlersAsync(testModulesHost, [2, 3]);
+
+        var oneAtATimeEntries = ReadOneAtATimeEntries(capturingLoggerProvider);
+
+        oneAtATimeEntries.ShouldBe([(LogLevel.Information, SwitchWithNothingGivenBack)]);
     }
 
     [Theory]
@@ -316,6 +385,33 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
         }
     }
 
+    private static Task<Int32> ProcessInboxWithSlowHandlersAsync(
+        TestModulesHost testModulesHost,
+        IReadOnlyCollection<Int32> slowHandlerNumbers)
+    {
+        var pollInterval = testModulesHost.Services.GetRequiredService<IOptions<QueueSettings>>().Value.PollInterval;
+        var handledCount = 0;
+        testModulesHost.PongHooks.BeforeHandle = () =>
+        {
+            handledCount++;
+            if (slowHandlerNumbers.Contains(handledCount))
+            {
+                testModulesHost.Time.Advance(pollInterval + TimeSpan.FromSeconds(1));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        return testModulesHost.ProcessInboxAsync(CancellationToken);
+    }
+
+    private static List<(LogLevel Level, String Message)> ReadOneAtATimeEntries(
+        CapturingLoggerProvider capturingLoggerProvider) =>
+        capturingLoggerProvider.Entries
+            .Where(entry => entry.Message.Contains("one message at a time", StringComparison.Ordinal))
+            .Select(entry => (entry.Level, entry.Message))
+            .ToList();
+
     private static async Task ScheduleTouchesAsync(TestModulesHost testModulesHost, Int32 count)
     {
         for (var touchNumber = 0; touchNumber < count; touchNumber++)
@@ -363,4 +459,13 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
 
         return claimedCount;
     }
+
+    private Task<TestModulesHost> StartClaimingTwoAtATimeAsync(CapturingLoggerProvider capturingLoggerProvider) =>
+        TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder =>
+            {
+                builder.Configuration[ClaimBatchSizeKey] = "2";
+                builder.Logging.AddProvider(capturingLoggerProvider);
+            });
 }
