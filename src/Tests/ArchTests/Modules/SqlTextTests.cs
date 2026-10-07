@@ -21,6 +21,9 @@ public sealed partial class SqlTextTests
         """\b(INSERT\s+INTO|UPDATE\s+[\w."]+(\s+(AS\s+)?[\w."]+)?\s+SET|DELETE\s+FROM|MERGE\s+INTO"""
             + """|TRUNCATE\s+(TABLE\s+)?(ONLY\s+)?[\w."]+)\b""";
 
+    private const String StarColumnPattern =
+        """\b(SELECT|RETURNING)\s+(DISTINCT\s+)?([\w."]+\s*,\s*)*([\w."]+\.)?\*""";
+
     private static ArchModule SampleModule => new("Samples", SampleNamespace, [typeof(SqlTextTests).Assembly]);
 
     [Theory]
@@ -55,6 +58,20 @@ public sealed partial class SqlTextTests
             .Where(literal => otherSchemas.Any(schema => NamesSchema(literal.Literal, schema)))
             .Select(literal => $"{literal.TypeName} reaches another module: {literal.Literal}")
             .ShouldBeEmpty("Read another module through its query facade, not its tables");
+    }
+
+    [Theory]
+    [EveryModule]
+    public void Module_sql_names_its_columns(String name)
+    {
+        var literals = StringLiterals.ReadFrom(ArchModules.Get(name));
+
+        Assert.SkipWhen(literals.Count == 0, $"{name} has no string literals");
+
+        literals
+            .Where(literal => StarColumn.IsMatch(literal.Literal))
+            .Select(literal => $"{literal.TypeName} reads every column: {literal.Literal}")
+            .ShouldBeEmpty("Name the columns; a column added under a running instance breaks SELECT *");
     }
 
     [Fact]
@@ -128,6 +145,34 @@ public sealed partial class SqlTextTests
         NamesSchema(text, "pings")
             .ShouldBeFalse();
 
+    [Theory]
+    [InlineData("SELECT * FROM pings.pings")]
+    [InlineData("SELECT ping.* FROM pings.pings AS ping")]
+    [InlineData("SELECT \"ping\".* FROM pings.pings AS ping")]
+    [InlineData("SELECT id, ping.* FROM pings.pings AS ping")]
+    [InlineData("SELECT DISTINCT * FROM pings.pings")]
+    [InlineData("INSERT INTO pings.pings (id) VALUES (@Id) RETURNING *")]
+    [InlineData("UPDATE pings.pings SET label = @Label RETURNING ping.*")]
+    public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
+        StarColumn
+            .IsMatch(sql)
+            .ShouldBeTrue();
+
+    [Theory]
+    [InlineData("SELECT count(*)::int FROM pings.pings")]
+    [InlineData("SELECT COUNT(*) FROM pings.pings")]
+    [InlineData("SELECT id, count(*) FROM pings.pings GROUP BY id")]
+    [InlineData("SELECT EXISTS (SELECT 1 FROM pings.pings)")]
+    [InlineData("SELECT id, label FROM pings.pings")]
+    [InlineData("SELECT price * 2 FROM pings.pings")]
+    [InlineData("RETURNING id")]
+    [InlineData("Select the star * to continue")]
+    [InlineData("Returning visitor")]
+    public void Sql_that_names_its_columns_is_not_a_star_column(String text) =>
+        StarColumn
+            .IsMatch(text)
+            .ShouldBeFalse();
+
     private static List<(String TypeName, String Literal)> ReadQueryHandlerLiterals(ArchModule module)
     {
         var queryHandlerNames = module.Types
@@ -164,6 +209,9 @@ public sealed partial class SqlTextTests
 
     [GeneratedRegex(WritingStatementPattern, RegexOptions.IgnoreCase)]
     private static partial Regex WritingStatement { get; }
+
+    [GeneratedRegex(StarColumnPattern, RegexOptions.IgnoreCase)]
+    private static partial Regex StarColumn { get; }
 
     private sealed class LiteralOwner
     {
