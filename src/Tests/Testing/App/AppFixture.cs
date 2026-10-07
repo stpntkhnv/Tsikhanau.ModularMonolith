@@ -27,7 +27,9 @@ public sealed class AppFixture : IAsyncLifetime
 
     public IServiceProvider Services => _appFactory.Services;
 
-    public DatabaseProbe Database => new(_postgreSqlContainer.GetConnectionString());
+    public String ConnectionString => _postgreSqlContainer.GetConnectionString();
+
+    public DatabaseProbe Database => new(ConnectionString);
 
     public HttpClient CreateClient() => _appFactory.CreateClient();
 
@@ -45,9 +47,6 @@ public sealed class AppFixture : IAsyncLifetime
 
     public Task<UncommittedUpdate> ExecuteUncommittedAsync(String moduleName, String sql) =>
         UncommittedUpdate.ExecuteAsync(GetDataSource(moduleName), sql);
-
-    public AppFactory StartFactory(String environmentName) =>
-        StartFactory(environmentName, new Dictionary<String, String>());
 
     public AppFactory StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
@@ -83,7 +82,7 @@ public sealed class AppFixture : IAsyncLifetime
 
         _databaseResetter = schemas.Length == 0
             ? Optional<DatabaseResetter>.None()
-            : await DatabaseResetter.CreateAsync(_postgreSqlContainer.GetConnectionString(), schemas);
+            : await DatabaseResetter.CreateAsync(ConnectionString, schemas);
     }
 
     public async ValueTask DisposeAsync()
@@ -98,7 +97,7 @@ public sealed class AppFixture : IAsyncLifetime
     private void Start(AppFactory appFactory, IReadOnlyDictionary<String, String> overrides)
     {
         var environmentVariables = new Dictionary<String, String>(
-            TestSettings.CreateEnvironmentVariables(_postgreSqlContainer.GetConnectionString()));
+            TestSettings.CreateEnvironmentVariables(ConnectionString));
 
         foreach (var (name, value) in overrides)
         {

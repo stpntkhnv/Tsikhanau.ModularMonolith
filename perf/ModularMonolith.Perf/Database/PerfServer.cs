@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Tsikhanau.Railway;
 
@@ -47,7 +48,7 @@ internal sealed class PerfServer : IAsyncDisposable
         try
         {
             await container.StartAsync(cancellationToken);
-            return new PerfServer(container.GetConnectionString(), container);
+            return new PerfServer(BuildPlainTextConnectionString(container), container);
         }
         catch
         {
@@ -55,4 +56,10 @@ internal sealed class PerfServer : IAsyncDisposable
             throw;
         }
     }
+
+    private static String BuildPlainTextConnectionString(PostgreSqlContainer container) =>
+        new NpgsqlConnectionStringBuilder(container.GetConnectionString())
+        {
+            SslMode = SslMode.Disable,
+        }.ConnectionString;
 }

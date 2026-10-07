@@ -17,7 +17,7 @@ public static class PlatformServiceCollectionExtensions
 
     public static IHostApplicationBuilder EnsureConnectionString(this IHostApplicationBuilder builder)
     {
-        _ = DatabaseConnectionStrings.From(builder.Configuration);
+        _ = DatabaseConnectionStrings.From(builder.Configuration, builder.Environment);
         return builder;
     }
 

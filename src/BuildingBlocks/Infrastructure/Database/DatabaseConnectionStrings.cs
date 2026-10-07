@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using ModularMonolith.Shared.Time;
 using Npgsql;
 
@@ -12,12 +13,15 @@ internal sealed class DatabaseConnectionStrings
 
     private const Int32 MaxAutoPreparedStatements = 20;
 
+    private const String SslModeRequirement =
+        "must set SSL Mode to VerifyFull, VerifyCA, Require or Disable outside Development";
+
     private readonly NpgsqlConnectionStringBuilder _adminConnectionStringBuilder;
 
     private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder) =>
         _adminConnectionStringBuilder = adminConnectionStringBuilder;
 
-    public static DatabaseConnectionStrings From(IConfiguration configuration)
+    public static DatabaseConnectionStrings From(IConfiguration configuration, IHostEnvironment hostEnvironment)
     {
         var connectionString = configuration.GetConnectionString(Name);
         if (String.IsNullOrWhiteSpace(connectionString))
@@ -36,6 +40,7 @@ internal sealed class DatabaseConnectionStrings
                 $"Connection string '{Name}' has no password; module logins derive their passwords from it");
         }
 
+        EnsureSslModeIsExplicit(adminConnectionStringBuilder.SslMode, hostEnvironment);
         return new DatabaseConnectionStrings(adminConnectionStringBuilder);
     }
 
@@ -64,6 +69,17 @@ internal sealed class DatabaseConnectionStrings
             CommandTimeout = CalculateCommandTimeout(handlerTimeout),
             MaxAutoPrepare = MaxAutoPreparedStatements,
         }.ConnectionString;
+
+    private static void EnsureSslModeIsExplicit(SslMode sslMode, IHostEnvironment hostEnvironment)
+    {
+        if (!hostEnvironment.IsDevelopment() && !IsExplicitChoice(sslMode))
+        {
+            throw new InvalidOperationException($"Connection string '{Name}' {SslModeRequirement}, not {sslMode}");
+        }
+    }
+
+    private static Boolean IsExplicitChoice(SslMode sslMode) =>
+        sslMode is SslMode.VerifyFull or SslMode.VerifyCA or SslMode.Require or SslMode.Disable;
 
     private static Int32 CalculateCommandTimeout(TimeSpan handlerTimeout) =>
         Math.Max(MinCommandTimeoutSeconds, handlerTimeout.TotalSecondsRoundedUp);

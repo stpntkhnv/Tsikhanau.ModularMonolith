@@ -4,11 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
 using ModularMonolith.Testing.App;
+using Npgsql;
 
 namespace ModularMonolith.IntegrationTests.Host;
 
 public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
 {
+    private const String ConnectionStringVariable =
+        $"ConnectionStrings__{PlatformServiceCollectionExtensions.ConnectionName}";
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -26,7 +30,15 @@ public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
     [Fact]
     public async Task Health_endpoints_are_served_outside_development()
     {
-        await using var productionAppFactory = App.StartFactory(Environments.Production);
+        var connectionString = new NpgsqlConnectionStringBuilder(App.ConnectionString)
+        {
+            SslMode = SslMode.Disable,
+        }.ConnectionString;
+
+        await using var productionAppFactory = App.StartFactory(
+            Environments.Production,
+            new Dictionary<String, String> { [ConnectionStringVariable] = connectionString });
+
         using var httpClient = productionAppFactory.CreateClient();
 
         var hostEnvironment = productionAppFactory.Services.GetRequiredService<IHostEnvironment>();
@@ -74,10 +86,9 @@ public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
     [Fact]
     public void Connection_string_without_a_password_stops_the_host_at_startup()
     {
-        var variableName = $"ConnectionStrings__{PlatformServiceCollectionExtensions.ConnectionName}";
         var connectionString = "Host=localhost;Database=modularmonolith;Username=postgres";
         using var environmentOverride = new EnvironmentOverride(
-            new Dictionary<String, String> { [variableName] = connectionString });
+            new Dictionary<String, String> { [ConnectionStringVariable] = connectionString });
 
         using var webApplicationFactory = new WebApplicationFactory<Program>();
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModularMonolith.BuildingBlocks.Infrastructure.Database;
@@ -46,7 +47,10 @@ public static class ModuleDatabaseExtensions
         CancellationToken cancellationToken)
     {
         var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
-        var connectionStrings = DatabaseConnectionStrings.From(serviceProvider.GetRequiredService<IConfiguration>());
+        var connectionStrings = DatabaseConnectionStrings.From(
+            serviceProvider.GetRequiredService<IConfiguration>(),
+            serviceProvider.GetRequiredService<IHostEnvironment>());
+
         var logins = modules
             .Select(module => connectionStrings.CreateModuleLogin(module.Schema))
             .ToList();
