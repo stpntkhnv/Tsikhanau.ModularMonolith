@@ -117,6 +117,40 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         exception.Message.ShouldContain("MaxConnections");
     }
 
+    [Fact]
+    public async Task Connection_budget_below_two_per_module_is_refused()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        var adminConnectionString = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Pooling = false,
+        }.ConnectionString;
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => ProvisionAsync(
+                adminConnectionString,
+                [ModuleLogin.Create("budget_a", "x"), ModuleLogin.Create("budget_b", "x")],
+                maxConnections: 3));
+
+        exception.Message.ShouldContain("MaxConnections is 3; it must be at least 4 (2 for each of the 2 modules)");
+    }
+
+    [Fact]
+    public async Task Connection_budget_of_exactly_two_per_module_is_accepted()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        var adminConnectionString = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Pooling = false,
+        }.ConnectionString;
+
+        await Should.NotThrowAsync(
+            () => ProvisionAsync(
+                adminConnectionString,
+                [ModuleLogin.Create("budget_exact_a", "x"), ModuleLogin.Create("budget_exact_b", "x")],
+                maxConnections: 4));
+    }
+
     private static Task ProvisionRaceLoginsAsync(String connectionString)
     {
         var adminConnectionString = new NpgsqlConnectionStringBuilder(connectionString)

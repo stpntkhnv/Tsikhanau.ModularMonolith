@@ -38,6 +38,26 @@ public sealed class DatabaseSettingsTests
                     ["ModularMonolith:Database:PrepareTimeout"] = prepareTimeout,
                 }));
 
+    [Theory]
+    [InlineData(20, 2, 10)]
+    [InlineData(21, 2, 10)]
+    [InlineData(3, 2, 2)]
+    public void Pool_size_splits_the_budget_evenly_and_never_drops_below_two_per_module(
+        Int32 maxConnections,
+        Int32 moduleCount,
+        Int32 poolSizePerModule)
+    {
+        var settings = new DatabaseSettings
+        {
+            MaxConnections = maxConnections,
+            PrepareTimeout = TimeSpan.FromMinutes(10),
+        };
+
+        var calculatedPoolSizePerModule = settings.CalculatePoolSizePerModule(moduleCount);
+
+        calculatedPoolSizePerModule.ShouldBe(poolSizePerModule);
+    }
+
     private static DatabaseSettings ResolveSettings(Dictionary<String, String?> configurationValues)
     {
         var configuration = new ConfigurationBuilder()

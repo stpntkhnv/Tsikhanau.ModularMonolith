@@ -156,12 +156,13 @@ internal sealed class ModuleDatabaseProvisioner
     private async Task EnsureConnectionBudgetAsync(Int32 maxConnections, Int32 moduleCount)
     {
         var availableConnections = await ExecuteScalarAsync<Int32>(AvailableConnectionsSql);
-        if (maxConnections > availableConnections || maxConnections < moduleCount)
+        var neededConnections = DatabaseSettings.MinConnectionsPerModule * moduleCount;
+        if (maxConnections > availableConnections || maxConnections < neededConnections)
         {
             throw new InvalidOperationException(
-                $"ModularMonolith:Database:MaxConnections is {maxConnections}; "
-                + $"it must be at least the {moduleCount} modules and at most the {availableConnections} connections "
-                + "the server leaves to ordinary logins");
+                $"ModularMonolith:Database:MaxConnections is {maxConnections}; it must be at least {neededConnections} "
+                + $"({DatabaseSettings.MinConnectionsPerModule} for each of the {moduleCount} modules) "
+                + $"and at most the {availableConnections} connections the server leaves to ordinary logins");
         }
     }
 
