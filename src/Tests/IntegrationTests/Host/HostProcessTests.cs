@@ -31,7 +31,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
     private const String WithoutCoreDumps = "ulimit -c 0 && exec \"$0\" \"$1\"";
 
     private static readonly String DotnetHost =
-        Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? FindDotnetOfTheRunningRuntime();
+        Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? GetDotnetOfTheRunningRuntime();
 
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(30);
 
@@ -131,7 +131,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
             ? new ProcessStartInfo(DotnetHost, [bootstrapperPath])
             : new ProcessStartInfo("/bin/sh", ["-c", WithoutCoreDumps, DotnetHost, bootstrapperPath]);
 
-    private static String FindDotnetOfTheRunningRuntime() =>
+    private static String GetDotnetOfTheRunningRuntime() =>
         Path.GetFullPath(
             Path.Combine(
                 RuntimeEnvironment.GetRuntimeDirectory(),
@@ -168,7 +168,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
 
         public String Endpoint { get; }
 
-        public static OtlpReceiver Start() => new(FindFreePort());
+        public static OtlpReceiver Start() => new(GetFreePort());
 
         public IReadOnlyCollection<String> Bodies => _bodies;
 
@@ -178,7 +178,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
             await _receiving;
         }
 
-        private static Int32 FindFreePort()
+        private static Int32 GetFreePort()
         {
             using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
             tcpListener.Start();

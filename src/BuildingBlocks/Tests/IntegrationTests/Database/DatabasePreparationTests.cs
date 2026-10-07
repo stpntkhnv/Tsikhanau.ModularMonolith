@@ -110,7 +110,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     [Fact]
     public async Task Unreachable_database_stops_preparation_at_once_naming_the_server()
     {
-        var closedPort = FindClosedPort();
+        var closedPort = GetClosedPort();
         var connectionString = new NpgsqlConnectionStringBuilder
         {
             Host = "127.0.0.1",
@@ -207,7 +207,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
             Pooling = false,
         }.ConnectionString;
 
-    private static Int32 FindClosedPort()
+    private static Int32 GetClosedPort()
     {
         using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
         tcpListener.Start();
