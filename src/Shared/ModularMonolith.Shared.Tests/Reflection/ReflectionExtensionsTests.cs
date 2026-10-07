@@ -1,4 +1,6 @@
 using ModularMonolith.Shared.Reflection;
+using ModularMonolith.Shared.Tests.Reflection.Scenarios;
+using ModularMonolith.Shared.Tests.Reflection.Scenarios.Owner;
 
 namespace ModularMonolith.Shared.Tests.Reflection;
 
@@ -23,6 +25,26 @@ public sealed class ReflectionExtensionsTests
             .Select(greeter => greeter.Greet());
 
         greetings.ShouldBe(["hello", "hi"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Instances_are_created_only_for_concrete_implementations_in_the_namespace_of_the_type_or_below_it()
+    {
+        var partNames = typeof(OwnerPart)
+            .CreateInstancesInItsNamespace<IPart>()
+            .Select(part => part.Name);
+
+        partNames.ShouldBe(["owner", "nested"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Type_without_a_namespace_creates_instances_for_every_implementation_in_its_assembly()
+    {
+        var partNames = typeof(GlobalPart)
+            .CreateInstancesInItsNamespace<IPart>()
+            .Select(part => part.Name);
+
+        partNames.ShouldBe(["global", "owner", "nested", "neighbour"], ignoreOrder: true);
     }
 
     [Fact]

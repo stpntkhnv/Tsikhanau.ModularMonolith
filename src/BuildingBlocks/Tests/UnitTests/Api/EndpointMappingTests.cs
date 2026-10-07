@@ -8,21 +8,7 @@ namespace ModularMonolith.BuildingBlocks.UnitTests.Api;
 public sealed class EndpointMappingTests
 {
     [Fact]
-    public async Task Maps_every_concrete_endpoint_in_the_assembly()
-    {
-        await using var app = WebApplication
-            .CreateSlimBuilder()
-            .Build();
-
-        app.MapEndpointsFrom(typeof(EndpointMappingTests).Assembly);
-
-        var routes = GetRoutes(app);
-
-        routes.ShouldBe(["/sample", "/owner", "/neighbour"], ignoreOrder: true);
-    }
-
-    [Fact]
-    public async Task Maps_only_the_endpoints_in_the_namespace_of_the_module_class()
+    public async Task Maps_only_the_concrete_endpoints_in_the_namespace_of_the_module_class()
     {
         await using var app = WebApplication
             .CreateSlimBuilder()
@@ -40,14 +26,4 @@ public sealed class EndpointMappingTests
             .SelectMany(dataSource => dataSource.Endpoints)
             .OfType<RouteEndpoint>()
             .Select(endpoint => endpoint.RoutePattern.RawText);
-
-    private sealed class SampleEndpoint : IEndpoint
-    {
-        public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/sample", () => "sample");
-    }
-
-    private abstract class AbstractEndpoint : IEndpoint
-    {
-        public abstract void Map(IEndpointRouteBuilder endpoints);
-    }
 }

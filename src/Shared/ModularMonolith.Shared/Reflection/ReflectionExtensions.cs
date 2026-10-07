@@ -51,5 +51,14 @@ public static class ReflectionExtensions
             type.BaseType is { } baseType && (baseType.IsBuiltFrom(openGeneric) || baseType.DerivesFrom(openGeneric));
 
         public T CreateInstance<T>() => (T)Activator.CreateInstance(type, nonPublic: true)!;
+
+        public IEnumerable<T> CreateInstancesInItsNamespace<T>() =>
+            type.Assembly
+                .GetTypes()
+                .Implementing<T>()
+                .Where(candidate => candidate.IsInNamespaceOf(type))
+                .Select(candidate => candidate.CreateInstance<T>());
+
+        private Boolean IsInNamespaceOf(Type owner) => owner.Namespace is null || type.IsInNamespace(owner.Namespace);
     }
 }
