@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using ModularMonolith.Shared.Time;
 using Npgsql;
 
 namespace ModularMonolith.BuildingBlocks.Infrastructure.Database;
@@ -48,7 +49,7 @@ internal sealed class ModuleDatabaseHealthCheck(NpgsqlDataSource npgsqlDataSourc
     private async Task SelectOneAsync()
     {
         await using var command = npgsqlDataSource.CreateCommand("SELECT 1");
-        command.CommandTimeout = (Int32)CheckTimeout.TotalSeconds;
+        command.CommandTimeout = CheckTimeout.TotalSecondsRoundedUp;
         await command.ExecuteScalarAsync(CancellationToken.None);
     }
 }
