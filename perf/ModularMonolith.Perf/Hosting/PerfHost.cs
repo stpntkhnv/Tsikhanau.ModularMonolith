@@ -67,6 +67,8 @@ internal static class PerfHost
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.KeepFor)}"] = "7.00:00:00";
         configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}"] =
             settings.MaxConnections.ToString(CultureInfo.InvariantCulture);
+
+        configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.PrepareTimeout)}"] = "00:10:00";
     }
 
     private static void ConfigureLogging(ILoggingBuilder logging, PerfHostSettings settings)

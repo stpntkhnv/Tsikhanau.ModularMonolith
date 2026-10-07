@@ -6,6 +6,8 @@ namespace ModularMonolith.BuildingBlocks.UnitTests.Database;
 
 public sealed class DatabaseConnectionStringsTests
 {
+    private static readonly TimeSpan PrepareTimeout = TimeSpan.FromMinutes(10);
+
     [Fact]
     public void Missing_connection_string_is_refused()
     {
@@ -67,6 +69,18 @@ public sealed class DatabaseConnectionStringsTests
     }
 
     [Fact]
+    public void Admin_command_timeout_covers_the_prepare_timeout()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p;Command Timeout=1"));
+
+        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForAdmin(TimeSpan.FromSeconds(90.5)));
+
+        adminConnectionStringBuilder.CommandTimeout.ShouldBe(91);
+    }
+
+    [Fact]
     public void Module_connection_prepares_its_frequent_statements()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
@@ -88,7 +102,9 @@ public sealed class DatabaseConnectionStringsTests
 
         var login = connectionStrings.CreateModuleLogin("pings");
 
-        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionStrings.Admin);
+        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForAdmin(PrepareTimeout));
+
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
 
@@ -105,7 +121,9 @@ public sealed class DatabaseConnectionStringsTests
 
         var login = connectionStrings.CreateModuleLogin("pings");
 
-        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionStrings.Admin);
+        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForAdmin(PrepareTimeout));
+
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForModule(login, "modularmonolith-pings", 7, TimeSpan.FromMinutes(1)));
 
@@ -127,7 +145,9 @@ public sealed class DatabaseConnectionStringsTests
         var connectionStrings = DatabaseConnectionStrings.From(
             CreateConfiguration(configuredConnectionStringBuilder.ConnectionString));
 
-        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionStrings.Admin);
+        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForAdmin(PrepareTimeout));
+
         var login = connectionStrings.CreateModuleLogin("pings");
 
         adminConnectionStringBuilder.Password.ShouldBe("a;b'c=d");

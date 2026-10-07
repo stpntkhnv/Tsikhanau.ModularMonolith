@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using ModularMonolith.Shared.Time;
 using Npgsql;
 
 namespace ModularMonolith.BuildingBlocks.Infrastructure.Database;
@@ -15,12 +16,6 @@ internal sealed class DatabaseConnectionStrings
 
     private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder) =>
         _adminConnectionStringBuilder = adminConnectionStringBuilder;
-
-    public String Admin =>
-        new NpgsqlConnectionStringBuilder(_adminConnectionStringBuilder.ConnectionString)
-        {
-            Pooling = false,
-        }.ConnectionString;
 
     public static DatabaseConnectionStrings From(IConfiguration configuration)
     {
@@ -44,6 +39,13 @@ internal sealed class DatabaseConnectionStrings
         return new DatabaseConnectionStrings(adminConnectionStringBuilder);
     }
 
+    public String BuildForAdmin(TimeSpan prepareTimeout) =>
+        new NpgsqlConnectionStringBuilder(_adminConnectionStringBuilder.ConnectionString)
+        {
+            Pooling = false,
+            CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
+        }.ConnectionString;
+
     public ModuleLogin CreateModuleLogin(String schema) =>
         ModuleLogin.Create(schema, _adminConnectionStringBuilder.Password!);
 
@@ -64,5 +66,5 @@ internal sealed class DatabaseConnectionStrings
         }.ConnectionString;
 
     private static Int32 CalculateCommandTimeout(TimeSpan handlerTimeout) =>
-        Math.Max(MinCommandTimeoutSeconds, (Int32)Math.Ceiling(handlerTimeout.TotalSeconds));
+        Math.Max(MinCommandTimeoutSeconds, handlerTimeout.TotalSecondsRoundedUp);
 }

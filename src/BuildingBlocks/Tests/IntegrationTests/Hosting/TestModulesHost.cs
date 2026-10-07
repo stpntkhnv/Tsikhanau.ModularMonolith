@@ -37,6 +37,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     public static readonly TimeSpan HandlerTimeout = TimeSpan.FromMinutes(1);
 
+    public static readonly TimeSpan PrepareTimeout = TimeSpan.FromMinutes(10);
+
     private static readonly IReadOnlyDictionary<String, String> NoSettings = new Dictionary<String, String>();
 
     private readonly WebApplication _app;
@@ -101,10 +103,13 @@ internal sealed class TestModulesHost : IAsyncDisposable
             writesLogs);
 
     internal static IHost BuildUnstarted(String connectionString) =>
+        BuildUnstarted(connectionString, new FakeTimeProvider(TestStartedOn));
+
+    internal static IHost BuildUnstarted(String connectionString, FakeTimeProvider fakeTimeProvider) =>
         Build(
             connectionString,
             NoSettings,
-            new FakeTimeProvider(TestStartedOn),
+            fakeTimeProvider,
             runInBackground: false,
             maxConnections: 20,
             HandlerTimeout,
@@ -258,6 +263,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
         builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}"] =
             maxConnections.ToString(CultureInfo.InvariantCulture);
+
+        builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.PrepareTimeout)}"] =
+            PrepareTimeout.ToString("c", CultureInfo.InvariantCulture);
 
         builder.Configuration["ModularMonolith:Modules:Pings:Limit"] = "10";
         builder.Configuration["ModularMonolith:Modules:Pongs:Limit"] = "10";

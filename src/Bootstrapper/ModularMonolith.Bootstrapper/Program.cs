@@ -11,7 +11,7 @@ builder.AddPlatform();
 
 var app = builder.Build();
 
-await app.Services.PrepareModuleDatabasesAsync();
+await app.Services.PrepareModuleDatabasesAsync(CancellationToken.None);
 app.UseServiceDefaults();
 app.UseModules();
 app.MapModules();
