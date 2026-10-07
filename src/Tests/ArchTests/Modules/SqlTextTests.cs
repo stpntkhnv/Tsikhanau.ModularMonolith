@@ -151,6 +151,7 @@ public sealed partial class SqlTextTests
     [InlineData("SELECT \"ping\".* FROM pings.pings AS ping")]
     [InlineData("SELECT id, ping.* FROM pings.pings AS ping")]
     [InlineData("SELECT DISTINCT * FROM pings.pings")]
+    [InlineData("select * from pings.pings")]
     [InlineData("INSERT INTO pings.pings (id) VALUES (@Id) RETURNING *")]
     [InlineData("UPDATE pings.pings SET label = @Label RETURNING ping.*")]
     public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
