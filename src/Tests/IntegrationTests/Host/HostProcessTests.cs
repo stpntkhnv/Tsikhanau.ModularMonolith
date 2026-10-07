@@ -114,6 +114,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = environmentName;
+        startInfo.Environment["DOTNET_ENVIRONMENT"] = environmentName;
         startInfo.Environment["Logging__Console__FormatterName"] = "json";
         startInfo.Environment["ASPNETCORE_URLS"] = urls;
         startInfo.Environment["OTEL_EXPORTER_OTLP_ENDPOINT"] = otlpEndpoint;
