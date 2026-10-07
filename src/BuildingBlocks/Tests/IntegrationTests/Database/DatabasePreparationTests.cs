@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using ModularMonolith.BuildingBlocks.Infrastructure.Database;
 using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
@@ -20,6 +21,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     private const String AwaitedLocksSql = "SELECT count(*) FROM pg_locks WHERE NOT granted AND locktype = @LockType";
     private const String LockMigrationHistorySql = "LOCK TABLE pings.__ef_migrations_history IN ACCESS EXCLUSIVE MODE";
     private const String TimeoutMessage = "Database preparation did not finish within PrepareTimeout";
+    private const String ModuleSchemasSql = "SELECT nspname FROM pg_namespace WHERE nspname IN ('pings', 'pongs')";
 
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan LockWait = TimeSpan.FromMinutes(6);
@@ -150,6 +152,22 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         await preparation.WaitAsync(RealTimeLimit, CancellationToken);
 
         messagesWhileWaiting.ShouldContain("Waiting for the database preparation lock");
+    }
+
+    [Fact]
+    public async Task Invalid_settings_stop_preparation_before_any_module_schema_exists()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        using var host = TestModulesHost.BuildUnstarted(
+            connectionString,
+            new Dictionary<String, String> { ["ModularMonolith:Modules:Pings:Limit"] = "0" });
+
+        await Should.ThrowAsync<OptionsValidationException>(
+            () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
+
+        var moduleSchemas = await new DatabaseProbe(connectionString).QueryAsync<String>(ModuleSchemasSql);
+
+        moduleSchemas.ShouldBeEmpty();
     }
 
     private static Task<AdminSession> HoldPreparationLockAsync(String connectionString) =>

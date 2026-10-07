@@ -15,6 +15,10 @@ public static class ModuleDatabaseExtensions
         this IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
+        serviceProvider
+            .GetRequiredService<IStartupValidator>()
+            .Validate();
+
         var settings = serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
         using var deadline = new CancellationTokenSource(
             settings.PrepareTimeout,

@@ -115,6 +115,16 @@ internal sealed class TestModulesHost : IAsyncDisposable
             HandlerTimeout,
             writesLogs: true);
 
+    internal static IHost BuildUnstarted(String connectionString, IReadOnlyDictionary<String, String> settings) =>
+        Build(
+            connectionString,
+            settings,
+            new FakeTimeProvider(TestStartedOn),
+            runInBackground: false,
+            maxConnections: 20,
+            HandlerTimeout,
+            writesLogs: true);
+
     public AsyncServiceScope CreateScope() => Services.CreateAsyncScope();
 
     public HttpClient CreateClient() => _app.GetTestClient();
