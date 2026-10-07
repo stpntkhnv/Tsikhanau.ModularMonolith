@@ -97,6 +97,17 @@ public sealed class ModuleDispatcher<TModule>(
         }
 
         activity?.SetStatus(ActivityStatusCode.Error, result.Error.Code);
-        DispatcherLog.Failed(logger, ModuleName, requestType.Name, result.Error.Code, elapsedMilliseconds);
+        LogFailure(result.Error, requestType, elapsedMilliseconds);
+    }
+
+    private void LogFailure(Error error, Type requestType, Double elapsedMilliseconds)
+    {
+        if (error.Kind == ErrorKind.Unexpected)
+        {
+            DispatcherLog.FailedUnexpectedly(logger, ModuleName, requestType.Name, error.Code, elapsedMilliseconds);
+            return;
+        }
+
+        DispatcherLog.Failed(logger, ModuleName, requestType.Name, error.Code, elapsedMilliseconds);
     }
 }

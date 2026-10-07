@@ -56,10 +56,10 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
     [Fact]
     public async Task Invalid_module_setting_stops_the_host_at_startup()
     {
-        var settings = new Dictionary<String, String> { ["ModularMonolith:Modules:Pongs:Limit"] = "0" };
-
         var exception = await Should.ThrowAsync<OptionsValidationException>(
-            () => TestModulesHost.StartAsync(postgresFixture, settings));
+            () => TestModulesHost.StartAsync(
+                postgresFixture,
+                configure: builder => builder.Configuration["ModularMonolith:Modules:Pongs:Limit"] = "0"));
 
         exception.Message.ShouldBe(InvalidPongsSettingMessage);
     }

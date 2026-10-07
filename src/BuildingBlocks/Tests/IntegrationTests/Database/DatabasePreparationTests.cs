@@ -1,8 +1,6 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -137,17 +135,19 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     public async Task Waiting_for_the_preparation_lock_is_logged()
     {
         var connectionString = await CreateDatabaseAsync();
-        var logMessageCollector = new LogMessageCollector();
-        using var host = TestModulesHost.BuildUnstarted(connectionString);
-        host.Services
-            .GetRequiredService<ILoggerFactory>()
-            .AddProvider(logMessageCollector);
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        using var host = TestModulesHost.BuildUnstarted(
+            connectionString,
+            builder => builder.Logging.AddProvider(capturingLoggerProvider));
 
         await using var lockHolder = await HoldPreparationLockAsync(connectionString);
         var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
         await WaitUntilAwaitingAsync(connectionString, AdvisoryLock, preparation);
 
-        var messagesWhileWaiting = logMessageCollector.Messages.ToList();
+        var messagesWhileWaiting = capturingLoggerProvider.Entries
+            .Select(entry => entry.Message)
+            .ToList();
+
         await lockHolder.UnlockAsync(CancellationToken);
         await preparation.WaitAsync(RealTimeLimit, CancellationToken);
 
@@ -160,7 +160,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         var connectionString = await CreateDatabaseAsync();
         using var host = TestModulesHost.BuildUnstarted(
             connectionString,
-            new Dictionary<String, String> { ["ModularMonolith:Modules:Pings:Limit"] = "0" });
+            builder => builder.Configuration["ModularMonolith:Modules:Pings:Limit"] = "0");
 
         await Should.ThrowAsync<OptionsValidationException>(
             () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
@@ -231,30 +231,5 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         {
             Database = databaseName,
         }.ConnectionString;
-    }
-
-    private sealed class LogMessageCollector : ILoggerProvider, ILogger
-    {
-        private readonly ConcurrentQueue<String> _messages = new();
-
-        public IReadOnlyCollection<String> Messages => _messages;
-
-        public ILogger CreateLogger(String categoryName) => this;
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull =>
-            null;
-
-        public Boolean IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, String> formatter) =>
-            _messages.Enqueue(formatter(state, exception));
-
-        public void Dispose() { }
     }
 }

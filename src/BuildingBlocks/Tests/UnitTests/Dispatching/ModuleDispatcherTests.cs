@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ModularMonolith.BuildingBlocks.Application.Commands;
 using ModularMonolith.BuildingBlocks.Application.Modules;
 using ModularMonolith.BuildingBlocks.Application.Queries;
@@ -56,6 +57,26 @@ public sealed class ModuleDispatcherTests
         fakeUnitOfWork.Commits.ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData(ErrorKind.Unexpected, LogLevel.Warning)]
+    [InlineData(ErrorKind.Failure, LogLevel.Debug)]
+    [InlineData(ErrorKind.Validation, LogLevel.Debug)]
+    [InlineData(ErrorKind.NotFound, LogLevel.Debug)]
+    [InlineData(ErrorKind.Conflict, LogLevel.Debug)]
+    [InlineData(ErrorKind.Unauthorized, LogLevel.Debug)]
+    [InlineData(ErrorKind.Forbidden, LogLevel.Debug)]
+    public async Task Failed_command_is_logged_at_warning_only_when_unexpected(
+        ErrorKind errorKind,
+        LogLevel expectedLogLevel)
+    {
+        var capturingLogger = new CapturingLogger();
+        var failCommand = new FailCommand(new Error(errorKind, "Test.Failed", "Failed on purpose"));
+
+        await SendAsync(failCommand, new FakeUnitOfWork(), capturingLogger);
+
+        capturingLogger.LogLevels.ShouldBe([expectedLogLevel]);
+    }
+
     [Fact]
     public async Task Query_is_handled_without_a_commit()
     {
@@ -67,12 +88,17 @@ public sealed class ModuleDispatcherTests
         fakeUnitOfWork.Commits.ShouldBe(0);
     }
 
+    private static Task<Result<TResult>> SendAsync<TResult>(ICommand<TResult> command, FakeUnitOfWork fakeUnitOfWork)
+        where TResult : notnull =>
+        SendAsync(command, fakeUnitOfWork, new CapturingLogger());
+
     private static async Task<Result<TResult>> SendAsync<TResult>(
         ICommand<TResult> command,
-        FakeUnitOfWork fakeUnitOfWork)
+        FakeUnitOfWork fakeUnitOfWork,
+        CapturingLogger capturingLogger)
         where TResult : notnull
     {
-        await using var serviceProvider = CreateProvider(fakeUnitOfWork);
+        await using var serviceProvider = CreateProvider(fakeUnitOfWork, capturingLogger);
         await using var scope = serviceProvider.CreateAsyncScope();
         return await scope.ServiceProvider
             .GetRequiredService<ModuleDispatcher<ITestModule>>()
@@ -82,20 +108,22 @@ public sealed class ModuleDispatcherTests
     private static async Task<Result<TResult>> QueryAsync<TResult>(IQuery<TResult> query, FakeUnitOfWork fakeUnitOfWork)
         where TResult : notnull
     {
-        await using var serviceProvider = CreateProvider(fakeUnitOfWork);
+        await using var serviceProvider = CreateProvider(fakeUnitOfWork, new CapturingLogger());
         await using var scope = serviceProvider.CreateAsyncScope();
         return await scope.ServiceProvider
             .GetRequiredService<ModuleDispatcher<ITestModule>>()
             .QueryAsync(query, CancellationToken);
     }
 
-    private static ServiceProvider CreateProvider(FakeUnitOfWork fakeUnitOfWork) =>
+    private static ServiceProvider CreateProvider(FakeUnitOfWork fakeUnitOfWork, CapturingLogger capturingLogger) =>
         new ServiceCollection()
             .AddLogging()
+            .AddSingleton<ILogger<ModuleDispatcher<ITestModule>>>(capturingLogger)
             .AddScoped<ModuleDispatcher<ITestModule>>()
             .AddSingleton<IUnitOfWork<ITestModule>>(fakeUnitOfWork)
             .AddScoped<ICommandHandler<DoubleCommand, Int32>, DoubleCommandHandler>()
             .AddScoped<ICommandHandler<RejectCommand, Unit>, RejectCommandHandler>()
+            .AddScoped<ICommandHandler<FailCommand, Unit>, FailCommandHandler>()
             .AddScoped<ICommandHandler<ThrowCommand, Unit>, ThrowCommandHandler>()
             .AddScoped<IQueryHandler<EchoQuery, String>, EchoQueryHandler>()
             .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -105,6 +133,8 @@ public sealed class ModuleDispatcherTests
     private sealed record DoubleCommand(Int32 Value) : ICommand<Int32>;
 
     private sealed record RejectCommand : ICommand<Unit>;
+
+    private sealed record FailCommand(Error Error) : ICommand<Unit>;
 
     private sealed record ThrowCommand : ICommand<Unit>;
 
@@ -122,6 +152,12 @@ public sealed class ModuleDispatcherTests
 
         public Task<Result<Unit>> Handle(RejectCommand command, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Failure(Rejected));
+    }
+
+    private sealed class FailCommandHandler : ICommandHandler<FailCommand, Unit>
+    {
+        public Task<Result<Unit>> Handle(FailCommand command, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Failure(command.Error));
     }
 
     private sealed class ThrowCommandHandler : ICommandHandler<ThrowCommand, Unit>
@@ -149,5 +185,26 @@ public sealed class ModuleDispatcherTests
             Commits++;
             return Task.FromResult(NextCommit);
         }
+    }
+
+    private sealed class CapturingLogger : ILogger<ModuleDispatcher<ITestModule>>
+    {
+        private readonly List<LogLevel> _logLevels = [];
+
+        public IReadOnlyList<LogLevel> LogLevels => _logLevels;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull =>
+            null;
+
+        public Boolean IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, String> formatter) =>
+            _logLevels.Add(logLevel);
     }
 }

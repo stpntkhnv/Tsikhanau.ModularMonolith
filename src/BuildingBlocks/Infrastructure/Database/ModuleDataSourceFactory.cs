@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +30,14 @@ internal static class ModuleDataSourceFactory
 
         return new NpgsqlDataSourceBuilder(connectionString)
             .UseLoggerFactory(serviceProvider.GetRequiredService<ILoggerFactory>())
+            .ConfigureTracing(TraceOnlyWithinAnActivity)
             .Build();
     }
+
+    private static void TraceOnlyWithinAnActivity(NpgsqlTracingOptionsBuilder npgsqlTracingOptionsBuilder) =>
+        npgsqlTracingOptionsBuilder
+            .ConfigureCommandFilter(_ => HasParentActivity)
+            .ConfigureBatchFilter(_ => HasParentActivity);
+
+    private static Boolean HasParentActivity => Activity.Current is not null;
 }

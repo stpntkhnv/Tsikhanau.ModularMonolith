@@ -13,7 +13,6 @@ using ModularMonolith.BuildingBlocks.Infrastructure.InternalCommands;
 using ModularMonolith.BuildingBlocks.Infrastructure.Outbox;
 using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
 using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
-using ModularMonolith.Shared.Collections;
 using ModularMonolith.Testing.Cleanup;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.Testing.Queues;
@@ -38,8 +37,6 @@ internal sealed class TestModulesHost : IAsyncDisposable
     public static readonly TimeSpan HandlerTimeout = TimeSpan.FromMinutes(1);
 
     public static readonly TimeSpan PrepareTimeout = TimeSpan.FromMinutes(10);
-
-    private static readonly IReadOnlyDictionary<String, String> NoSettings = new Dictionary<String, String>();
 
     private readonly WebApplication _app;
 
@@ -70,37 +67,29 @@ internal sealed class TestModulesHost : IAsyncDisposable
         PostgresFixture postgresFixture,
         Boolean runInBackground = false,
         TimeSpan? handlerTimeout = null,
-        Boolean writesLogs = true) =>
+        Boolean writesLogs = true,
+        Action<IHostApplicationBuilder>? configure = null) =>
         StartAsync(
             postgresFixture.ConnectionString,
             runInBackground,
             handlerTimeout: handlerTimeout,
-            writesLogs: writesLogs);
-
-    public static Task<TestModulesHost> StartAsync(
-        PostgresFixture postgresFixture,
-        IReadOnlyDictionary<String, String> settings) =>
-        BuildAndStartAsync(
-            postgresFixture.ConnectionString,
-            settings,
-            runInBackground: false,
-            maxConnections: 20,
-            HandlerTimeout,
-            writesLogs: true);
+            writesLogs: writesLogs,
+            configure: configure);
 
     public static Task<TestModulesHost> StartAsync(
         String connectionString,
         Boolean runInBackground = false,
         Int32 maxConnections = 20,
         TimeSpan? handlerTimeout = null,
-        Boolean writesLogs = true) =>
+        Boolean writesLogs = true,
+        Action<IHostApplicationBuilder>? configure = null) =>
         BuildAndStartAsync(
             connectionString,
-            NoSettings,
             runInBackground,
             maxConnections,
             handlerTimeout ?? HandlerTimeout,
-            writesLogs);
+            writesLogs,
+            configure);
 
     internal static IHost BuildUnstarted(String connectionString) =>
         BuildUnstarted(connectionString, new FakeTimeProvider(TestStartedOn));
@@ -108,22 +97,22 @@ internal sealed class TestModulesHost : IAsyncDisposable
     internal static IHost BuildUnstarted(String connectionString, FakeTimeProvider fakeTimeProvider) =>
         Build(
             connectionString,
-            NoSettings,
             fakeTimeProvider,
             runInBackground: false,
             maxConnections: 20,
             HandlerTimeout,
-            writesLogs: true);
+            writesLogs: true,
+            configure: null);
 
-    internal static IHost BuildUnstarted(String connectionString, IReadOnlyDictionary<String, String> settings) =>
+    internal static IHost BuildUnstarted(String connectionString, Action<IHostApplicationBuilder> configure) =>
         Build(
             connectionString,
-            settings,
             new FakeTimeProvider(TestStartedOn),
             runInBackground: false,
             maxConnections: 20,
             HandlerTimeout,
-            writesLogs: true);
+            writesLogs: true,
+            configure);
 
     public AsyncServiceScope CreateScope() => Services.CreateAsyncScope();
 
@@ -207,21 +196,21 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     private static async Task<TestModulesHost> BuildAndStartAsync(
         String connectionString,
-        IReadOnlyDictionary<String, String> settings,
         Boolean runInBackground,
         Int32 maxConnections,
         TimeSpan handlerTimeout,
-        Boolean writesLogs)
+        Boolean writesLogs,
+        Action<IHostApplicationBuilder>? configure)
     {
         var fakeTimeProvider = new FakeTimeProvider(TestStartedOn);
         var app = Build(
             connectionString,
-            settings,
             fakeTimeProvider,
             runInBackground,
             maxConnections,
             handlerTimeout,
-            writesLogs);
+            writesLogs,
+            configure);
 
         try
         {
@@ -238,12 +227,12 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     private static WebApplication Build(
         String connectionString,
-        IReadOnlyDictionary<String, String> settings,
         FakeTimeProvider fakeTimeProvider,
         Boolean runInBackground,
         Int32 maxConnections,
         TimeSpan handlerTimeout,
-        Boolean writesLogs)
+        Boolean writesLogs,
+        Action<IHostApplicationBuilder>? configure)
     {
         var builder = WebApplication.CreateBuilder(
             new WebApplicationOptions { EnvironmentName = Environments.Development });
@@ -279,13 +268,13 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
         builder.Configuration["ModularMonolith:Modules:Pings:Limit"] = "10";
         builder.Configuration["ModularMonolith:Modules:Pongs:Limit"] = "10";
-        settings.ForEach(setting => builder.Configuration[setting.Key] = setting.Value);
 
         builder.EnsureConnectionString();
         builder.Services.AddPlatformServices(builder.Configuration);
         builder.Services.AddSingleton<TimeProvider>(fakeTimeProvider);
         builder.AddModule<PingsModule>();
         builder.AddModule<PongsModule>();
+        configure?.Invoke(builder);
 
         var app = builder.Build();
         app.UseModules();
