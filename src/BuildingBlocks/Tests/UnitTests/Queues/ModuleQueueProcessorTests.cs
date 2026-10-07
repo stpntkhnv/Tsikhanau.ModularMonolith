@@ -18,6 +18,8 @@ public sealed class ModuleQueueProcessorTests
         ClaimBatchSize = 16,
     };
 
+    private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(30);
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -28,10 +30,18 @@ public sealed class ModuleQueueProcessorTests
         var logger = new CapturingLogger();
         using var moduleQueueProcessor = CreateProcessor(queuePump, logger);
 
-        await moduleQueueProcessor.StartAsync(CancellationToken);
-        await queuePump.Started.WaitAsync(CancellationToken);
-        await moduleQueueProcessor.StopAsync(new CancellationToken(canceled: true));
-        handlerReleaseSource.SetResult();
+        try
+        {
+            await moduleQueueProcessor.StartAsync(CancellationToken);
+            await queuePump.Started.WaitAsync(Deadline, CancellationToken);
+            await moduleQueueProcessor
+                .StopAsync(new CancellationToken(canceled: true))
+                .WaitAsync(Deadline, CancellationToken);
+        }
+        finally
+        {
+            handlerReleaseSource.TrySetResult();
+        }
 
         logger.Entries.ShouldBe([new LogEntry(LogLevel.Warning, AbandonedHandlerWarning)]);
     }
@@ -44,8 +54,9 @@ public sealed class ModuleQueueProcessorTests
         using var moduleQueueProcessor = CreateProcessor(queuePump, logger);
 
         await moduleQueueProcessor.StartAsync(CancellationToken);
-        await queuePump.Started.WaitAsync(CancellationToken);
-        await moduleQueueProcessor.StopAsync(CancellationToken);
+        await queuePump.Started.WaitAsync(Deadline, CancellationToken);
+        var stopping = moduleQueueProcessor.StopAsync(CancellationToken);
+        await stopping.WaitAsync(Deadline, CancellationToken);
 
         logger.Entries.ShouldBeEmpty();
     }
