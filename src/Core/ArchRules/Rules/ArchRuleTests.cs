@@ -15,6 +15,8 @@ public abstract class ArchRuleTests<TInputs>
 
     protected static ArchModules Modules { get; } = new(TInputs.Modules);
 
+    protected static ArchSolution Solution { get; } = new(TInputs.SolutionRoot, TInputs.RootNamespace);
+
     protected static ArchModule GetModule(String name) =>
         name == ProductionModules.Placeholder ? new ArchModule(name, name, []) : Modules.Get(name);
 

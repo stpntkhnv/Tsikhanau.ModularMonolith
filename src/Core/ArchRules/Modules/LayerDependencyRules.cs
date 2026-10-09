@@ -16,7 +16,7 @@ public static class LayerDependencyRules
     private const String MigrationsNamespace = "(^|\\.)Migrations(\\..+)?$";
     private const String FrameworksOutsideSystem = "^(Microsoft|Npgsql|NpgsqlTypes|Dapper)(\\..+)?$";
 
-    private static readonly String WebAndDataFrameworks = BuildNamespacePattern(
+    private static readonly String WebAndDataFrameworks = NamespacePatterns.Build(
         "Microsoft.EntityFrameworkCore",
         "Microsoft.AspNetCore",
         "Npgsql",
@@ -38,7 +38,7 @@ public static class LayerDependencyRules
         ArchModules modules,
         ArchModule module)
     {
-        var allowedNamespaces = BuildNamespacePattern(
+        var allowedNamespaces = NamespacePatterns.Build(
             "System",
             $"{module.RootNamespace}.Domain",
             "Tsikhanau.Monolith.Domain",
@@ -146,7 +146,7 @@ public static class LayerDependencyRules
         ArchModules modules,
         ArchModule module)
     {
-        var allowedNamespaces = BuildNamespacePattern(
+        var allowedNamespaces = NamespacePatterns.Build(
             "System",
             $"{module.RootNamespace}.Contracts",
             "Tsikhanau.Monolith.Contracts",
@@ -214,9 +214,6 @@ public static class LayerDependencyRules
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(otherModule.OutsideContractsPattern)
             .GetViolationsIn(modules.Architecture);
-
-    private static String BuildNamespacePattern(params IEnumerable<String> namespaces) =>
-        $"^({String.Join('|', namespaces.Select(Regex.Escape))})(\\..+)?$";
 
     private static String BuildTypePattern(IEnumerable<String> namespaces, IEnumerable<String> allowedTypeNames)
     {

@@ -1,8 +1,8 @@
 using System.Xml.Linq;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class ProjectReferences
+internal static class ProjectReferences
 {
     public static IReadOnlyList<String> Read(String projectPath) =>
         XDocument

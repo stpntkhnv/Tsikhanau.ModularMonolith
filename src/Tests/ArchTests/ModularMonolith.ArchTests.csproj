@@ -4,8 +4,4 @@
     <ProjectReference Include="..\..\Core\ArchRules\Tsikhanau.Monolith.ArchRules.csproj" />
     <ProjectReference Include="..\..\Core\Testing\Tsikhanau.Monolith.Testing.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Mono.Cecil" />
-    <PackageReference Include="TngTech.ArchUnitNET" />
-  </ItemGroup>
 </Project>

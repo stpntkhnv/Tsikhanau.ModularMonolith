@@ -1,25 +1,11 @@
 using System.Reflection;
-using Tsikhanau.Monolith.Api.Endpoints;
-using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.ArchRules.Support;
-using Tsikhanau.Monolith.Contracts.IntegrationEvents;
-using Tsikhanau.Monolith.Domain.Aggregates;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Architecture = ArchUnitNET.Domain.Architecture;
 
 namespace Tsikhanau.Monolith.ArchRules.Inputs;
 
 public sealed class ArchModules
 {
-    private static readonly Assembly[] CoreAssemblies =
-    [
-        typeof(AggregateRoot<>).Assembly,
-        typeof(IntegrationEvent).Assembly,
-        typeof(IModuleFacade).Assembly,
-        typeof(ModuleDbContext).Assembly,
-        typeof(IEndpoint).Assembly,
-    ];
-
     private readonly Lazy<Architecture> _architecture;
 
     public ArchModules(IReadOnlyList<ArchModule> modules)
@@ -46,6 +32,6 @@ public sealed class ArchModules
 
     private Architecture LoadArchitecture() =>
         Assemblies
-            .Concat(CoreAssemblies)
+            .Concat(CoreAssemblies.BuildingBlocks)
             .LoadArchitecture();
 }

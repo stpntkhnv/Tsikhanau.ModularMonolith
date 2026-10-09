@@ -40,7 +40,9 @@ public sealed class ArchModule
 
     internal IEnumerable<Assembly> ProjectAssemblies => GetAssembliesNamed(RootNamespace);
 
-    internal IEnumerable<Assembly> ContractsAssemblies => GetAssembliesNamed($"{RootNamespace}.Contracts");
+    internal String ContractsName => $"{RootNamespace}.Contracts";
+
+    internal IEnumerable<Assembly> ContractsAssemblies => GetAssembliesNamed(ContractsName);
 
     internal IEnumerable<Assembly> OwnAssemblies => Assemblies.Where(IsNamedAfterTheModule);
 
