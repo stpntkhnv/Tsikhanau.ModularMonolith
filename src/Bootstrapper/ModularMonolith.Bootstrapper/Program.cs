@@ -1,6 +1,6 @@
-using ModularMonolith.Bootstrapper.Defaults;
 using ModularMonolith.Bootstrapper.Platform;
 using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 

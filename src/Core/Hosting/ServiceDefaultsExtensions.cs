@@ -1,8 +1,12 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 
-namespace ModularMonolith.Bootstrapper.Defaults;
+namespace Tsikhanau.Monolith.Hosting;
 
-internal static class ServiceDefaultsExtensions
+public static class ServiceDefaultsExtensions
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(25);
 

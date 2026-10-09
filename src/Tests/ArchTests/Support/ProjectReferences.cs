@@ -11,9 +11,21 @@ public static class ProjectReferences
             .Select(GetProjectName)
             .ToList();
 
-    private static String GetProjectName(XElement reference)
-    {
-        var includePath = reference.Attribute("Include")!.Value;
-        return Path.GetFileNameWithoutExtension(includePath.Replace('\\', '/'));
-    }
+    public static IReadOnlyList<String> ReadFullPaths(String projectPath) =>
+        XDocument
+            .Load(projectPath)
+            .Descendants("ProjectReference")
+            .Select(reference => GetFullPath(projectPath, reference))
+            .ToList();
+
+    private static String GetProjectName(XElement reference) =>
+        Path.GetFileNameWithoutExtension(ReadIncludePath(reference));
+
+    private static String GetFullPath(String projectPath, XElement reference) =>
+        Path.GetFullPath(ReadIncludePath(reference), Path.GetDirectoryName(projectPath)!);
+
+    private static String ReadIncludePath(XElement reference) =>
+        reference
+            .Attribute("Include")!.Value
+            .Replace('\\', '/');
 }

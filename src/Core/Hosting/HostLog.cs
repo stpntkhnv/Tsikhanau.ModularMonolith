@@ -1,6 +1,8 @@
-namespace ModularMonolith.Bootstrapper.Defaults;
+using Microsoft.Extensions.Logging;
 
-internal static partial class HostLog
+namespace Tsikhanau.Monolith.Hosting;
+
+public static partial class HostLog
 {
     [LoggerMessage(Level = LogLevel.Critical, Message = "Host terminated unexpectedly")]
     public static partial void Terminated(ILogger logger, Exception exception);

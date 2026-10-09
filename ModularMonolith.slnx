@@ -22,6 +22,9 @@
   <Folder Name="/src/Core/Domain/">
     <Project Path="src/Core/Domain/Tsikhanau.Monolith.Domain.csproj" />
   </Folder>
+  <Folder Name="/src/Core/Hosting/">
+    <Project Path="src/Core/Hosting/Tsikhanau.Monolith.Hosting.csproj" />
+  </Folder>
   <Folder Name="/src/Core/Infrastructure/">
     <Project Path="src/Core/Infrastructure/Tsikhanau.Monolith.Infrastructure.csproj" />
   </Folder>
