@@ -61,5 +61,9 @@ if [[ -f "$template_solution" ]]; then
   run_solution "$template_solution" template-only/.gate/skips
 fi
 
+if [[ -d template-only ]]; then
+  bash template-only/scripts/test-update-core.sh
+fi
+
 printf -v recorded '%s, ' "${results[@]}"
 echo "gate: green, skipped tests as recorded: ${recorded%, }"

@@ -19,7 +19,7 @@ advice() {
   if [[ -d template-only ]]; then
     echo "core-hash: the core files differ from $lock_file; record them with template-only/scripts/lock-core.sh"
   else
-    echo "core-hash: the core was changed in this app; fix it in the template, then run scripts/update-core.sh"
+    echo "core-hash: the core was changed in this app; undo the edit (git checkout HEAD -- <files>, or git revert <commit> if committed), make the fix in the template, then run scripts/update-core.sh"
   fi
 }
 

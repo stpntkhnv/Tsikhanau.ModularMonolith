@@ -9,5 +9,6 @@ gate.sh
 global.json
 scripts/add-migration.sh
 scripts/core-hash.sh
+scripts/update-core.sh
 src/Core/
 src/Packages/
