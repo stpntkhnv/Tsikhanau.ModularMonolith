@@ -28,7 +28,7 @@
       <_CorePackageFolder Include="$(NuGetPackageRoot);$(NuGetPackageFolders)" />
       <_CoreForeignFolder Include="$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))" />
       <_CoreForeignFolder
-        Include="$([MSBuild]::NormalizeDirectory('%(_CorePackageFolder.Identity)'))"
+        Include="$([MSBuild]::NormalizeDirectory('%(_CorePackageFolder.FullPath)'))"
         Condition="'%(_CorePackageFolder.Identity)' != ''" />
       <_CoreSourceAndForeignFolder Include="@(Compile->'%(FullPath)')" ForeignFolder="%(_CoreForeignFolder.Identity)" />
       <_CoreForeignSource
