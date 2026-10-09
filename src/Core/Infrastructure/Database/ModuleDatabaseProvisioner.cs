@@ -9,11 +9,16 @@ internal sealed class ModuleDatabaseProvisioner
     private const String GroupAttributes = "NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS";
     private const String DropAdvice = "Drop the old development database (the Aspire data volume) and start again.";
 
+    private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
+
+    private const String MaxConnectionsSetting =
+        $"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}";
+
     private const String CannotCreateRoles =
-        "The login in ConnectionStrings:modularmonolith must be a superuser or have CREATEROLE to create module logins";
+        $"The login in {ConnectionStringSetting} must be a superuser or have CREATEROLE to create module logins";
 
     private const String CannotCreateSchemas =
-        "The login in ConnectionStrings:modularmonolith needs CREATE on the database to create module schemas";
+        $"The login in {ConnectionStringSetting} needs CREATE on the database to create module schemas";
 
     private const String ServerVersionNumberSql = "SELECT current_setting('server_version_num')::int";
 
@@ -160,7 +165,7 @@ internal sealed class ModuleDatabaseProvisioner
         if (maxConnections > availableConnections || maxConnections < neededConnections)
         {
             throw new InvalidOperationException(
-                $"ModularMonolith:Database:MaxConnections is {maxConnections}; it must be at least {neededConnections} "
+                $"{MaxConnectionsSetting} is {maxConnections}; it must be at least {neededConnections} "
                 + $"({DatabaseSettings.MinConnectionsPerModule} for each of the {moduleCount} modules) "
                 + $"and at most the {availableConnections} connections the server leaves to ordinary logins");
         }
@@ -199,7 +204,7 @@ internal sealed class ModuleDatabaseProvisioner
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.InsufficientPrivilege)
         {
             throw new InvalidOperationException(
-                $"The login in ConnectionStrings:modularmonolith cannot manage {login.Name}: "
+                $"The login in {ConnectionStringSetting} cannot manage {login.Name}: "
                 + $"it needs the ADMIN option on {login.Name} and {ModuleLogin.Group} (it has it on roles it created). "
                 + exception.MessageText,
                 exception);

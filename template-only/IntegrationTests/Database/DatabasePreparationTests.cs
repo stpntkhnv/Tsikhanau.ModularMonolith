@@ -115,7 +115,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         {
             Host = "127.0.0.1",
             Port = closedPort,
-            Database = "modularmonolith",
+            Database = "monolith",
             Username = "postgres",
             Password = "postgres",
         }.ConnectionString;
@@ -160,7 +160,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         var connectionString = await CreateDatabaseAsync();
         using var host = TestModulesHost.BuildUnstarted(
             connectionString,
-            builder => builder.Configuration["ModularMonolith:Modules:Pings:Limit"] = "0");
+            builder => builder.Configuration["App:Modules:Pings:Limit"] = "0");
 
         await Should.ThrowAsync<OptionsValidationException>(
             () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));

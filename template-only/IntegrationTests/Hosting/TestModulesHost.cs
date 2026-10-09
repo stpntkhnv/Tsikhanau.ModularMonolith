@@ -266,8 +266,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.PrepareTimeout)}"] =
             PrepareTimeout.ToString("c", CultureInfo.InvariantCulture);
 
-        builder.Configuration["ModularMonolith:Modules:Pings:Limit"] = "10";
-        builder.Configuration["ModularMonolith:Modules:Pongs:Limit"] = "10";
+        builder.Configuration["App:Modules:Pings:Limit"] = "10";
+        builder.Configuration["App:Modules:Pongs:Limit"] = "10";
 
         builder.EnsureConnectionString();
         builder.Services.AddPlatformServices(builder.Configuration);

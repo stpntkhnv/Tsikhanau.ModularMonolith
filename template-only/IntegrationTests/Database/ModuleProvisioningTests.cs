@@ -146,7 +146,8 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => TestModulesHost.StartAsync(plainLoginConnectionStringBuilder.ConnectionString));
 
-        exception.Message.ShouldContain("CREATEROLE");
+        exception.Message.ShouldContain(
+            "The login in ConnectionStrings:database must be a superuser or have CREATEROLE to create module logins");
     }
 
     [Fact]

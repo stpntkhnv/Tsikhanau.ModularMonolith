@@ -12,7 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj" />
+    <ProjectReference
+      Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj"
+      AspireProjectMetadataTypeName="Bootstrapper" />
   </ItemGroup>
 
 </Project>

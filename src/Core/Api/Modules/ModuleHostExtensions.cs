@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Tsikhanau.Monolith.Application.Settings;
 using Tsikhanau.Monolith.Shared.Collections;
 
 namespace Tsikhanau.Monolith.Api.Modules;
 
 public static class ModuleHostExtensions
 {
-    private const String ModulesSection = "ModularMonolith:Modules";
+    private const String ModulesSection = $"{SettingsRoot.Section}:Modules";
 
     public static IHostApplicationBuilder AddModule<TModule>(this IHostApplicationBuilder builder)
         where TModule : IModule, new()

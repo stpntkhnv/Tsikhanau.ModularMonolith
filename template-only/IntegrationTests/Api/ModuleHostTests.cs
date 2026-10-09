@@ -59,7 +59,7 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<OptionsValidationException>(
             () => TestModulesHost.StartAsync(
                 postgresFixture,
-                configure: builder => builder.Configuration["ModularMonolith:Modules:Pongs:Limit"] = "0"));
+                configure: builder => builder.Configuration["App:Modules:Pongs:Limit"] = "0"));
 
         exception.Message.ShouldBe(InvalidPongsSettingMessage);
     }

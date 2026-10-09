@@ -7,7 +7,6 @@ using System.Text;
 using Microsoft.Extensions.Hosting;
 using ModularMonolith.Testing.App;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace ModularMonolith.IntegrationTests.Host;
 
@@ -119,8 +118,7 @@ public sealed class HostProcessTests(AppFixture appFixture)
         startInfo.Environment["ASPNETCORE_URLS"] = urls;
         startInfo.Environment["OTEL_EXPORTER_OTLP_ENDPOINT"] = otlpEndpoint;
         startInfo.Environment["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf";
-        startInfo.Environment[$"ConnectionStrings__{PlatformServiceCollectionExtensions.ConnectionName}"] =
-            connectionString;
+        startInfo.Environment["ConnectionStrings__database"] = connectionString;
 
         var bootstrapper = new Process { StartInfo = startInfo };
         bootstrapper.Start();

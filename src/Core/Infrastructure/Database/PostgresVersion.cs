@@ -12,7 +12,7 @@ internal static class PostgresVersion
         {
             throw new InvalidOperationException(
                 $"The database server reports server_version_num {serverVersionNumber}; "
-                + $"ModularMonolith needs PostgreSQL {MinimumMajorVersion} or later");
+                + $"the app needs PostgreSQL {MinimumMajorVersion} or later");
         }
     }
 }

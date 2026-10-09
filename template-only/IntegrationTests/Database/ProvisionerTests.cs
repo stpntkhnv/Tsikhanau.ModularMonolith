@@ -132,7 +132,8 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
                 [ModuleLogin.Create("budget_a", "x"), ModuleLogin.Create("budget_b", "x")],
                 maxConnections: 3));
 
-        exception.Message.ShouldContain("MaxConnections is 3; it must be at least 4 (2 for each of the 2 modules)");
+        exception.Message.ShouldContain(
+            "App:Database:MaxConnections is 3; it must be at least 4 (2 for each of the 2 modules)");
     }
 
     [Fact]

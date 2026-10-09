@@ -14,8 +14,8 @@ public sealed class CleanupSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Cleanup:Interval"] = "00:30:00",
-                ["ModularMonolith:Cleanup:KeepFor"] = "7.00:00:00",
+                ["App:Cleanup:Interval"] = "00:30:00",
+                ["App:Cleanup:KeepFor"] = "7.00:00:00",
             });
 
         settings.Interval.ShouldBe(TimeSpan.FromMinutes(30));
@@ -27,8 +27,8 @@ public sealed class CleanupSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Cleanup:Interval"] = "00:30:00",
-                ["ModularMonolith:Cleanup:KeepFor"] = "3.00:00:00",
+                ["App:Cleanup:Interval"] = "00:30:00",
+                ["App:Cleanup:KeepFor"] = "3.00:00:00",
             });
 
         settings.KeepFor.ShouldBe(TimeSpan.FromDays(3));
@@ -37,20 +37,20 @@ public sealed class CleanupSettingsTests
     [Fact]
     public void Missing_keep_for_is_rejected() =>
         Should.Throw<OptionsValidationException>(
-            () => ResolveSettings(new() { ["ModularMonolith:Cleanup:Interval"] = "00:30:00" }));
+            () => ResolveSettings(new() { ["App:Cleanup:Interval"] = "00:30:00" }));
 
     [Fact]
     public void Missing_interval_is_rejected() =>
         Should.Throw<OptionsValidationException>(
-            () => ResolveSettings(new() { ["ModularMonolith:Cleanup:KeepFor"] = "7.00:00:00" }));
+            () => ResolveSettings(new() { ["App:Cleanup:KeepFor"] = "7.00:00:00" }));
 
     private static CleanupSettings ResolveSettings(Dictionary<String, String?> configurationValues)
     {
         var cleanupValues = new Dictionary<String, String?>(configurationValues)
         {
-            ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-            ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
-            ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
+            ["App:Queues:PollInterval"] = "00:00:03",
+            ["App:Queues:HandlerTimeout"] = "00:01:00",
+            ["App:Queues:ClaimBatchSize"] = "16",
         };
 
         var configuration = new ConfigurationBuilder()

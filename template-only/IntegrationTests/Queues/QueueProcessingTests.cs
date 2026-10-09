@@ -17,13 +17,13 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = activitySource =>
-                activitySource.Name is AppDiagnostics.SourceName or "ModularMonolith.Tests",
+                activitySource.Name is AppDiagnostics.SourceName or "Tsikhanau.Monolith.IntegrationTests",
             Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
                 ActivitySamplingResult.AllDataAndRecorded,
         };
 
         ActivitySource.AddActivityListener(activityListener);
-        using var testActivitySource = new ActivitySource("ModularMonolith.Tests");
+        using var testActivitySource = new ActivitySource("Tsikhanau.Monolith.IntegrationTests");
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
 
         ActivityTraceId traceId;

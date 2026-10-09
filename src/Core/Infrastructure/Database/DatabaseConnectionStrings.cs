@@ -7,7 +7,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Database;
 
 internal sealed class DatabaseConnectionStrings
 {
-    public const String Name = "modularmonolith";
+    public const String Name = "database";
 
     private const Int32 MinCommandTimeoutSeconds = 30;
 

@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Tsikhanau.Monolith.Application.Settings;
 
 namespace Tsikhanau.Monolith.Infrastructure.Database;
 
 public sealed record DatabaseSettings
 {
-    public const String Section = "ModularMonolith:Database";
+    public const String Section = $"{SettingsRoot.Section}:Database";
 
     internal const Int32 MinConnectionsPerModule = 2;
 

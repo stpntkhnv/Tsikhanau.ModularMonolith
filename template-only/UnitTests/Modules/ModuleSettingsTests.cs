@@ -14,7 +14,7 @@ public sealed class ModuleSettingsTests
     public async Task Module_reads_only_its_own_section()
     {
         await using var app = CreateApp(
-            new() { ["ModularMonolith:Modules:Sample:Limit"] = "3", ["ModularMonolith:Modules:Other:Limit"] = "5" });
+            new() { ["App:Modules:Sample:Limit"] = "3", ["App:Modules:Other:Limit"] = "5" });
 
         var settings = ResolveSettings(app);
 
@@ -24,7 +24,7 @@ public sealed class ModuleSettingsTests
     [Fact]
     public async Task Invalid_module_settings_are_rejected()
     {
-        await using var app = CreateApp(new() { ["ModularMonolith:Modules:Sample:Limit"] = "0" });
+        await using var app = CreateApp(new() { ["App:Modules:Sample:Limit"] = "0" });
 
         Should.Throw<OptionsValidationException>(() => ResolveSettings(app));
     }
@@ -32,7 +32,7 @@ public sealed class ModuleSettingsTests
     [Fact]
     public async Task Missing_required_setting_fails_validation_on_start()
     {
-        await using var app = CreateApp(new() { ["ModularMonolith:Modules:Other:Limit"] = "5" });
+        await using var app = CreateApp(new() { ["App:Modules:Other:Limit"] = "5" });
 
         var startupValidator = app.Services.GetRequiredService<IStartupValidator>();
 

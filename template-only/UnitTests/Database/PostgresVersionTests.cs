@@ -17,6 +17,6 @@ public sealed class PostgresVersionTests
         var exception = Should.Throw<InvalidOperationException>(() => PostgresVersion.EnsureSupported(169999));
 
         exception.Message.ShouldContain("169999");
-        exception.Message.ShouldContain("ModularMonolith needs PostgreSQL 17 or later");
+        exception.Message.ShouldContain("the app needs PostgreSQL 17 or later");
     }
 }

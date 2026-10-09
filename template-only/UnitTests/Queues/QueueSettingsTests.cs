@@ -14,9 +14,9 @@ public sealed class QueueSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
-                ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
+                ["App:Queues:PollInterval"] = "00:00:03",
+                ["App:Queues:HandlerTimeout"] = "00:01:00",
+                ["App:Queues:ClaimBatchSize"] = "16",
             });
 
         settings.PollInterval.ShouldBe(TimeSpan.FromSeconds(3));
@@ -28,9 +28,9 @@ public sealed class QueueSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                ["ModularMonolith:Queues:HandlerTimeout"] = "00:00:30",
-                ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
+                ["App:Queues:PollInterval"] = "00:00:03",
+                ["App:Queues:HandlerTimeout"] = "00:00:30",
+                ["App:Queues:ClaimBatchSize"] = "16",
             });
 
         settings.HandlerTimeout.ShouldBe(TimeSpan.FromSeconds(30));
@@ -42,9 +42,9 @@ public sealed class QueueSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
-                ["ModularMonolith:Queues:ClaimBatchSize"] = "7",
+                ["App:Queues:PollInterval"] = "00:00:03",
+                ["App:Queues:HandlerTimeout"] = "00:01:00",
+                ["App:Queues:ClaimBatchSize"] = "7",
             });
 
         settings.ClaimBatchSize.ShouldBe(7);
@@ -56,8 +56,8 @@ public sealed class QueueSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                    ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
+                    ["App:Queues:PollInterval"] = "00:00:03",
+                    ["App:Queues:ClaimBatchSize"] = "16",
                 }));
 
     [Fact]
@@ -66,8 +66,8 @@ public sealed class QueueSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
-                    ["ModularMonolith:Queues:ClaimBatchSize"] = "16",
+                    ["App:Queues:HandlerTimeout"] = "00:01:00",
+                    ["App:Queues:ClaimBatchSize"] = "16",
                 }));
 
     [Fact]
@@ -76,8 +76,8 @@ public sealed class QueueSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                    ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
+                    ["App:Queues:PollInterval"] = "00:00:03",
+                    ["App:Queues:HandlerTimeout"] = "00:01:00",
                 }));
 
     [Theory]
@@ -88,9 +88,9 @@ public sealed class QueueSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["ModularMonolith:Queues:PollInterval"] = "00:00:03",
-                    ["ModularMonolith:Queues:HandlerTimeout"] = "00:01:00",
-                    ["ModularMonolith:Queues:ClaimBatchSize"] = claimBatchSize,
+                    ["App:Queues:PollInterval"] = "00:00:03",
+                    ["App:Queues:HandlerTimeout"] = "00:01:00",
+                    ["App:Queues:ClaimBatchSize"] = claimBatchSize,
                 }));
 
     private static QueueSettings ResolveSettings(Dictionary<String, String?> configurationValues)

@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Tsikhanau.Monolith.Application.Settings;
 
 namespace Tsikhanau.Monolith.Infrastructure.Cleanup;
 
 public sealed record CleanupSettings
 {
-    public const String Section = "ModularMonolith:Cleanup";
+    public const String Section = $"{SettingsRoot.Section}:Cleanup";
 
     public Boolean RunInBackground { get; init; } = true;
 

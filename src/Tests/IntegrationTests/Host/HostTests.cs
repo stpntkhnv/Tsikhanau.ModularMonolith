@@ -5,14 +5,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace ModularMonolith.IntegrationTests.Host;
 
 public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
 {
-    private const String ConnectionStringVariable =
-        $"ConnectionStrings__{PlatformServiceCollectionExtensions.ConnectionName}";
+    private const String ConnectionStringVariable = "ConnectionStrings__database";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -89,7 +87,7 @@ public sealed class HostTests(AppFixture appFixture) : AppTest(appFixture)
         var exception = Should.Throw<Exception>(() => webApplicationFactory.Services);
         var details = exception.ToString();
 
-        details.ShouldContain("Connection string 'modularmonolith' is missing");
+        details.ShouldContain("Connection string 'database' is missing");
     }
 
     [Fact]

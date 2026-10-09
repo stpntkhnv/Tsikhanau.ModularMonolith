@@ -8,7 +8,7 @@ namespace Tsikhanau.Monolith.UnitTests.Database;
 
 public sealed class DatabaseConnectionStringsTests
 {
-    private const String ServerConnectionString = "Host=db;Database=modularmonolith;Username=postgres;Password=p";
+    private const String ServerConnectionString = "Host=db;Database=monolith;Username=postgres;Password=p";
 
     private static readonly TimeSpan PrepareTimeout = TimeSpan.FromMinutes(10);
 
@@ -22,13 +22,13 @@ public sealed class DatabaseConnectionStringsTests
         var exception = Should.Throw<InvalidOperationException>(
             () => DatabaseConnectionStrings.From(CreateConfiguration(null), Development));
 
-        exception.Message.ShouldContain("Connection string 'modularmonolith' is missing");
+        exception.Message.ShouldContain("Connection string 'database' is missing");
     }
 
     [Fact]
     public void Connection_string_without_a_password_is_refused()
     {
-        var configuration = CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres");
+        var configuration = CreateConfiguration("Host=db;Database=monolith;Username=postgres");
 
         var exception = Should.Throw<InvalidOperationException>(
             () => DatabaseConnectionStrings.From(configuration, Development));
@@ -40,7 +40,7 @@ public sealed class DatabaseConnectionStringsTests
     public void Module_connection_keeps_the_server_and_swaps_the_identity()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
-            CreateConfiguration("Host=db;Port=5433;Database=modularmonolith;Username=postgres;Password=p"),
+            CreateConfiguration("Host=db;Port=5433;Database=monolith;Username=postgres;Password=p"),
             Development);
 
         var login = connectionStrings.CreateModuleLogin("pings");
@@ -50,7 +50,7 @@ public sealed class DatabaseConnectionStringsTests
 
         moduleConnectionStringBuilder.Host.ShouldBe("db");
         moduleConnectionStringBuilder.Port.ShouldBe(5433);
-        moduleConnectionStringBuilder.Database.ShouldBe("modularmonolith");
+        moduleConnectionStringBuilder.Database.ShouldBe("monolith");
         moduleConnectionStringBuilder.Username.ShouldBe("modularmonolith_pings");
         moduleConnectionStringBuilder.Password.ShouldBe(login.Password);
         moduleConnectionStringBuilder.ApplicationName.ShouldBe("modularmonolith-pings");
@@ -67,7 +67,7 @@ public sealed class DatabaseConnectionStringsTests
         Int32 commandTimeoutSeconds)
     {
         var connectionStrings = DatabaseConnectionStrings.From(
-            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p"),
+            CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p"),
             Development);
 
         var login = connectionStrings.CreateModuleLogin("pings");
@@ -83,7 +83,7 @@ public sealed class DatabaseConnectionStringsTests
     public void Admin_command_timeout_covers_the_prepare_timeout()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
-            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p;Command Timeout=1"),
+            CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p;Command Timeout=1"),
             Development);
 
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
@@ -96,7 +96,7 @@ public sealed class DatabaseConnectionStringsTests
     public void Module_connection_prepares_its_frequent_statements()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
-            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p"),
+            CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p"),
             Development);
 
         var login = connectionStrings.CreateModuleLogin("pings");
@@ -111,7 +111,7 @@ public sealed class DatabaseConnectionStringsTests
     public void Admin_connection_is_never_pooled_and_module_connections_always_are()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
-            CreateConfiguration("Host=db;Database=modularmonolith;Username=postgres;Password=p;Pooling=false"),
+            CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p;Pooling=false"),
             Development);
 
         var login = connectionStrings.CreateModuleLogin("pings");
@@ -131,7 +131,7 @@ public sealed class DatabaseConnectionStringsTests
     {
         var connectionStrings = DatabaseConnectionStrings.From(
             CreateConfiguration(
-                "Host=db;Database=modularmonolith;Username=postgres;Password=p;Persist Security Info=true"),
+                "Host=db;Database=monolith;Username=postgres;Password=p;Persist Security Info=true"),
             Development);
 
         var login = connectionStrings.CreateModuleLogin("pings");
@@ -152,7 +152,7 @@ public sealed class DatabaseConnectionStringsTests
         var configuredConnectionStringBuilder = new NpgsqlConnectionStringBuilder
         {
             Host = "db",
-            Database = "modularmonolith",
+            Database = "monolith",
             Username = "postgres",
             Password = "a;b'c=d",
         };
@@ -215,7 +215,7 @@ public sealed class DatabaseConnectionStringsTests
     private static IConfiguration CreateConfiguration(String? connectionString) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(
-                new Dictionary<String, String?> { ["ConnectionStrings:modularmonolith"] = connectionString })
+                new Dictionary<String, String?> { ["ConnectionStrings:database"] = connectionString })
             .Build();
 
     private sealed class TestHostEnvironment(String environmentName) : IHostEnvironment

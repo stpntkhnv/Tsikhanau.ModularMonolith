@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Tsikhanau.Monolith.Application.Settings;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;
 
 public sealed record QueueSettings
 {
-    public const String Section = "ModularMonolith:Queues";
+    public const String Section = $"{SettingsRoot.Section}:Queues";
 
     public Boolean RunInBackground { get; init; } = true;
 

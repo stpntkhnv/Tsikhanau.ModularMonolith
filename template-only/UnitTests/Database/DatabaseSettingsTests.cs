@@ -14,8 +14,8 @@ public sealed class DatabaseSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["ModularMonolith:Database:MaxConnections"] = "20",
-                ["ModularMonolith:Database:PrepareTimeout"] = "00:05:00",
+                ["App:Database:MaxConnections"] = "20",
+                ["App:Database:PrepareTimeout"] = "00:05:00",
             });
 
         settings.PrepareTimeout.ShouldBe(TimeSpan.FromMinutes(5));
@@ -24,7 +24,7 @@ public sealed class DatabaseSettingsTests
     [Fact]
     public void Missing_prepare_timeout_is_rejected() =>
         Should.Throw<OptionsValidationException>(
-            () => ResolveSettings(new() { ["ModularMonolith:Database:MaxConnections"] = "20" }));
+            () => ResolveSettings(new() { ["App:Database:MaxConnections"] = "20" }));
 
     [Theory]
     [InlineData("00:00:09")]
@@ -34,8 +34,8 @@ public sealed class DatabaseSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["ModularMonolith:Database:MaxConnections"] = "20",
-                    ["ModularMonolith:Database:PrepareTimeout"] = prepareTimeout,
+                    ["App:Database:MaxConnections"] = "20",
+                    ["App:Database:PrepareTimeout"] = prepareTimeout,
                 }));
 
     [Theory]
