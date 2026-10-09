@@ -36,6 +36,16 @@ public sealed class ProductionModulesTests
         pairRows.ShouldBe([("Orders", "Payments"), ("Payments", "Orders")]);
     }
 
+    [Fact]
+    public void Missing_modules_folder_gives_no_module()
+    {
+        var missingFolder = Path.Combine(AppContext.BaseDirectory, "NoModulesFolder");
+
+        var names = ProductionModules.ReadNames(missingFolder);
+
+        names.ShouldBeEmpty();
+    }
+
     private static List<String> GetData(TheoryData<String> rows) => [.. rows.Select(row => row.Data)];
 
     private static List<(String, String)> GetData(TheoryData<String, String> pairRows) =>
