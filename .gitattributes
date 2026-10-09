@@ -10,6 +10,8 @@
 /src/Core/** text eol=lf
 /src/Packages/** text eol=lf
 /core.lock text eol=lf
+/.gate/skips text eol=lf
+/template-only/.gate/skips text eol=lf
 *.sh text eol=lf
 *.dll binary
 *.exe binary

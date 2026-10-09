@@ -1,13 +1,17 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Testing.Modules;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Template;
 
-public sealed class CoreFilesTests
+public sealed partial class CoreFilesTests
 {
-    private const String AppName = "modularmonolith";
+    private const String AppNamePattern = "modular.?monolith";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+    [GeneratedRegex(AppNamePattern, RegexOptions.IgnoreCase)]
+    private static partial Regex AppName { get; }
 
     [Fact]
     public async Task Core_files_do_not_name_the_app()
@@ -49,7 +53,7 @@ public sealed class CoreFilesTests
         return NamesTheApp(path) ? lines.Prepend(path) : lines;
     }
 
-    private static Boolean NamesTheApp(String text) => text.Contains(AppName, StringComparison.OrdinalIgnoreCase);
+    private static Boolean NamesTheApp(String text) => AppName.IsMatch(text);
 
     private static IEnumerable<String> FindFilesWithoutLf(IReadOnlyList<String> attributeLines) =>
         attributeLines

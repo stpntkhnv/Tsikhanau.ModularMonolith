@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+require_tools() {
+  local missing=() names
+  if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
+    missing+=("bash 4.4")
+  fi
+  printf 'b\0a\0' | sort -z > /dev/null 2>&1 || missing+=("sort -z")
+  comm -z /dev/null /dev/null > /dev/null 2>&1 || missing+=("comm -z")
+  sha256sum < /dev/null > /dev/null 2>&1 || missing+=("sha256sum")
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    printf -v names '%s, ' "${missing[@]}"
+    echo "$1: needs bash 4.4 or newer and GNU coreutils (sort -z, comm -z, sha256sum); missing: ${names%, }" >&2
+    exit 2
+  fi
+}
+
+require_tools core-hash
 shopt -s inherit_errexit
 export LC_ALL=C
 
@@ -8,6 +25,7 @@ cd "$(git rev-parse --show-toplevel)"
 list_file=src/Core/core-files.txt
 version_file=src/Core/VERSION
 lock_file=core.lock
+template_solution=template-only/Template.slnx
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -16,7 +34,7 @@ git_core() {
 }
 
 advice() {
-  if [[ -d template-only ]]; then
+  if [[ -f "$template_solution" ]]; then
     echo "core-hash: the core files differ from $lock_file; record them with template-only/scripts/lock-core.sh"
   else
     echo "core-hash: the core was changed in this app; undo the edit (git checkout HEAD -- <files>, or git revert <commit> if committed), make the fix in the template, then run scripts/update-core.sh"
@@ -54,10 +72,41 @@ copy_staged() {
   fi
 }
 
+drop_build_output_and_editor_files() {
+  awk -F '\t' '
+    function folder_of(file) { return sub(/\/[^\/]*$/, "", file) ? file : "" }
+    function editor_file(file) { sub(/.*\//, "", file); return file ~ /(\.swp|~)$/ || file == ".DS_Store" }
+    function build_output(file,    part, count, k, folder) {
+      count = split(file, part, "/")
+      folder = ""
+      for (k = 1; k < count; k++) {
+        if ((part[k] == "bin" || part[k] == "obj") && (folder in project)) return 1
+        folder = folder == "" ? part[k] : folder "/" part[k]
+      }
+      return 0
+    }
+    { row[NR] = $0; name[NR] = $1 }
+    $1 ~ /\.csproj$/ { project[folder_of($1)] = 1 }
+    END { for (i = 1; i <= NR; i++) if (!editor_file(name[i]) && !build_output(name[i])) print row[i] }
+  '
+}
+
+present_entries() {
+  local entry
+  present=()
+  for entry in "${entries[@]}"; do
+    entry=${entry%/}
+    if [[ -e "$entry" || -L "$entry" ]]; then
+      present+=("$entry")
+    fi
+  done
+}
+
 core_paths() {
-  git_core ls-files -z --cached --others --exclude-standard -- "${entries[@]}" | sort -zu > "$work/all"
-  git_core ls-files -z --deleted -- "${entries[@]}" | sort -zu > "$work/deleted"
-  comm -z -23 "$work/all" "$work/deleted" | tr '\0' '\n'
+  present_entries
+  if [[ ${#present[@]} -gt 0 ]]; then
+    find "${present[@]}" \( -type f -o -type l \) -print0 | sort -zu | tr '\0' '\n' | drop_build_output_and_editor_files
+  fi
 }
 
 manifest() {
@@ -68,7 +117,9 @@ manifest() {
 
 staged_manifest() {
   git_core ls-files -s -z -- "${entries[@]}" | tr '\0' '\n' > "$work/stage"
-  awk -F '\t' '{ split($1, entry, " "); if (entry[3] == 0) print $2 "\t" entry[2] }' "$work/stage" | sort -t $'\t' -k1,1
+  awk -F '\t' '{ split($1, entry, " "); if (entry[3] == 0) print $2 "\t" entry[2] }' "$work/stage" \
+    | drop_build_output_and_editor_files \
+    | sort -t $'\t' -k1,1
 }
 
 digest() {
@@ -106,8 +157,22 @@ describe_changes() {
   fi
 }
 
+describe_ignored() {
+  git_core ls-files -z --others --ignored --exclude-standard -- "${entries[@]}" | tr '\0' '\n' | sort > "$work/ignored"
+  comm -12 "$work/paths" "$work/ignored" > "$work/counted"
+  if [[ -s "$work/counted" ]]; then
+    echo "core-hash: core files that git ignores, which count all the same:"
+    sed 's/^/  /' "$work/counted"
+  fi
+}
+
+describe_working_tree() {
+  describe_changes
+  describe_ignored
+}
+
 verify() {
-  local hash=$1 lock=$2 version_path=$3 core_name=$4 lock_name=$5 locked_hash locked_version version
+  local hash=$1 lock=$2 version_path=$3 core_name=$4 lock_name=$5 describe=$6 locked_hash locked_version version
   locked_hash=$(lock_value "$lock" hash)
   locked_version=$(lock_value "$lock" version)
   version=$(read_version "$version_path")
@@ -116,7 +181,7 @@ verify() {
     advice >&2
     echo "core-hash: $lock_name holds version ${locked_version:-none} and ${locked_hash:-no hash};" \
       "$core_name is version ${version:-none} with $hash" >&2
-    describe_changes >&2
+    "$describe" >&2
     exit 1
   fi
 
@@ -126,7 +191,7 @@ verify() {
 check() {
   local hash
   hash=$(compute)
-  verify "$hash" "$lock_file" "$version_file" "the core" "$lock_file"
+  verify "$hash" "$lock_file" "$version_file" "the core" "$lock_file" describe_working_tree
 }
 
 check_staged() {
@@ -134,7 +199,7 @@ check_staged() {
   hash=$(compute_staged)
   copy_staged "$lock_file" "$work/lock"
   copy_staged "$version_file" "$work/version"
-  verify "$hash" "$work/lock" "$work/version" "the staged core" "the staged $lock_file"
+  verify "$hash" "$work/lock" "$work/version" "the staged core" "the staged $lock_file" describe_changes
 }
 
 case "${1:-}" in

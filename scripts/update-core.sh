@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+require_tools() {
+  local missing=() names
+  if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
+    missing+=("bash 4.4")
+  fi
+  printf 'b\0a\0' | sort -z > /dev/null 2>&1 || missing+=("sort -z")
+  comm -z /dev/null /dev/null > /dev/null 2>&1 || missing+=("comm -z")
+  sha256sum < /dev/null > /dev/null 2>&1 || missing+=("sha256sum")
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    printf -v names '%s, ' "${missing[@]}"
+    echo "$1: needs bash 4.4 or newer and GNU coreutils (sort -z, comm -z, sha256sum); missing: ${names%, }" >&2
+    exit 2
+  fi
+}
+
+require_tools update-core
 shopt -s inherit_errexit nullglob
 export LC_ALL=C
 
 lock_file=core.lock
+template_solution=template-only/Template.slnx
 
 main() {
   read_arguments "$@"
@@ -15,21 +33,24 @@ main() {
 
   refuse_in_template
   find_solution
+  refuse_locked_index
   require_committed_core
   require_locked_core
   choose_source
   fetch_candidate
   list_changes
   plan_copies
+  refuse_links
   merge_solutions "$candidate_solution" "$solution" > "$work/solution" \
     || stop "cannot place the core projects of the template in $solution"
+  save_snapshot
 
   armed=1
   swap_core
   write_if_changed "$work/solution" "$solution"
   verify_swapped_core
   write_lock
-  git_core add -A -- "${old_files[@]}" "${new_files[@]}" "$lock_file" "$solution" \
+  git_core add -A -f -- "${old_files[@]}" "${new_files[@]}" "$lock_file" "$solution" \
     || stop "cannot stage the new core"
   armed=0
 
@@ -86,7 +107,7 @@ lock_value() {
 }
 
 refuse_in_template() {
-  if [[ -d template-only ]]; then
+  if [[ -f "$template_solution" ]]; then
     stop "this is the template: change its core here and record it with template-only/scripts/lock-core.sh"
   fi
 }
@@ -97,6 +118,14 @@ find_solution() {
     stop "the root must hold exactly one *.slnx, found ${#solutions[@]}: ${solutions[*]:-none}"
   fi
   solution=${solutions[0]}
+}
+
+refuse_locked_index() {
+  local index_lock
+  index_lock=$(git rev-parse --git-path index.lock)
+  if [[ -e "$index_lock" ]]; then
+    stop "the git index is locked ($index_lock exists): another git command is running, or one stopped without removing it; when no git command runs, delete the file and run again"
+  fi
 }
 
 require_committed_core() {
@@ -175,7 +204,6 @@ fetch_candidate() {
 }
 
 list_changes() {
-  local path collisions=()
   bash scripts/core-hash.sh list > "$work/old-files"
   (cd "$candidate" && bash scripts/core-hash.sh list) > "$work/new-files"
   comm -23 "$work/old-files" "$work/new-files" > "$work/vanished"
@@ -183,17 +211,33 @@ list_changes() {
   comm -12 "$work/old-files" "$work/new-files" > "$work/common"
   mapfile -t old_files < "$work/old-files"
   mapfile -t new_files < "$work/new-files"
+  refuse_app_files
+}
 
-  while IFS= read -r path; do
-    if [[ -e "$path" || -L "$path" ]]; then
-      collisions+=("$path")
-    fi
-  done < "$work/added"
-  if [[ ${#collisions[@]} -gt 0 ]]; then
-    echo "update-core: the template adds core files that this app already has as its own; move them away first:" >&2
-    printf '  %s\n' "${collisions[@]}" >&2
+refuse_app_files() {
+  app_files < "$work/added" > "$work/collisions"
+  if [[ -s "$work/collisions" ]]; then
+    echo "update-core: the template adds core files that this app already has as its own, on disk, in HEAD or in the index; move them away first:" >&2
+    sed 's/^/  /' "$work/collisions" >&2
     exit 1
   fi
+}
+
+app_files() {
+  local path added
+  mapfile -t added
+  if [[ ${#added[@]} -eq 0 ]]; then
+    return
+  fi
+  {
+    for path in "${added[@]}"; do
+      if [[ -e "$path" || -L "$path" ]]; then
+        printf '%s\n' "$path"
+      fi
+    done
+    git_core ls-files -z --cached -- "${added[@]}" | tr '\0' '\n'
+    git_core ls-tree -r -z --name-only HEAD -- "${added[@]}" | tr '\0' '\n'
+  } | sort -u
 }
 
 file_state() {
@@ -217,6 +261,58 @@ plan_copies() {
       '
   touch "$work/changed" "$work/modes"
   sort -- "$work/changed" "$work/added" > "$work/copies"
+}
+
+find_link() {
+  link=$1
+  while [[ -n "$link" ]]; do
+    if [[ -L "$link" ]]; then
+      return 0
+    fi
+    if [[ "$link" != */* ]]; then
+      return 1
+    fi
+    link=${link%/*}
+  done
+  return 1
+}
+
+refuse_links() {
+  local path link links=()
+  cat -- "$work/vanished" "$work/copies" "$work/modes" > "$work/targets"
+  printf '%s\n' "$solution" "$lock_file" >> "$work/targets"
+  while IFS= read -r path; do
+    if find_link "$path"; then
+      if [[ "$link" == "$path" ]]; then
+        links+=("$path")
+      else
+        links+=("$path ($link is a symbolic link)")
+      fi
+    fi
+  done < "$work/targets"
+  if [[ ${#links[@]} -gt 0 ]]; then
+    echo "update-core: the update would write through a symbolic link; replace these links with real files and folders first:" >&2
+    printf '  %s\n' "${links[@]}" >&2
+    exit 1
+  fi
+}
+
+save_snapshot() {
+  cat -- "$work/vanished" "$work/changed" "$work/modes" > "$work/saved"
+  printf '%s\n' "$solution" "$lock_file" >> "$work/saved"
+  mkdir -- "$work/snapshot"
+  xargs -d '\n' -a "$work/saved" cp --preserve=mode --parents -t "$work/snapshot" -- \
+    || stop "cannot save a copy of the files it changes"
+  find "$work/snapshot" -type d -exec chmod u+rwx -- {} +
+}
+
+restore_snapshot() {
+  local path status=0
+  while IFS= read -r path; do
+    parent_folder "$path"
+    mkdir -p -- "$parent" && cp -f --preserve=mode -- "$work/snapshot/$path" "$path" || status=1
+  done < "$work/saved"
+  return "$status"
 }
 
 merge_solutions() {
@@ -366,7 +462,7 @@ verify_swapped_core() {
   if ! cmp -s "$work/new-files" "$work/swapped-files"; then
     {
       echo "update-core: after the swap the core files of this app differ from the template's:"
-      comm -23 "$work/new-files" "$work/swapped-files" | sed 's/^/  missing (ignored by this app?): /'
+      comm -23 "$work/new-files" "$work/swapped-files" | sed 's/^/  missing: /'
       comm -13 "$work/new-files" "$work/swapped-files" | sed 's/^/  extra (an app file under a core path?): /'
     } >&2
     stop "the core of the template cannot be placed in this app as it is"
@@ -397,14 +493,22 @@ report() {
 rollback() {
   local status=0 index
   if [[ ${#placed[@]} -gt 0 ]]; then
-    git_core reset -q -- "${placed[@]}" > /dev/null 2>&1 || status=1
     rm -f -- "${placed[@]}" || status=1
   fi
   for ((index = ${#created[@]} - 1; index >= 0; index--)); do
     rmdir -- "${created[index]}" || status=1
   done
-  git_core checkout -q HEAD -- "${old_files[@]}" "$lock_file" "$solution" || status=1
+  restore_snapshot || status=1
   return "$status"
+}
+
+unstage() {
+  local paths=("${old_files[@]}" "${new_files[@]}" "$lock_file" "$solution")
+  if git_core diff --cached --quiet -- "${paths[@]}" 2> /dev/null; then
+    return 0
+  fi
+  git_core reset -q -- "${paths[@]}" > /dev/null 2>&1 \
+    || echo "update-core: the index still holds staged core changes; run git reset -q -- on the core files, $lock_file and $solution" >&2
 }
 
 finish() {
@@ -418,6 +522,7 @@ finish() {
       echo "update-core: stopped, and the restore failed; run git checkout HEAD -- on the core files, $lock_file and $solution, and delete these new files:" >&2
       printf '  %s\n' "${placed[@]}" >&2
     fi
+    unstage
     if [[ "$status" -eq 0 ]]; then
       status=1
     fi

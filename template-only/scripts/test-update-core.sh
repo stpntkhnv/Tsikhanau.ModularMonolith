@@ -6,8 +6,15 @@ export LC_ALL=C GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-template_root=$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
-work=$(mktemp -d)
+if ! template_root=$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel); then
+  echo "test-update-core: cannot find the repository of the template" >&2
+  exit 1
+fi
+if ! work=$(mktemp -d) || [[ ! -d "$work" ]] || ! work=$(cd -- "$work" && pwd -P); then
+  echo "test-update-core: cannot create a temporary folder" >&2
+  exit 1
+fi
+readonly work
 template=$work/template
 b_tree=$work/b-tree
 consumer=$work/consumer
@@ -15,18 +22,42 @@ core_project='<Project[[:space:]][^>]*Path="src[/\\](Core|Packages)[/\\]'
 extra_block='  <Folder Name="/src/Core/Extra/">\n    <Project Path="src/Core/Extra/Tsikhanau.Monolith.Extra.csproj" />\n  </Folder>\n'
 orders_block='  <Folder Name="/src/Modules/Orders/">\n    <Project Path="src/Modules/Orders/Acme.Shop.Modules.Orders/Acme.Shop.Modules.Orders.csproj" />\n  </Folder>\n'
 uncommitted_refusal='uncommitted changes or untracked files; commit or discard them first'
+missing_tools='needs bash 4\.4 or newer and GNU coreutils \(sort -z, comm -z, sha256sum\); missing:'
 passes=0
 failures=0
+not_run=0
 status=0
 
 cleanup() {
-  chmod -R u+w "$work" 2> /dev/null
+  chmod -R u+w -- "$work" 2> /dev/null
   rm -rf -- "$work"
 }
 
 trap cleanup EXIT
-mkdir -p "$work/tmp" "$work/cases" "$work/logs"
+if ! mkdir -p "$work/tmp" "$work/cases" "$work/logs"; then
+  echo "test-update-core: cannot create folders in $work" >&2
+  exit 1
+fi
 export TMPDIR=$work/tmp
+
+inside_work() {
+  local path
+  path=$(realpath -m -- "$1")
+  if [[ "$path" != "$work"/?* ]]; then
+    echo "test-update-core: refusing to delete $1, which is not inside $work" >&2
+    exit 1
+  fi
+}
+
+remove_folder() {
+  inside_work "$1"
+  rm -rf -- "$1"
+}
+
+empty_folder() {
+  inside_work "$1"
+  find "$1" -mindepth 1 -delete
+}
 
 fail() {
   echo "$*" >&2
@@ -125,7 +156,7 @@ make_consumer() {
   mkdir -p "$consumer"
   git -C "$template" archive A | tar -C "$consumer" -xf -
   cd "$consumer"
-  rm -rf template-only
+  remove_folder "$consumer/template-only"
   mv "$(only_solution .)" Acme.Shop.slnx
   mkdir -p "$module"
   printf '<Project Sdk="Microsoft.NET.Sdk" />\n' > "$module/Acme.Shop.Modules.Orders.csproj"
@@ -158,7 +189,7 @@ run_update() {
   bash "$@" > "$work/out" 2>&1 || status=$?
   cat "$work/out"
   leftovers=$(ls -A "$TMPDIR")
-  find "$TMPDIR" -mindepth 1 -delete
+  empty_folder "$TMPDIR"
   [[ -z "$leftovers" ]] || fail "update-core left files in its temporary folder: $leftovers"
 }
 
@@ -390,6 +421,109 @@ case_url_source() {
   expect_update_to_b_from "$url"
 }
 
+case_ignored_core_file() {
+  local app
+  app=$(new_consumer ignored)
+  cd "$app"
+  ignored_core_file
+  run_update scripts/update-core.sh B
+  expect_success
+  expect_core_of "$b_tree"
+  git ls-files --error-unmatch -- src/Core/Extra/ExtraMarker.cs > /dev/null || fail "the ignored core file is not staged"
+  bash scripts/core-hash.sh check
+}
+
+expect_check() {
+  local expected=$1 actual=0
+  bash scripts/core-hash.sh check > "$work/check" 2>&1 || actual=$?
+  if [[ $actual -ne $expected ]]; then
+    cat "$work/check"
+    fail "core-hash.sh check exited $actual, not $expected, with $2"
+  fi
+}
+
+case_core_hash_counts_ignored_files() {
+  local app exclude
+  app=$(new_consumer counted)
+  cd "$app"
+  mkdir -p "src/Core/Domain/Generated Files"
+  printf 'namespace Injected;\n' > "src/Core/Domain/Generated Files/Injected.cs"
+  git check-ignore -q "src/Core/Domain/Generated Files/Injected.cs" || fail "Generated Files/ is not ignored here"
+  expect_check 1 "a .cs file that .gitignore ignores"
+  grep -qx '  src/Core/Domain/Generated Files/Injected.cs' "$work/check" || fail "the ignored core file is not named"
+  remove_folder "src/Core/Domain/Generated Files"
+  exclude=$(git rev-parse --git-path info/exclude)
+  mkdir -p "$(dirname -- "$exclude")"
+  printf 'Excluded.cs\n' >> "$exclude"
+  printf 'namespace Excluded;\n' > src/Core/Domain/Excluded.cs
+  git check-ignore -q src/Core/Domain/Excluded.cs || fail "info/exclude does not ignore Excluded.cs"
+  expect_check 1 "a file that .git/info/exclude ignores"
+  rm src/Core/Domain/Excluded.cs
+  printf '<Project />\n' > src/Core/Domain/Tsikhanau.Monolith.Domain.csproj.user
+  expect_check 1 "a .csproj.user file, which MSBuild imports"
+  rm src/Core/Domain/Tsikhanau.Monolith.Domain.csproj.user
+  mkdir -p src/Core/Domain/Nested/bin
+  printf 'namespace Nested;\n' > src/Core/Domain/Nested/bin/Compiled.cs
+  expect_check 1 "a bin folder that is not the output folder of a project"
+  remove_folder src/Core/Domain/Nested
+  mkdir -p src/Core/Domain/bin/Release src/Core/Domain/obj src/Packages/Tsikhanau.Railway/obj
+  printf 'build\n' > src/Core/Domain/bin/Release/Out.dll
+  printf 'restore\n' > src/Core/Domain/obj/project.assets.json
+  printf 'restore\n' > src/Packages/Tsikhanau.Railway/obj/project.assets.json
+  printf 'swap\n' > src/Core/Domain/.Notes.cs.swp
+  printf 'backup\n' > src/Core/Domain/Notes.cs~
+  printf 'finder\n' > src/Core/.DS_Store
+  expect_check 0 "build output of the core projects and editor files"
+}
+
+stub_dotnet() {
+  mkdir -p "$1"
+  cat > "$1/dotnet" << 'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == test ]]; then
+  echo "Test run summary: Passed!"
+  grep -oE '[^/"]+Tests\.csproj"' "$3" | sed -E 's/\.csproj"$/.dll (net10.0|x64) passed/; s/^/  /'
+  echo "  skipped: 0"
+fi
+EOF
+  chmod +x "$1/dotnet"
+}
+
+expect_green_gate() {
+  local gate_status=0
+  stub_dotnet "$work/stub-dotnet"
+  PATH="$work/stub-dotnet:$PATH" bash gate.sh > "$work/gate" 2>&1 || gate_status=$?
+  if [[ $gate_status -ne 0 ]]; then
+    tail -n 5 "$work/gate"
+    fail "the gate failed with exit code $gate_status"
+  fi
+  grep -qx 'gate: green, skipped tests as recorded: Acme.Shop.slnx 0' "$work/gate" || fail "the gate did not end green for Acme.Shop.slnx alone"
+}
+
+case_leftover_template_folder() {
+  local app
+  app=$(new_consumer leftover)
+  cd "$app"
+  mkdir -p template-only/bin
+  dirty_core_file
+  expect_check 1 "a hand edit"
+  grep -qF 'the core was changed in this app' "$work/check" || fail "core-hash gives the template's advice"
+  git checkout -q -- src/Core/Shared/Collections/EnumerableExtensions.cs
+  expect_green_gate
+  ! grep -qF 'test-update-core' "$work/gate" || fail "the gate of an app ran the template's test"
+  run_update scripts/update-core.sh B
+  expect_success
+  expect_core_of "$b_tree"
+}
+
+case_gate_reads_a_crlf_skip_file() {
+  local app
+  app=$(new_consumer crlf-skips)
+  cd "$app"
+  printf '0\r\n' > .gate/skips
+  expect_green_gate
+}
+
 dirty_core_file() {
   printf '\n' >> src/Core/Shared/Collections/EnumerableExtensions.cs
 }
@@ -429,6 +563,42 @@ app_file_where_the_template_adds_one() {
   git commit -q -m own
 }
 
+staged_deletion_where_the_template_adds_a_file() {
+  app_file_where_the_template_adds_one
+  git rm -q tools/check/run.sh
+}
+
+index_only_file_where_the_template_adds_one() {
+  mkdir -p tools/check
+  printf 'own\n' > tools/check/run.sh
+  git add tools/check/run.sh
+  rm tools/check/run.sh
+}
+
+locked_index() {
+  : > "$(git rev-parse --git-path index.lock)"
+}
+
+linked_solution() {
+  mv Acme.Shop.slnx "$outside/Acme.Shop.slnx"
+  ln -s "$outside/Acme.Shop.slnx" Acme.Shop.slnx
+  git add -A Acme.Shop.slnx
+  git commit -q -m "linked solution"
+}
+
+linked_lock() {
+  mv core.lock "$outside/core.lock"
+  ln -s "$outside/core.lock" core.lock
+  git add -A core.lock
+  git commit -q -m "linked lock"
+}
+
+linked_tools_folder() {
+  ln -s "$outside" tools
+  git add tools
+  git commit -q -m "linked tools"
+}
+
 nothing() {
   :
 }
@@ -463,6 +633,76 @@ case_refuse_in_template() {
   expect_same "$work/before" "$work/after" "a refusal changed the template"
 }
 
+link_refusal() {
+  local name=$1 prepare=$2 ref=$3 app
+  outside=$work/outside/$name
+  mkdir -p "$outside"
+  app=$(new_consumer "$name")
+  cd "$app"
+  "$prepare"
+  snapshot . > "$work/before"
+  files_snapshot "$outside" > "$work/outside-before"
+  run_update scripts/update-core.sh "$ref"
+  expect_refused 'symbolic link'
+  snapshot . > "$work/after"
+  expect_same "$work/before" "$work/after" "a refusal changed the app"
+  files_snapshot "$outside" > "$work/outside-after"
+  expect_same "$work/outside-before" "$work/outside-after" "the update wrote through the link"
+}
+
+case_refuse_linked_files() {
+  link_refusal linked-solution linked_solution B
+  grep -qx '  Acme.Shop.slnx' "$work/out" || fail "the linked solution is not named"
+  link_refusal linked-lock linked_lock B
+  grep -qx '  core.lock' "$work/out" || fail "the linked core.lock is not named"
+}
+
+case_refuse_linked_folder() {
+  link_refusal linked-folder linked_tools_folder B2
+  grep -qx '  tools/check/run.sh (tools is a symbolic link)' "$work/out" || fail "the path under the link is not named"
+}
+
+case_refuse_added_paths_in_head_or_index() {
+  refusal staged-deletion staged_deletion_where_the_template_adds_a_file 'already has' B2
+  grep -qx '  tools/check/run.sh' "$work/out" || fail "the deleted app file is not named"
+  refusal index-only index_only_file_where_the_template_adds_one 'already has' B2
+  grep -qx '  tools/check/run.sh' "$work/out" || fail "the app file in the index is not named"
+}
+
+stub_failing_tools() {
+  local real_comm
+  real_comm=$(command -v comm)
+  mkdir -p "$work/no-sha256sum" "$work/no-comm-z"
+  printf '#!/usr/bin/env bash\necho "sha256sum: command not found" >&2\nexit 127\n' > "$work/no-sha256sum/sha256sum"
+  printf '#!/usr/bin/env bash\nif [[ "$1" == -z ]]; then\n  echo "comm: illegal option -- z" >&2\n  exit 1\nfi\nexec %q "$@"\n' "$real_comm" > "$work/no-comm-z/comm"
+  chmod +x "$work/no-sha256sum/sha256sum" "$work/no-comm-z/comm"
+}
+
+expect_missing_tool() {
+  local stub=$1 missing=$2 tool_status=0
+  shift 2
+  PATH="$work/$stub:$PATH" bash "$@" > "$work/out" 2>&1 || tool_status=$?
+  if [[ $tool_status -ne 2 || $(wc -l < "$work/out") -ne 1 ]]; then
+    cat "$work/out"
+    fail "$1 exited $tool_status without $missing; expected exit 2 and one line"
+  fi
+  grep -qE -- "$missing_tools $missing\$" "$work/out" || fail "$1 does not name $missing"
+}
+
+case_missing_tools() {
+  local app
+  app=$(new_consumer missing-tools)
+  cd "$app"
+  stub_failing_tools
+  snapshot . > "$work/before"
+  expect_missing_tool no-sha256sum sha256sum scripts/core-hash.sh check
+  expect_missing_tool no-sha256sum sha256sum scripts/update-core.sh B
+  expect_missing_tool no-comm-z 'comm -z' scripts/core-hash.sh check
+  expect_missing_tool no-comm-z 'comm -z' scripts/update-core.sh B
+  snapshot . > "$work/after"
+  expect_same "$work/before" "$work/after" "a missing tool changed the app"
+}
+
 read_only_vanishing_folder() {
   chmod 555 src/Core/Shared/Time
   [[ ! -w src/Core/Shared/Time ]] || fail "cannot make a folder read-only (running as root?)"
@@ -485,6 +725,13 @@ ignored_core_file() {
   git commit -q -am "ignore a name"
 }
 
+app_file_under_a_new_core_folder() {
+  mkdir -p tools/check
+  printf 'own\n' > tools/check/notes.txt
+  git add tools/check/notes.txt
+  git commit -q -m own
+}
+
 read_only_lock() {
   chmod 444 core.lock
   [[ ! -w core.lock ]] || fail "cannot make a file read-only (running as root?)"
@@ -501,6 +748,43 @@ injection() {
   snapshot . > "$work/after"
   expect_same "$work/before" "$work/after" "the app is not as it was"
   bash scripts/core-hash.sh check
+}
+
+make_locking_git() {
+  local real_git
+  real_git=$(command -v git)
+  mkdir -p "$1"
+  cat > "$1/git" << EOF
+#!/usr/bin/env bash
+if [[ " \$* " == *" add "* ]]; then
+  : > "\$($(printf '%q' "$real_git") rev-parse --git-path index.lock)"
+fi
+exec $(printf '%q' "$real_git") "\$@"
+EOF
+  chmod +x "$1/git"
+}
+
+case_index_locked_while_staging() {
+  local app
+  app=$(new_consumer locked-while-staging)
+  cd "$app"
+  make_locking_git "$work/locking-git"
+  snapshot . > "$work/before"
+  PATH="$work/locking-git:$PATH" run_update scripts/update-core.sh B
+  expect_restored 'cannot stage'
+  [[ -e "$(git rev-parse --git-path index.lock)" ]] || fail "update-core removed an index lock it did not take"
+  snapshot . > "$work/after"
+  expect_same "$work/before" "$work/after" "the app is not as it was"
+  rm -- "$(git rev-parse --git-path index.lock)"
+  bash scripts/core-hash.sh check
+}
+
+run_read_only_case() {
+  if [[ "$(id -u)" == 0 ]]; then
+    not_run=$((not_run + 1))
+  else
+    run_case "$@"
+  fi
 }
 
 run_case() {
@@ -539,6 +823,11 @@ run_case "update works in a git worktree and leaves the main worktree alone" cas
 run_case "a CRLF solution keeps CRLF" case_crlf_solution
 run_case "no source refuses; --from with a relative path works and is recorded absolute" case_no_source
 run_case "a file:// URL works as source= in core.lock and as --from, and is recorded as given" case_url_source
+run_case "a core file that the app ignores is placed, staged and counted" case_ignored_core_file
+run_case "core-hash counts core files that git ignores, but not the build output of core projects or editor files" case_core_hash_counts_ignored_files
+run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
+run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
+run_case "core-hash and update-core name a missing tool, exit 2 and change nothing" case_missing_tools
 run_case "refuses an uncommitted core edit" refusal dirty-core dirty_core_file "$uncommitted_refusal" B
 run_case "refuses a staged core edit" refusal staged-core staged_core_file "$uncommitted_refusal" B
 run_case "refuses an untracked core file" refusal untracked-core untracked_core_file "$uncommitted_refusal" B
@@ -551,12 +840,20 @@ run_case "refuses a --from that cannot be cloned" refusal bogus-from nothing 'ca
 run_case "refuses a template commit whose lock does not match its core" refusal corrupt-lock nothing 'does not match its own core\.lock' bad-lock
 run_case "refuses a commit that is not a template" refusal not-template nothing 'is not a template' not-template
 run_case "refuses when the template adds a core file the app already has" refusal collision app_file_where_the_template_adds_one 'already has' B2
+run_case "refuses when the template adds a path the app deleted in its index or has only in its index" case_refuse_added_paths_in_head_or_index
+run_case "refuses a symlinked solution or core.lock and leaves the files they point to alone" case_refuse_linked_files
+run_case "refuses a core path under a symlinked folder and leaves the folder it points to alone" case_refuse_linked_folder
+run_case "refuses while the git index is locked" refusal locked-index locked_index 'index\.lock' B
 run_case "refuses to run in the template" case_refuse_in_template
-run_case "failure while removing a vanished core file restores the app" injection read-only-folder read_only_vanishing_folder 'cannot remove src/Core/Shared/Time/TimeSpanExtensions\.cs' B
+run_read_only_case "failure while removing a vanished core file restores the app" injection read-only-folder read_only_vanishing_folder 'cannot remove src/Core/Shared/Time/TimeSpanExtensions\.cs' B
 run_case "path collision during the swap restores the app" injection in-the-way app_file_in_the_way 'cannot create the folder tools/check' B2
-run_case "failure writing the solution restores the app" injection read-only-solution read_only_solution 'cannot write Acme\.Shop\.slnx' B
-run_case "a template core file that the app ignores restores the app" injection ignored ignored_core_file 'missing.*src/Core/Extra/ExtraMarker\.cs' B
-run_case "failure writing core.lock after the swap restores the app" injection read-only-lock read_only_lock 'cannot write core\.lock' B
+run_read_only_case "failure writing the solution restores the app" injection read-only-solution read_only_solution 'cannot write Acme\.Shop\.slnx' B
+run_case "an app file under a new core folder restores the app" injection app-file-in-core-folder app_file_under_a_new_core_folder 'extra.*tools/check/notes\.txt' B2
+run_read_only_case "failure writing core.lock after the swap restores the app" injection read-only-lock read_only_lock 'cannot write core\.lock' B
+run_case "an index lock taken while staging leaves the app as it was" case_index_locked_while_staging
 
+if [[ $not_run -gt 0 ]]; then
+  echo "test-update-core: running as root, which can write to read-only files and folders, so the $not_run cases that need them were not run"
+fi
 echo "test-update-core: $passes passed, $failures failed"
 [[ $failures -eq 0 ]]

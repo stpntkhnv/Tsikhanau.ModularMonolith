@@ -16,7 +16,7 @@ run_solution() {
   local solution=$1
   local skip_file=$2
   local expected_skips summary test_projects reported_apps skipped
-  expected_skips=$(< "$skip_file")
+  expected_skips=$(tr -d '[:space:]' < "$skip_file")
 
   if [[ ! "$expected_skips" =~ ^[0-9]+$ ]]; then
     echo "gate: $solution: cannot read the skip budget; $skip_file must hold one non-negative integer and nothing else" >&2
@@ -59,9 +59,6 @@ run_solution "${root_solutions[0]}" .gate/skips
 
 if [[ -f "$template_solution" ]]; then
   run_solution "$template_solution" template-only/.gate/skips
-fi
-
-if [[ -d template-only ]]; then
   bash template-only/scripts/test-update-core.sh
 fi
 
