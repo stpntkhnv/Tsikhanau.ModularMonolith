@@ -26,6 +26,7 @@ list_file=src/Core/core-files.txt
 version_file=src/Core/VERSION
 lock_file=core.lock
 template_solution=template-only/Template.slnx
+digest_pattern='^sha256:[0-9a-f]{64}$'
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -73,14 +74,24 @@ copy_staged() {
 }
 
 drop_build_output_and_editor_files() {
-  awk -F '\t' '
+  local entry folders=()
+  for entry in "${entries[@]}"; do
+    if [[ "$entry" == */ ]]; then
+      folders+=("${entry%/}")
+    fi
+  done
+  core_folders=$(printf '%s\n' "${folders[@]}") awk -F '\t' '
+    BEGIN {
+      count = split(ENVIRON["core_folders"], listed, "\n")
+      for (k = 1; k <= count; k++) core_folder[listed[k]] = 1
+    }
     function folder_of(file) { return sub(/\/[^\/]*$/, "", file) ? file : "" }
     function editor_file(file) { sub(/.*\//, "", file); return file ~ /(\.swp|~)$/ || file == ".DS_Store" }
     function build_output(file,    part, count, k, folder) {
       count = split(file, part, "/")
       folder = ""
       for (k = 1; k < count; k++) {
-        if ((part[k] == "bin" || part[k] == "obj") && (folder in project)) return 1
+        if ((part[k] == "bin" || part[k] == "obj") && ((folder in project) || (folder_of(folder) in core_folder))) return 1
         folder = folder == "" ? part[k] : folder "/" part[k]
       }
       return 0
@@ -123,7 +134,9 @@ staged_manifest() {
 }
 
 digest() {
-  printf 'sha256:%s\n' "$(sha256sum < "$1" | cut -d ' ' -f 1)"
+  local sum
+  sum=$(sha256sum < "$1") || return
+  printf 'sha256:%s\n' "${sum%% *}"
 }
 
 compute() {
@@ -177,6 +190,12 @@ verify() {
   locked_version=$(lock_value "$lock" version)
   version=$(read_version "$version_path")
 
+  if [[ ! "$hash" =~ $digest_pattern ]]; then
+    refuse "the hash of $core_name came out as '$hash', which is not sha256: followed by 64 lowercase hex digits"
+  fi
+  if [[ -n "$locked_hash" && ! "$locked_hash" =~ $digest_pattern ]]; then
+    refuse "$lock_name holds the hash '$locked_hash', which is not sha256: followed by 64 lowercase hex digits"
+  fi
   if [[ -z "$locked_hash" || "$locked_hash" != "$hash" || "$locked_version" != "$version" ]]; then
     advice >&2
     echo "core-hash: $lock_name holds version ${locked_version:-none} and ${locked_hash:-no hash};" \

@@ -490,10 +490,79 @@ case_core_hash_counts_ignored_files() {
   printf 'build\n' > src/Core/Domain/bin/Release/Out.dll
   printf 'restore\n' > src/Core/Domain/obj/project.assets.json
   printf 'restore\n' > src/Packages/Tsikhanau.Railway/obj/project.assets.json
+  mkdir -p src/Core/Old/bin/Debug src/Core/Old/obj src/Packages/Old/obj
+  printf 'build\n' > src/Core/Old/bin/Debug/Out.dll
+  printf 'restore\n' > src/Core/Old/obj/project.assets.json
+  printf 'restore\n' > src/Packages/Old/obj/project.assets.json
   printf 'swap\n' > src/Core/Domain/.Notes.cs.swp
   printf 'backup\n' > src/Core/Domain/Notes.cs~
   printf 'finder\n' > src/Core/.DS_Store
-  expect_check 0 "build output of the core projects and editor files"
+  expect_check 0 "build output of the core projects, build output left by a removed core project and editor files"
+}
+
+case_removed_core_project_leaves_build_output() {
+  local app
+  app=$(new_consumer removed-project)
+  cd "$app"
+  core_fingerprint . > "$work/core-a"
+  run_update scripts/update-core.sh B
+  expect_success
+  git commit -q -m "core B"
+  mkdir -p src/Core/Extra/bin/Debug src/Core/Extra/obj
+  printf 'build\n' > src/Core/Extra/bin/Debug/Tsikhanau.Monolith.Extra.dll
+  printf 'restore\n' > src/Core/Extra/obj/project.assets.json
+  run_update scripts/update-core.sh A
+  expect_success
+  core_fingerprint . > "$work/core-back"
+  expect_same "$work/core-a" "$work/core-back" "the core is not A's after the update that removed the Extra project"
+  bash scripts/core-hash.sh check
+  [[ -f src/Core/Extra/bin/Debug/Tsikhanau.Monolith.Extra.dll && -f src/Core/Extra/obj/project.assets.json ]] \
+    || fail "build output removed"
+}
+
+stub_sha256sum_failing_on_data() {
+  mkdir -p "$work/failing-sha256sum"
+  cat > "$work/failing-sha256sum/sha256sum" << 'EOF'
+#!/usr/bin/env bash
+if [[ -n "$(cat)" ]]; then
+  echo "sha256sum: read error" >&2
+  exit 1
+fi
+echo "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -"
+EOF
+  chmod +x "$work/failing-sha256sum/sha256sum"
+}
+
+expect_failed_checksum() {
+  local hash_status=0
+  PATH="$work/failing-sha256sum:$PATH" bash scripts/core-hash.sh "$1" > "$work/out" 2>&1 || hash_status=$?
+  if [[ $hash_status -eq 0 ]]; then
+    cat "$work/out"
+    fail "core-hash.sh $1 exited 0 although sha256sum failed, $2"
+  fi
+}
+
+case_failed_checksum() {
+  local app
+  app=$(new_consumer failed-checksum)
+  cd "$app"
+  stub_sha256sum_failing_on_data
+  expect_failed_checksum print "with the lock as committed"
+  sed -i 's/^hash=.*/hash=sha256:/' core.lock
+  expect_failed_checksum check "with hash=sha256: in core.lock"
+}
+
+case_mangled_lock() {
+  local app hash mangled
+  app=$(new_consumer mangled-lock)
+  cd "$app"
+  hash=$(sed -n 's/^hash=sha256://p' core.lock)
+  for mangled in sha256: "sha256:${hash^^}" "sha256:${hash:1}"; do
+    sed -i "s/^hash=.*/hash=$mangled/" core.lock
+    expect_check 1 "hash=$mangled in core.lock"
+    grep -qF "core-hash: core.lock holds the hash '$mangled', which is not sha256: followed by 64 lowercase hex digits" \
+      "$work/check" || fail "the mangled hash $mangled is not named"
+  done
 }
 
 stub_dotnet() {
@@ -917,6 +986,9 @@ run_case "no source refuses; --from with a relative path works and is recorded a
 run_case "a file:// URL works as source= in core.lock and as --from, and is recorded as given" case_url_source
 run_case "a core file that the app ignores is placed, staged and counted" case_ignored_core_file
 run_case "core-hash counts core files that git ignores, but not the build output of core projects or editor files" case_core_hash_counts_ignored_files
+run_case "an update that removes a core project the app has built succeeds and the lock check passes" case_removed_core_project_leaves_build_output
+run_case "core-hash print and check fail when sha256sum fails on the data" case_failed_checksum
+run_case "core-hash check refuses a core.lock whose hash is not sha256: and 64 lowercase hex digits" case_mangled_lock
 run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
 run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
 run_case "core-hash and update-core name a missing tool, exit 2 and change nothing" case_missing_tools
