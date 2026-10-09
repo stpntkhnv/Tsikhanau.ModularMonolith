@@ -44,7 +44,9 @@
     <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <CoreAnalyzer Include="@(GlobalPackageReference)" />
+    <CoreAnalyzer Include="Microsoft.CodeAnalysis.BannedApiAnalyzers;Microsoft.CodeAnalysis.CSharp.BannedApiAnalyzers" />
+    <CoreAnalyzer Include="Microsoft.VisualStudio.Threading.Analyzers;Microsoft.VisualStudio.Threading.Analyzers.CSharp" />
+    <CoreAnalyzer Include="Roslynator.Formatting.Analyzers" />
   </ItemGroup>
   <PropertyGroup>
     <CorePackagesPropsImported>true</CorePackagesPropsImported>

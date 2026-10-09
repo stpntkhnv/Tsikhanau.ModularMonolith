@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
-    <CoreDiagnosticPattern>(?i)^((TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS)?8[67]\d\d)$</CoreDiagnosticPattern>
+    <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
   </PropertyGroup>
   <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">
     <ItemGroup>
@@ -15,8 +15,13 @@
       <_CoreNoWarn Include="$([MSBuild]::Unescape($(NoWarn.Replace(',', ';'))))" />
       <_CoreNoWarn Remove="$(CoreNoWarn)" />
       <_CoreWarningsNotAsErrors Include="$([MSBuild]::Unescape($(WarningsNotAsErrors.Replace(',', ';'))))" />
-      <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)');@(Analyzer->'%(NuGetPackageId)')" />
-      <_CoreAnalyzerMissing Include="@(CoreAnalyzer)" Exclude="@(_CoreAnalyzerFound)" />
+      <_CoreAnalyzerExpected Include="@(CoreAnalyzer)" />
+      <_CoreAnalyzerExpected Include="Microsoft.CodeAnalysis.CodeStyle;Microsoft.CodeAnalysis.CSharp.CodeStyle" />
+      <_CoreAnalyzerExpected
+        Include="Microsoft.CodeAnalysis.NetAnalyzers;Microsoft.CodeAnalysis.CSharp.NetAnalyzers"
+        Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'" />
+      <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)')" />
+      <_CoreAnalyzerMissing Include="@(_CoreAnalyzerExpected)" Exclude="@(_CoreAnalyzerFound)" />
       <_CoreAdditionalFilesMissing Include="@(CoreAdditionalFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
       <_CoreSettingChange
         Include="TreatWarningsAsErrors"

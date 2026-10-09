@@ -27,6 +27,12 @@ public sealed class ArchSolution
         Path.Combine(Root, "App.Packages.props"),
     ];
 
+    internal IEnumerable<String> SolutionFilePaths =>
+        Directory
+            .EnumerateFiles(Root, "*.slnx")
+            .Append(Path.Combine(Root, "template-only", "Template.slnx"))
+            .Where(File.Exists);
+
     internal String ModuleProjectPrefix => $"{RootNamespace}.Modules.";
 
     internal String GetModuleFolder(ArchModule module) => Path.Combine(ModulesFolder, module.Name);

@@ -72,8 +72,7 @@ public sealed class ArchModule
 
     private IReadOnlyList<Type> ReadTypes() =>
     [
-        .. Assemblies
-            .SelectMany(assembly => assembly.GetTypes())
+        .. _loadedAssemblies.Value.Types
             .Where(Contains)
             .Distinct(),
     ];

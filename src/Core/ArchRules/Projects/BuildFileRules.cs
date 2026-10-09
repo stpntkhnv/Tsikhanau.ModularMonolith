@@ -1,19 +1,20 @@
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Support;
 
 namespace Tsikhanau.Monolith.ArchRules.Projects;
 
 public static class BuildFileRules
 {
-    private static readonly String[] BuildFileNames =
+    private static readonly String[] ProjectBuildFileNames =
     [
         "Directory.Build.props",
         "Directory.Build.targets",
         "Directory.Build.rsp",
         "Directory.Packages.props",
-        ".editorconfig",
-        ".globalconfig",
     ];
+
+    private static readonly String[] SourceConfigFileNames = [".editorconfig", ".globalconfig"];
 
     private static readonly String[] CoreRootFiles =
     [
@@ -29,32 +30,71 @@ public static class BuildFileRules
     {
         IReadOnlyList<String> buildFiles =
         [
-            .. FindBuildFiles(new DirectoryInfo(solution.Root))
-                .Select(file => solution.ToSolutionPath(file.FullName))
+            .. GetFoldersThatAffectCompilation(solution)
+                .SelectMany(FindBuildFiles)
+                .Select(solution.ToSolutionPath)
                 .Order(StringComparer.Ordinal),
         ];
 
         return RuleEvaluation.Create(buildFiles, () => buildFiles.Where(IsOutsideTheCore));
     }
 
-    private static IEnumerable<FileInfo> FindBuildFiles(DirectoryInfo folder) =>
+    private static IEnumerable<CheckedFolder> GetFoldersThatAffectCompilation(ArchSolution solution)
+    {
+        var root = Path.TrimEndingDirectorySeparator(solution.Root);
+
+        return SolutionProjects
+            .ReadWithTheirReferences(solution.SolutionFilePaths)
+            .Select(projectPath => new DirectoryInfo(Path.GetDirectoryName(projectPath)!))
+            .SelectMany(projectFolder => GetFoldersOfTheProject(root, projectFolder))
+            .Prepend(new CheckedFolder(root, ReadsSourceConfigFiles: true))
+            .GroupBy(folder => folder.Path, StringComparer.Ordinal)
+            .Select(MergeFolder);
+    }
+
+    private static IEnumerable<CheckedFolder> GetFoldersOfTheProject(String root, DirectoryInfo projectFolder) =>
+    [
+        .. GetFoldersAbove(root, projectFolder),
+        new CheckedFolder(projectFolder.FullName, ReadsSourceConfigFiles: true),
+        .. GetFoldersBelow(projectFolder),
+    ];
+
+    private static IEnumerable<CheckedFolder> GetFoldersAbove(String root, DirectoryInfo folder) =>
+        folder.Parent is { } parent && IsInside(root, parent.FullName)
+            ? [new CheckedFolder(parent.FullName, ReadsSourceConfigFiles: true), .. GetFoldersAbove(root, parent)]
+            : [];
+
+    private static IReadOnlyList<CheckedFolder> GetFoldersBelow(DirectoryInfo folder) =>
+    [
+        .. folder
+            .EnumerateDirectories()
+            .Where(MayHoldCompiledFiles)
+            .SelectMany(GetFolderAndFoldersBelow),
+    ];
+
+    private static IReadOnlyList<CheckedFolder> GetFolderAndFoldersBelow(DirectoryInfo folder)
+    {
+        var foldersBelow = GetFoldersBelow(folder);
+        var holdsSourceFiles = HasSourceFiles(folder) || foldersBelow.Any(below => below.ReadsSourceConfigFiles);
+
+        return [new CheckedFolder(folder.FullName, holdsSourceFiles), .. foldersBelow];
+    }
+
+    private static CheckedFolder MergeFolder(IGrouping<String, CheckedFolder> folders) =>
+        new(folders.Key, folders.Any(folder => folder.ReadsSourceConfigFiles));
+
+    private static Boolean HasSourceFiles(DirectoryInfo folder) =>
         folder
-            .EnumerateFiles()
-            .Where(IsBuildFile)
-            .Concat(
-                folder
-                    .EnumerateDirectories()
-                    .Where(IsSearched)
-                    .SelectMany(FindBuildFiles));
+            .EnumerateFiles("*.cs")
+            .Any();
 
-    private static Boolean IsBuildFile(FileInfo file) =>
-        BuildFileNames.Contains(file.Name, StringComparer.OrdinalIgnoreCase);
+    private static Boolean IsInside(String root, String folder) =>
+        folder == root || folder.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 
-    private static Boolean IsSearched(DirectoryInfo folder) =>
-        folder is { LinkTarget: null, Name: not ".git" } && !IsRepositoryOfItsOwn(folder) && !IsBuildOutput(folder);
-
-    private static Boolean IsRepositoryOfItsOwn(DirectoryInfo folder) =>
-        Path.Exists(Path.Combine(folder.FullName, ".git"));
+    private static Boolean MayHoldCompiledFiles(DirectoryInfo folder) =>
+        folder is { LinkTarget: null, Name: not "node_modules" }
+        && !folder.Name.StartsWith('.')
+        && !IsBuildOutput(folder);
 
     private static Boolean IsBuildOutput(DirectoryInfo folder) =>
         folder is { Name: "bin" or "obj", Parent: { } project } && HoldsAProject(project);
@@ -64,8 +104,22 @@ public static class BuildFileRules
             .EnumerateFiles("*.csproj")
             .Any();
 
+    private static IEnumerable<String> FindBuildFiles(CheckedFolder folder) =>
+        Directory
+            .EnumerateFiles(folder.Path)
+            .Where(path => IsProjectBuildFile(path) || (folder.ReadsSourceConfigFiles && IsSourceConfigFile(path)));
+
+    private static Boolean IsProjectBuildFile(String path) => IsNamedOneOf(path, ProjectBuildFileNames);
+
+    private static Boolean IsSourceConfigFile(String path) => IsNamedOneOf(path, SourceConfigFileNames);
+
+    private static Boolean IsNamedOneOf(String path, String[] names) =>
+        names.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase);
+
     private static Boolean IsOutsideTheCore(String path) => !CoreRootFiles.Contains(path) && !IsInACoreFolder(path);
 
     private static Boolean IsInACoreFolder(String path) =>
         CoreFolders.Any(folder => path.StartsWith(folder, StringComparison.Ordinal));
+
+    private sealed record CheckedFolder(String Path, Boolean ReadsSourceConfigFiles);
 }

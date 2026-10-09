@@ -217,27 +217,50 @@ list_changes() {
 refuse_app_files() {
   app_files < "$work/added" > "$work/collisions"
   if [[ -s "$work/collisions" ]]; then
-    echo "update-core: the template adds core files that this app already has as its own, on disk, in HEAD or in the index; move them away first:" >&2
+    echo "update-core: the template adds core files where this app already has its own files (at the same path or at a folder above it), on disk, in HEAD or in the index; move them away first:" >&2
     sed 's/^/  /' "$work/collisions" >&2
     exit 1
   fi
 }
 
 app_files() {
-  local path added
+  local path added folders
   mapfile -t added
   if [[ ${#added[@]} -eq 0 ]]; then
     return
   fi
+  printf '%s\n' "${added[@]}" | folders_above | sort -u | comm -23 - "$work/vanished" > "$work/folders"
+  mapfile -t folders < "$work/folders"
   {
     for path in "${added[@]}"; do
       if [[ -e "$path" || -L "$path" ]]; then
         printf '%s\n' "$path"
       fi
     done
+    for path in "${folders[@]}"; do
+      if [[ (-e "$path" || -L "$path") && ! -d "$path" ]]; then
+        printf '%s\n' "$path"
+      fi
+    done
     git_core ls-files -z --cached -- "${added[@]}" | tr '\0' '\n'
     git_core ls-tree -r -z --name-only HEAD -- "${added[@]}" | tr '\0' '\n'
+    if [[ ${#folders[@]} -gt 0 ]]; then
+      {
+        git_core ls-files -z --cached -- "${folders[@]}"
+        git_core ls-tree -r -z --name-only HEAD -- "${folders[@]}"
+      } | tr '\0' '\n' | sort -u | comm -12 - "$work/folders"
+    fi
   } | sort -u
+}
+
+folders_above() {
+  local path
+  while IFS= read -r path; do
+    while [[ "$path" == */* ]]; do
+      path=${path%/*}
+      printf '%s\n' "$path"
+    done
+  done
 }
 
 file_state() {

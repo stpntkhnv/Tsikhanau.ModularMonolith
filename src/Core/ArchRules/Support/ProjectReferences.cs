@@ -5,27 +5,24 @@ namespace Tsikhanau.Monolith.ArchRules.Support;
 internal static class ProjectReferences
 {
     public static IReadOnlyList<String> Read(String projectPath) =>
-        XDocument
-            .Load(projectPath)
-            .Descendants("ProjectReference")
+        ReadIncludePaths(projectPath)
             .Select(GetProjectName)
             .ToList();
 
     public static IReadOnlyList<String> ReadFullPaths(String projectPath) =>
+        ReadIncludePaths(projectPath)
+            .Select(includePath => GetFullPath(projectPath, includePath))
+            .ToList();
+
+    private static IEnumerable<String> ReadIncludePaths(String projectPath) =>
         XDocument
             .Load(projectPath)
             .Descendants("ProjectReference")
-            .Select(reference => GetFullPath(projectPath, reference))
-            .ToList();
+            .Attributes("Include")
+            .Select(include => include.Value.Replace('\\', '/'));
 
-    private static String GetProjectName(XElement reference) =>
-        Path.GetFileNameWithoutExtension(ReadIncludePath(reference));
+    private static String GetProjectName(String includePath) => Path.GetFileNameWithoutExtension(includePath);
 
-    private static String GetFullPath(String projectPath, XElement reference) =>
-        Path.GetFullPath(ReadIncludePath(reference), Path.GetDirectoryName(projectPath)!);
-
-    private static String ReadIncludePath(XElement reference) =>
-        reference
-            .Attribute("Include")!.Value
-            .Replace('\\', '/');
+    private static String GetFullPath(String projectPath, String includePath) =>
+        Path.GetFullPath(includePath, Path.GetDirectoryName(projectPath)!);
 }

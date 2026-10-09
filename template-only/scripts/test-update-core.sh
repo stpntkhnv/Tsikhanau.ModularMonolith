@@ -124,6 +124,25 @@ make_b2() {
   git tag B2
 }
 
+make_file_then_folder() {
+  git checkout -q -b file-tool A
+  mkdir -p tools
+  printf '#!/usr/bin/env bash\necho file\n' > tools/check
+  printf 'tools/check\n' >> src/Core/core-files.txt
+  bash template-only/scripts/lock-core.sh > /dev/null
+  git add -A
+  git commit -q -m C1
+  git tag C1
+  git rm -q tools/check
+  mkdir -p tools/check
+  printf '#!/usr/bin/env bash\necho folder\n' > tools/check/run.sh
+  sed -i 's|^tools/check$|tools/check/|' src/Core/core-files.txt
+  bash template-only/scripts/lock-core.sh > /dev/null
+  git add -A
+  git commit -q -m C2
+  git tag C2
+}
+
 make_broken() {
   git checkout -q -b broken A
   sed -i -E 's/^hash=sha256:[0-9a-f]/hash=sha256:x/' core.lock
@@ -147,6 +166,7 @@ make_template() {
   git tag A
   make_b
   make_b2
+  make_file_then_folder
   make_broken
   git checkout -q main
 }
@@ -575,6 +595,37 @@ index_only_file_where_the_template_adds_one() {
   rm tools/check/run.sh
 }
 
+app_file_where_the_template_adds_a_folder() {
+  mkdir -p tools
+  printf 'own\n' > tools/check
+  git add tools/check
+}
+
+staged_file_gone_from_disk_where_the_template_adds_a_folder() {
+  app_file_where_the_template_adds_a_folder
+  rm tools/check
+}
+
+committed_file_where_the_template_adds_a_folder() {
+  app_file_where_the_template_adds_a_folder
+  git commit -q -m own
+}
+
+deleted_file_where_the_template_adds_a_folder() {
+  committed_file_where_the_template_adds_a_folder
+  git rm -q tools/check
+}
+
+untracked_file_where_the_template_adds_a_folder() {
+  mkdir -p tools
+  printf 'own\n' > tools/check
+}
+
+file_link_where_the_template_adds_a_folder() {
+  mkdir -p tools
+  ln -s ../core.lock tools/check
+}
+
 locked_index() {
   : > "$(git rev-parse --git-path index.lock)"
 }
@@ -595,6 +646,10 @@ linked_lock() {
 
 linked_tools_folder() {
   ln -s "$outside" tools
+}
+
+committed_link_to_a_folder() {
+  linked_tools_folder
   git add tools
   git commit -q -m "linked tools"
 }
@@ -634,7 +689,7 @@ case_refuse_in_template() {
 }
 
 link_refusal() {
-  local name=$1 prepare=$2 ref=$3 app
+  local name=$1 prepare=$2 ref=$3 says=${4:-symbolic link} app
   outside=$work/outside/$name
   mkdir -p "$outside"
   app=$(new_consumer "$name")
@@ -643,7 +698,7 @@ link_refusal() {
   snapshot . > "$work/before"
   files_snapshot "$outside" > "$work/outside-before"
   run_update scripts/update-core.sh "$ref"
-  expect_refused 'symbolic link'
+  expect_refused "$says"
   snapshot . > "$work/after"
   expect_same "$work/before" "$work/after" "a refusal changed the app"
   files_snapshot "$outside" > "$work/outside-after"
@@ -667,6 +722,41 @@ case_refuse_added_paths_in_head_or_index() {
   grep -qx '  tools/check/run.sh' "$work/out" || fail "the deleted app file is not named"
   refusal index-only index_only_file_where_the_template_adds_one 'already has' B2
   grep -qx '  tools/check/run.sh' "$work/out" || fail "the app file in the index is not named"
+}
+
+case_core_file_becomes_a_folder() {
+  local app c2_tree=$work/c2-tree
+  git clone -q "$template" "$c2_tree"
+  git -C "$c2_tree" checkout -q C2
+  app=$(new_consumer file-to-folder)
+  cd "$app"
+  run_update scripts/update-core.sh C1
+  expect_success
+  [[ -f tools/check ]] || fail "C1 did not place the core file tools/check"
+  git commit -q -m "core C1"
+  run_update scripts/update-core.sh C2
+  expect_success
+  expect_core_of "$c2_tree"
+  [[ "$(git ls-files -- tools)" == tools/check/run.sh ]] || fail "the index does not hold tools/check/run.sh alone"
+  bash scripts/core-hash.sh check
+}
+
+case_refuse_staged_file_where_the_template_adds_a_folder() {
+  refusal staged-file-gone staged_file_gone_from_disk_where_the_template_adds_a_folder 'already has' B2
+  grep -qx '  tools/check' "$work/out" || fail "the app file in the index is not named"
+}
+
+case_refuse_app_files_where_the_template_adds_a_folder() {
+  refusal committed-file committed_file_where_the_template_adds_a_folder 'already has' B2
+  grep -qx '  tools/check' "$work/out" || fail "the committed app file is not named"
+  refusal deleted-file deleted_file_where_the_template_adds_a_folder 'already has' B2
+  grep -qx '  tools/check' "$work/out" || fail "the app file deleted in the index is not named"
+  refusal untracked-file untracked_file_where_the_template_adds_a_folder 'already has' B2
+  grep -qx '  tools/check' "$work/out" || fail "the untracked app file is not named"
+  refusal file-link file_link_where_the_template_adds_a_folder 'already has' B2
+  grep -qx '  tools/check' "$work/out" || fail "the link to a file is not named"
+  link_refusal committed-link committed_link_to_a_folder B2 'already has'
+  grep -qx '  tools' "$work/out" || fail "the committed link to a folder is not named"
 }
 
 stub_failing_tools() {
@@ -708,11 +798,13 @@ read_only_vanishing_folder() {
   [[ ! -w src/Core/Shared/Time ]] || fail "cannot make a folder read-only (running as root?)"
 }
 
-app_file_in_the_way() {
+read_only_folder_where_the_template_adds_one() {
   mkdir -p tools
-  printf 'own\n' > tools/check
-  git add tools/check
+  printf 'own\n' > tools/notes.txt
+  git add tools/notes.txt
   git commit -q -m own
+  chmod 555 tools
+  [[ ! -w tools ]] || fail "cannot make a folder read-only (running as root?)"
 }
 
 read_only_solution() {
@@ -843,10 +935,13 @@ run_case "refuses when the template adds a core file the app already has" refusa
 run_case "refuses when the template adds a path the app deleted in its index or has only in its index" case_refuse_added_paths_in_head_or_index
 run_case "refuses a symlinked solution or core.lock and leaves the files they point to alone" case_refuse_linked_files
 run_case "refuses a core path under a symlinked folder and leaves the folder it points to alone" case_refuse_linked_folder
+run_case "a core file that the template turns into a folder is replaced by the folder" case_core_file_becomes_a_folder
+run_case "refuses when the template adds a folder where the app has a file staged and gone from disk, and leaves the index alone" case_refuse_staged_file_where_the_template_adds_a_folder
+run_case "refuses when the template adds a folder where the app has a file in HEAD, in the index, on disk or as a link" case_refuse_app_files_where_the_template_adds_a_folder
 run_case "refuses while the git index is locked" refusal locked-index locked_index 'index\.lock' B
 run_case "refuses to run in the template" case_refuse_in_template
 run_read_only_case "failure while removing a vanished core file restores the app" injection read-only-folder read_only_vanishing_folder 'cannot remove src/Core/Shared/Time/TimeSpanExtensions\.cs' B
-run_case "path collision during the swap restores the app" injection in-the-way app_file_in_the_way 'cannot create the folder tools/check' B2
+run_read_only_case "failure creating a new core folder restores the app" injection read-only-parent read_only_folder_where_the_template_adds_one 'cannot create the folder tools/check' B2
 run_read_only_case "failure writing the solution restores the app" injection read-only-solution read_only_solution 'cannot write Acme\.Shop\.slnx' B
 run_case "an app file under a new core folder restores the app" injection app-file-in-core-folder app_file_under_a_new_core_folder 'extra.*tools/check/notes\.txt' B2
 run_read_only_case "failure writing core.lock after the swap restores the app" injection read-only-lock read_only_lock 'cannot write core\.lock' B

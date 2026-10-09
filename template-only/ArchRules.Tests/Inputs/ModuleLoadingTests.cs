@@ -1,4 +1,6 @@
 using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
 using Tsikhanau.Monolith.ArchRules.Projects;
@@ -16,8 +18,26 @@ public sealed class ModuleLoadingTests
     private const String GhostLoadFailure =
         $"Ghost cannot load its assemblies: Could not load file or assembly '{GhostRootNamespace},";
 
+    private const String OrphanRootNamespace = "Tsikhanau.Monolith.Orphan";
+
+    private const String OrphanBaseAssemblyName = "Tsikhanau.Monolith.OrphanBase";
+
+    private const String OrphanLoadFailure =
+        $"Orphan cannot load its assemblies: Could not load file or assembly '{OrphanBaseAssemblyName},";
+
+    private static readonly IReadOnlyList<MetadataReference> RuntimeReferences =
+        ((String)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+            .Split(Path.PathSeparator)
+            .Select(path => MetadataReference.CreateFromFile(path))
+            .ToList();
+
+    private static readonly Lazy<Byte[]> OrphanAssemblyImage = new(CompileOrphanAssembly);
+
     private static ArchModule GhostModule =>
         new("Ghost", GhostRootNamespace, () => [Assembly.Load(GhostRootNamespace)]);
+
+    private static ArchModule OrphanModule =>
+        new("Orphan", OrphanRootNamespace, () => [Assembly.Load(OrphanAssemblyImage.Value)]);
 
     [Fact]
     public void Module_loads_its_assemblies_once_when_a_rule_first_asks_for_them()
@@ -59,6 +79,24 @@ public sealed class ModuleLoadingTests
     }
 
     [Fact]
+    public void Rules_find_nothing_to_check_in_a_module_whose_types_cannot_load()
+    {
+        var evaluation = DomainRules.DomainTypesHaveNoPublicSetters(OrphanModule);
+
+        evaluation.Subject.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Coverage_rule_reports_a_module_whose_types_cannot_load()
+    {
+        var evaluation = CoverageRules.ProductionModuleLoadsItsProjectAndItsContracts(OrphanModule);
+
+        evaluation.Violations
+            .ShouldHaveSingleItem()
+            .ShouldStartWith(OrphanLoadFailure);
+    }
+
+    [Fact]
     public void Host_rule_names_the_folder_of_a_module_it_does_not_add()
     {
         var evaluation = HostRules.HostAddsEveryModuleFolder(
@@ -68,5 +106,33 @@ public sealed class ModuleLoadingTests
         evaluation.Violations
             .ShouldHaveSingleItem()
             .ShouldBe(GhostNotAdded);
+    }
+
+    private static Byte[] CompileOrphanAssembly()
+    {
+        var baseImage = Compile(
+            OrphanBaseAssemblyName,
+            $"namespace {OrphanBaseAssemblyName};\n\npublic class OrphanBase;",
+            RuntimeReferences);
+
+        return Compile(
+            OrphanRootNamespace,
+            $"namespace {OrphanRootNamespace}.Domain;\n\npublic sealed class Orphan : {OrphanBaseAssemblyName}.OrphanBase;",
+            [.. RuntimeReferences, MetadataReference.CreateFromImage(baseImage)]);
+    }
+
+    private static Byte[] Compile(String assemblyName, String source, IEnumerable<MetadataReference> references)
+    {
+        var compilation = CSharpCompilation.Create(
+            assemblyName,
+            [CSharpSyntaxTree.ParseText(source)],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        using var imageStream = new MemoryStream();
+        var emitResult = compilation.Emit(imageStream);
+
+        emitResult.Success.ShouldBeTrue();
+        return imageStream.ToArray();
     }
 }

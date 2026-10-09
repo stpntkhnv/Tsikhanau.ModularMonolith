@@ -3,4 +3,7 @@
     <ProjectReference Include="..\..\src\Core\ArchRules\Tsikhanau.Monolith.ArchRules.csproj" />
     <ProjectReference Include="..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
 </Project>
