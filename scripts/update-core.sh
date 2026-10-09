@@ -171,6 +171,19 @@ choose_source() {
   if [[ -z "$source" ]]; then
     stop "$lock_file has no source= and no --from was given; run scripts/update-core.sh $ref --from <template path or url>"
   fi
+  clone_source=$source
+  source=$(without_userinfo "$source")
+}
+
+without_userinfo() {
+  case "$1" in
+    ssh://* | git+ssh://* | ssh+git://*)
+      sed -E 's#^([^:]*://[^/:@]*):[^/]*@#\1@#' <<< "$1"
+      ;;
+    *)
+      sed -E 's#^([A-Za-z][A-Za-z0-9+.-]*://)[^/]*@#\1#' <<< "$1"
+      ;;
+  esac
 }
 
 resolve_commit() {
@@ -181,7 +194,8 @@ resolve_commit() {
 fetch_candidate() {
   local report solutions
   candidate=$work/template
-  git -c core.hooksPath=/dev/null clone -q --no-checkout -- "$source" "$candidate" \
+  echo "update-core: cloning $source"
+  git -c core.hooksPath=/dev/null clone -q --no-checkout -- "$clone_source" "$candidate" \
     || stop "cannot clone the template from $source"
   commit=$(resolve_commit) || stop "cannot resolve $ref to a commit of $source"
   git -C "$candidate" -c core.hooksPath=/dev/null checkout -q --detach "$commit" || stop "cannot check out $commit"
@@ -536,6 +550,7 @@ unstage() {
 
 finish() {
   local status=$?
+  trap '' HUP INT TERM
   trap - EXIT
   if [[ "$armed" == 1 ]]; then
     armed=0

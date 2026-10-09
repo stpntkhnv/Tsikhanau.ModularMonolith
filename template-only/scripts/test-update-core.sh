@@ -441,6 +441,29 @@ case_url_source() {
   expect_update_to_b_from "$url"
 }
 
+expect_no_credentials() {
+  grep -qxF "update-core: cloning $1" "$work/out" || fail "update-core did not name $1 before the clone"
+  ! grep -qF s3cr3t-token core.lock "$work/out" || fail "the credentials reached core.lock or the output"
+}
+
+case_url_with_credentials() {
+  local app url=file://ci-bot:s3cr3t-token@$template
+  app=$(new_consumer credentials-from)
+  cd "$app"
+  sed -i '/^source=/d' core.lock
+  git commit -q -am "no source"
+  run_update scripts/update-core.sh B --from "$url"
+  expect_update_to_b_from "file://$template"
+  expect_no_credentials "file://$template"
+  app=$(new_consumer credentials-in-lock)
+  cd "$app"
+  sed -i "s|^source=.*|source=$url|" core.lock
+  git commit -q -am "source with credentials"
+  run_update scripts/update-core.sh B
+  expect_update_to_b_from "file://$template"
+  expect_no_credentials "file://$template"
+}
+
 case_ignored_core_file() {
   local app
   app=$(new_consumer ignored)
@@ -940,6 +963,42 @@ case_index_locked_while_staging() {
   bash scripts/core-hash.sh check
 }
 
+make_interrupting_tools() {
+  local real_git real_cp
+  real_git=$(command -v git)
+  real_cp=$(command -v cp)
+  mkdir -p "$1"
+  cat > "$1/git" << EOF
+#!/usr/bin/env bash
+if [[ " \$* " == *" add "* ]]; then
+  kill -INT "\$PPID"
+fi
+exec $(printf '%q' "$real_git") "\$@"
+EOF
+  cat > "$1/cp" << EOF
+#!/usr/bin/env bash
+if [[ "\$1" == -f ]]; then
+  kill -INT "\$PPID"
+  kill -TERM "\$PPID"
+fi
+exec $(printf '%q' "$real_cp") "\$@"
+EOF
+  chmod +x "$1/git" "$1/cp"
+}
+
+case_second_signal_during_the_rollback() {
+  local app
+  app=$(new_consumer second-signal)
+  cd "$app"
+  make_interrupting_tools "$work/interrupting-tools"
+  snapshot . > "$work/before"
+  PATH="$work/interrupting-tools:$PATH" run_update scripts/update-core.sh B
+  expect_restored 'back as they were'
+  snapshot . > "$work/after"
+  expect_same "$work/before" "$work/after" "the app is not as it was"
+  bash scripts/core-hash.sh check
+}
+
 run_read_only_case() {
   if [[ "$(id -u)" == 0 ]]; then
     not_run=$((not_run + 1))
@@ -984,6 +1043,7 @@ run_case "update works in a git worktree and leaves the main worktree alone" cas
 run_case "a CRLF solution keeps CRLF" case_crlf_solution
 run_case "no source refuses; --from with a relative path works and is recorded absolute" case_no_source
 run_case "a file:// URL works as source= in core.lock and as --from, and is recorded as given" case_url_source
+run_case "a URL with credentials is cloned as given, but named and recorded without them" case_url_with_credentials
 run_case "a core file that the app ignores is placed, staged and counted" case_ignored_core_file
 run_case "core-hash counts core files that git ignores, but not the build output of core projects or editor files" case_core_hash_counts_ignored_files
 run_case "an update that removes a core project the app has built succeeds and the lock check passes" case_removed_core_project_leaves_build_output
@@ -1018,6 +1078,7 @@ run_read_only_case "failure writing the solution restores the app" injection rea
 run_case "an app file under a new core folder restores the app" injection app-file-in-core-folder app_file_under_a_new_core_folder 'extra.*tools/check/notes\.txt' B2
 run_read_only_case "failure writing core.lock after the swap restores the app" injection read-only-lock read_only_lock 'cannot write core\.lock' B
 run_case "an index lock taken while staging leaves the app as it was" case_index_locked_while_staging
+run_case "a second signal during the rollback does not stop it" case_second_signal_during_the_rollback
 
 if [[ $not_run -gt 0 ]]; then
   echo "test-update-core: running as root, which can write to read-only files and folders, so the $not_run cases that need them were not run"
