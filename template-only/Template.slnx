@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/Analyzers.Tests/">
+    <Project Path="Analyzers.Tests/Tsikhanau.Monolith.Analyzers.Tests.csproj" />
+  </Folder>
+  <Folder Name="/IntegrationTests/">
+    <Project Path="IntegrationTests/Tsikhanau.Monolith.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/Shared.Tests/">
+    <Project Path="Shared.Tests/Tsikhanau.Monolith.Shared.Tests.csproj" />
+  </Folder>
+  <Folder Name="/TestModules/">
+    <Project Path="TestModules/Tsikhanau.Monolith.TestModules.csproj" />
+  </Folder>
+  <Folder Name="/UnitTests/">
+    <Project Path="UnitTests/Tsikhanau.Monolith.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/perf/">
+    <Project Path="perf/Tsikhanau.Monolith.Perf/Tsikhanau.Monolith.Perf.csproj" />
+  </Folder>
+</Solution>

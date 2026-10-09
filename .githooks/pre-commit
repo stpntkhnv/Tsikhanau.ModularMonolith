@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s nullglob
 
 cd "$(git rev-parse --show-toplevel)"
 
-dotnet build ModularMonolith.slnx
+solutions=(*.slnx)
+template_solution=template-only/Template.slnx
 
-for project in \
-  template-only/Analyzers.Tests \
-  template-only/Shared.Tests \
-  template-only/UnitTests \
-  src/Tests/ArchTests; do
-  dotnet test --project "$project" --no-build
+if [[ ${#solutions[@]} -ne 1 ]]; then
+  echo "pre-commit: the root must hold exactly one *.slnx, found ${#solutions[@]}: ${solutions[*]:-none}" >&2
+  exit 1
+fi
+
+if [[ -f "$template_solution" ]]; then
+  solutions+=("$template_solution")
+fi
+
+unit_test_projects() {
+  local solution=$1
+  sed -nE '/IntegrationTests\.csproj"/d; s|.*<Project Path="([^"]*Tests\.csproj)".*|\1|p' "$solution" \
+    | sed "s|^|$(dirname "$solution")/|"
+}
+
+for solution in "${solutions[@]}"; do
+  dotnet build "$solution"
+done
+
+for solution in "${solutions[@]}"; do
+  for project in $(unit_test_projects "$solution"); do
+    dotnet test --project "$project" --no-build
+  done
 done

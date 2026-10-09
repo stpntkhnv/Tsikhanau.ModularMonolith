@@ -48,23 +48,4 @@
   <Folder Name="/src/Tests/Testing/">
     <Project Path="src/Tests/Testing/ModularMonolith.Testing.csproj" />
   </Folder>
-  <Folder Name="/template-only/" />
-  <Folder Name="/template-only/Analyzers.Tests/">
-    <Project Path="template-only/Analyzers.Tests/Tsikhanau.Monolith.Analyzers.Tests.csproj" />
-  </Folder>
-  <Folder Name="/template-only/IntegrationTests/">
-    <Project Path="template-only/IntegrationTests/Tsikhanau.Monolith.IntegrationTests.csproj" />
-  </Folder>
-  <Folder Name="/template-only/Shared.Tests/">
-    <Project Path="template-only/Shared.Tests/Tsikhanau.Monolith.Shared.Tests.csproj" />
-  </Folder>
-  <Folder Name="/template-only/TestModules/">
-    <Project Path="template-only/TestModules/Tsikhanau.Monolith.TestModules.csproj" />
-  </Folder>
-  <Folder Name="/template-only/UnitTests/">
-    <Project Path="template-only/UnitTests/Tsikhanau.Monolith.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/template-only/perf/">
-    <Project Path="template-only/perf/Tsikhanau.Monolith.Perf/Tsikhanau.Monolith.Perf.csproj" />
-  </Folder>
 </Solution>

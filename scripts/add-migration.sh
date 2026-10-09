@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s nullglob
 
 if [[ $# -ne 2 ]]; then
   echo "usage: scripts/add-migration.sh <Module> <MigrationName>" >&2
@@ -10,9 +11,21 @@ module=$1
 migration=$2
 cd "$(dirname "$0")/.."
 
+find_one() {
+  local pattern=$1
+  local matches=($pattern)
+
+  if [[ ${#matches[@]} -ne 1 ]]; then
+    echo "add-migration: expected one $pattern, found ${#matches[@]}: ${matches[*]:-none}" >&2
+    exit 2
+  fi
+
+  echo "${matches[0]}"
+}
+
 if [[ -d "src/Modules/$module" ]]; then
-  project="src/Modules/$module/ModularMonolith.Modules.$module"
-  startup_project=src/Bootstrapper/ModularMonolith.Bootstrapper
+  project=$(find_one "src/Modules/$module/*.Modules.$module/*.Modules.$module.csproj")
+  startup_project=$(find_one "src/Bootstrapper/*.Bootstrapper/*.Bootstrapper.csproj")
   output_dir=Infrastructure/Migrations
 elif [[ -d "template-only/TestModules/$module" ]]; then
   project=template-only/TestModules
