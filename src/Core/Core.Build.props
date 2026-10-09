@@ -39,6 +39,9 @@
     <AdditionalFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../BannedSymbols.txt'))" />
     <CoreAdditionalFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../BannedSymbols.txt'))" />
   </ItemGroup>
+  <ItemGroup>
+    <CoreEditorConfigFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../.editorconfig'))" />
+  </ItemGroup>
   <PropertyGroup>
     <CoreBuildPropsImported>true</CoreBuildPropsImported>
     <CoreNoWarn>CS1591</CoreNoWarn>

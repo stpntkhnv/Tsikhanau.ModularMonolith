@@ -2,7 +2,11 @@
   <PropertyGroup>
     <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
     <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
+    <CoreNullableAnalysisOffPattern>(?i)^\s*run-nullable-analysis\s*=\s*never\s*$</CoreNullableAnalysisOffPattern>
   </PropertyGroup>
+  <ItemGroup>
+    <_CoreEditorConfigExpected Include="@(CoreEditorConfigFiles)" Condition="'@(Compile)' != ''" />
+  </ItemGroup>
   <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">
     <ItemGroup>
       <_CoreFileNotImported Include="src/Core/Core.Build.props" Condition="'$(CoreBuildPropsImported)' != 'true'" />
@@ -15,6 +19,7 @@
       <_CoreNoWarn Include="$([MSBuild]::Unescape($(NoWarn.Replace(',', ';'))))" />
       <_CoreNoWarn Remove="$(CoreNoWarn)" />
       <_CoreWarningsNotAsErrors Include="$([MSBuild]::Unescape($(WarningsNotAsErrors.Replace(',', ';'))))" />
+      <_CoreFeatures Include="$([MSBuild]::Unescape($(Features.Replace(',', ';'))))" />
       <_CoreAnalyzerExpected Include="@(CoreAnalyzer)" />
       <_CoreAnalyzerExpected Include="Microsoft.CodeAnalysis.CodeStyle;Microsoft.CodeAnalysis.CSharp.CodeStyle" />
       <_CoreAnalyzerExpected
@@ -23,6 +28,7 @@
       <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)')" />
       <_CoreAnalyzerMissing Include="@(_CoreAnalyzerExpected)" Exclude="@(_CoreAnalyzerFound)" />
       <_CoreAdditionalFilesMissing Include="@(CoreAdditionalFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
+      <_CoreEditorConfigMissing Include="@(_CoreEditorConfigExpected)" Exclude="@(EditorConfigFiles->'%(FullPath)')" />
       <_CoreSettingChange
         Include="TreatWarningsAsErrors"
         Text="TreatWarningsAsErrors is '$(TreatWarningsAsErrors)', not 'true'"
@@ -68,6 +74,18 @@
         Text="CodeAnalysisRuleSet is '$(CodeAnalysisRuleSet)'"
         Condition="'$(CodeAnalysisRuleSet)' != ''" />
       <_CoreSettingChange
+        Include="ResolvedCodeAnalysisRuleSet"
+        Text="ResolvedCodeAnalysisRuleSet is '$(ResolvedCodeAnalysisRuleSet)'"
+        Condition="'$(ResolvedCodeAnalysisRuleSet)' != ''" />
+      <_CoreSettingChange
+        Include="CompilerResponseFile"
+        Text="CompilerResponseFile is '$(CompilerResponseFile)'"
+        Condition="'$(CompilerResponseFile)' != ''" />
+      <_CoreSettingChange
+        Include="Features"
+        Text="Features holds %(_CoreFeatures.Identity), which turns nullable analysis off"
+        Condition="'%(_CoreFeatures.Identity)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('%(_CoreFeatures.Identity)', '$(CoreNullableAnalysisOffPattern)'))" />
+      <_CoreSettingChange
         Include="NoWarn"
         Text="NoWarn holds %(_CoreNoWarn.Identity)"
         Condition="'%(_CoreNoWarn.Identity)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('%(_CoreNoWarn.Identity)', '$(CoreDiagnosticPattern)'))" />
@@ -83,6 +101,10 @@
         Include="AdditionalFiles"
         Text="AdditionalFiles lacks %(_CoreAdditionalFilesMissing.Identity)"
         Condition="'%(_CoreAdditionalFilesMissing.Identity)' != ''" />
+      <_CoreSettingChange
+        Include="EditorConfigFiles"
+        Text="EditorConfigFiles lacks %(_CoreEditorConfigMissing.Identity)"
+        Condition="'%(_CoreEditorConfigMissing.Identity)' != ''" />
     </ItemGroup>
     <Error
       Condition="'@(_CoreSettingChange)' != ''"
