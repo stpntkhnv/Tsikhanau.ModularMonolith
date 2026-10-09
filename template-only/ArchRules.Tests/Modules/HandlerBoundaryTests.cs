@@ -17,7 +17,7 @@ public sealed class HandlerBoundaryTests : HandlerBoundaryTests<TestModuleInputs
     [Fact]
     public void Write_side_taken_by_a_type_nested_in_a_query_handler_is_checked()
     {
-        var sampleModule = new ArchModule("Samples", SampleNamespace, [typeof(HandlerBoundaryTests).Assembly]);
+        var sampleModule = new ArchModule("Samples", SampleNamespace, () => [typeof(HandlerBoundaryTests).Assembly]);
 
         var evaluation = HandlerBoundaryRules.QueryHandlersTakeNoWriteSideDependencies(sampleModule);
 

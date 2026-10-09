@@ -14,7 +14,7 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     private const String LiteralOwnerName = $"{SampleNamespace}.SqlTextTests+LiteralOwner";
     private const String SampleQueryHandlerName = $"{SampleNamespace}.SqlTextTests+SampleQueryHandler";
 
-    private static ArchModule SampleModule => new("Samples", SampleNamespace, [typeof(SqlTextTests).Assembly]);
+    private static ArchModule SampleModule => new("Samples", SampleNamespace, () => [typeof(SqlTextTests).Assembly]);
 
     [Fact]
     public void Literals_inside_async_state_machines_are_read()
@@ -35,6 +35,18 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
         literals.ShouldContain(($"{LiteralOwnerName}+NestedReader", "read by the nested reader"));
         literals.ShouldContain(($"{LiteralOwnerName}+Row", "Update = "));
         literals.ShouldNotContain((LiteralOwnerName, "Update = "));
+    }
+
+    [Fact]
+    public void Module_without_a_database_context_has_no_schema_to_reach()
+    {
+        var pongsModule = GetModule("Pongs");
+        var modules = new ArchModules([pongsModule, SampleModule]);
+
+        var evaluation = SqlTextRules.ModuleSqlNamesNoOtherModuleSchema(modules, pongsModule);
+
+        evaluation.Subject.ShouldNotBeEmpty();
+        evaluation.Violations.ShouldBeEmpty();
     }
 
     [Fact]

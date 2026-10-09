@@ -23,6 +23,6 @@ public sealed class AppInputs : IAppArchRuleInputs
         return new ArchModule(
             name,
             moduleNamespace,
-            [Assembly.Load(moduleNamespace), Assembly.Load($"{moduleNamespace}.Contracts")]);
+            () => [Assembly.Load(moduleNamespace), Assembly.Load($"{moduleNamespace}.Contracts")]);
     }
 }

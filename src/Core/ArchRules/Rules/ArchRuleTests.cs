@@ -18,7 +18,7 @@ public abstract class ArchRuleTests<TInputs>
     protected static ArchSolution Solution { get; } = new(TInputs.SolutionRoot, TInputs.RootNamespace);
 
     protected static ArchModule GetModule(String name) =>
-        name == ProductionModules.Placeholder ? new ArchModule(name, name, []) : Modules.Get(name);
+        name == ProductionModules.Placeholder ? new ArchModule(name, name, () => []) : Modules.Get(name);
 
     protected static void Check(RuleEvaluation evaluation, String noSubjectReason)
     {

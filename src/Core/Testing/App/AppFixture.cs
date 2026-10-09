@@ -15,18 +15,18 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     where TEntryPoint : class
 {
     private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder("postgres:17-alpine").Build();
-    private readonly AppFactory<TEntryPoint> _appFactory;
+    private readonly Lazy<AppFactory<TEntryPoint>> _appFactory;
     private Optional<DatabaseResetter> _databaseResetter;
 
     protected AppFixture()
     {
         Time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 28, 8, 0, 0, TimeSpan.Zero));
-        _appFactory = CreateFactory(Time, Environments.Development);
+        _appFactory = new Lazy<AppFactory<TEntryPoint>>(() => CreateFactory(Time, Environments.Development));
     }
 
     public FakeTimeProvider Time { get; }
 
-    public IServiceProvider Services => _appFactory.Services;
+    public IServiceProvider Services => _appFactory.Value.Services;
 
     public String ConnectionString => _postgreSqlContainer.GetConnectionString();
 
@@ -34,7 +34,7 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public String ModuleGroupName => ModuleLogins.GetGroupName(Services);
 
-    public HttpClient CreateClient() => _appFactory.CreateClient();
+    public HttpClient CreateClient() => _appFactory.Value.CreateClient();
 
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);
 
@@ -79,7 +79,7 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         await _postgreSqlContainer.StartAsync(TestContext.Current.CancellationToken);
-        Start(_appFactory, new Dictionary<String, String>());
+        Start(_appFactory.Value, new Dictionary<String, String>());
 
         var schemas = Services
             .GetRequiredService<ModuleRegistry>().Modules
@@ -93,7 +93,11 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await _appFactory.DisposeAsync();
+        if (_appFactory.IsValueCreated)
+        {
+            await _appFactory.Value.DisposeAsync();
+        }
+
         await _postgreSqlContainer.DisposeAsync();
     }
 

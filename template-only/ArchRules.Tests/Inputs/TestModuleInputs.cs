@@ -15,5 +15,5 @@ public sealed class TestModuleInputs : IArchRuleInputs
     public static EmptySubject EmptySubject => EmptySubject.Skip;
 
     private static ArchModule CreateModule(String name) =>
-        new(name, $"{RootNamespace}.{name}", [typeof(PingsModule).Assembly]);
+        new(name, $"{RootNamespace}.{name}", () => [typeof(PingsModule).Assembly]);
 }

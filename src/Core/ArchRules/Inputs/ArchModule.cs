@@ -5,6 +5,7 @@ using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Support;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.ArchRules.Inputs;
 
@@ -18,13 +19,14 @@ public sealed class ArchModule
         typeof(IIntegrationEventHandler<>),
     ];
 
+    private readonly Lazy<LoadedAssemblies> _loadedAssemblies;
     private readonly Lazy<IReadOnlyList<Type>> _types;
 
-    public ArchModule(String name, String rootNamespace, IReadOnlyList<Assembly> assemblies)
+    public ArchModule(String name, String rootNamespace, Func<IReadOnlyList<Assembly>> loadAssemblies)
     {
         Name = name;
         RootNamespace = rootNamespace;
-        Assemblies = assemblies;
+        _loadedAssemblies = new Lazy<LoadedAssemblies>(() => LoadedAssemblies.Load(loadAssemblies));
         _types = new Lazy<IReadOnlyList<Type>>(ReadTypes);
     }
 
@@ -32,7 +34,9 @@ public sealed class ArchModule
 
     public String RootNamespace { get; }
 
-    public IReadOnlyList<Assembly> Assemblies { get; }
+    public IReadOnlyList<Assembly> Assemblies => _loadedAssemblies.Value.Assemblies;
+
+    internal Optional<String> LoadFailure => _loadedAssemblies.Value.Failure;
 
     internal IReadOnlyList<Type> Types => _types.Value;
 

@@ -51,7 +51,7 @@ public static class SqlTextRules
     {
         var otherSchemas = modules
             .GetOthers(module)
-            .Select(ReadSchema)
+            .SelectMany(ReadSchemas)
             .ToList();
 
         return literals
@@ -78,10 +78,13 @@ public static class SqlTextRules
     private static Boolean IsOrIsNestedIn(String typeName, String handlerName) =>
         typeName == handlerName || typeName.StartsWith($"{handlerName}+", StringComparison.Ordinal);
 
-    private static String ReadSchema(ArchModule module)
-    {
-        var dbContextType = module.Types.Single(type => type.IsConcrete && type.Implements<ModuleDbContext>());
+    private static IEnumerable<String> ReadSchemas(ArchModule module) =>
+        module.Types
+            .Where(type => type.IsConcrete && type.Implements<ModuleDbContext>())
+            .Select(ReadSchema);
 
+    private static String ReadSchema(Type dbContextType)
+    {
         var schemaField = dbContextType.GetField(SchemaNameField, ConstantFields);
         return schemaField?.GetRawConstantValue() as String
             ?? throw new InvalidOperationException($"{dbContextType.FullName} has no const String {SchemaNameField}");

@@ -15,20 +15,20 @@ public static class HostRules
         IReadOnlyList<String> expectedNames = [.. modules.All.Select(BuildModuleClassName)];
         IReadOnlyList<String> subject = [.. expectedNames.Union(addedNames)];
 
-        return RuleEvaluation.Create(subject, () => GetViolations(hostAssembly.Name, expectedNames, addedNames));
+        return RuleEvaluation.Create(subject, () => GetViolations(hostAssembly.Name, modules.All, addedNames));
     }
 
     private static IEnumerable<String> GetViolations(
         String hostName,
-        IReadOnlyList<String> expectedNames,
+        IReadOnlyList<ArchModule> modules,
         IReadOnlyList<String> addedNames)
     {
-        var missingNames = expectedNames
-            .Except(addedNames)
-            .Select(name => $"{hostName} does not add {name}");
+        var missingModules = modules
+            .Where(module => !addedNames.Contains(BuildModuleClassName(module)))
+            .Select(module => $"{hostName} does not add src/Modules/{module.Name} ({BuildModuleClassName(module)})");
 
         var strayNames = addedNames
-            .Except(expectedNames)
+            .Except(modules.Select(BuildModuleClassName))
             .Select(name => $"{hostName} adds {name}, which is not in src/Modules");
 
         var repeatedNames = addedNames
@@ -36,7 +36,7 @@ public static class HostRules
             .Where(group => group.Count() > 1)
             .Select(group => $"{hostName} adds {group.Key} more than once");
 
-        return [.. missingNames, .. strayNames, .. repeatedNames];
+        return [.. missingModules, .. strayNames, .. repeatedNames];
     }
 
     private static String BuildModuleClassName(ArchModule module) => $"{module.RootNamespace}.{module.Name}Module";
