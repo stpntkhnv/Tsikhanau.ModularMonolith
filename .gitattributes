@@ -1,0 +1,23 @@
+/.config/dotnet-tools.json text eol=lf
+/.editorconfig text eol=lf
+/.gitattributes text eol=lf
+/.githooks/** text eol=lf
+/BannedSymbols.txt text eol=lf
+/Directory.Build.props text eol=lf
+/Directory.Packages.props text eol=lf
+/gate.sh text eol=lf
+/global.json text eol=lf
+/src/Core/** text eol=lf
+/src/Packages/** text eol=lf
+/core.lock text eol=lf
+*.sh text eol=lf
+*.dll binary
+*.exe binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.nupkg binary
+*.pdf binary
+*.png binary
+*.snk binary
+*.zip binary

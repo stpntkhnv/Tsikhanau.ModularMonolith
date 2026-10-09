@@ -20,7 +20,12 @@ public sealed class ArchSolution
 
     internal String ModulesFolder => Path.Combine(Root, "src", "Modules");
 
-    internal String PackageVersionsPath => Path.Combine(Root, "Directory.Packages.props");
+    internal IReadOnlyList<String> PackageVersionPaths =>
+    [
+        Path.Combine(Root, "Directory.Packages.props"),
+        Path.Combine(CoreFolder, "Core.Packages.props"),
+        Path.Combine(Root, "App.Packages.props"),
+    ];
 
     internal String ModuleProjectPrefix => $"{RootNamespace}.Modules.";
 

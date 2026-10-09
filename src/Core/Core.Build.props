@@ -1,0 +1,39 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsPackable>false</IsPackable>
+    <ShouldUnsetParentConfigurationAndPlatform>false</ShouldUnsetParentConfigurationAndPlatform>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers.Tests'">
+    <ProjectReference
+      Include="$(MSBuildThisFileDirectory)Analyzers/Tsikhanau.Monolith.Analyzers.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+      IsAspireProjectResource="false" />
+  </ItemGroup>
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.ArchRules' and !$(MSBuildProjectName.EndsWith('.Testing.App')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers'">
+    <ProjectReference
+      Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj'))"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+      IsAspireProjectResource="false" />
+  </ItemGroup>
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.ArchRules' and !$(MSBuildProjectName.EndsWith('.Testing.App')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Perf'">
+    <AdditionalFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../BannedSymbols.txt'))" />
+  </ItemGroup>
+</Project>

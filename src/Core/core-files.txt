@@ -1,0 +1,13 @@
+.config/dotnet-tools.json
+.editorconfig
+.gitattributes
+.githooks/
+BannedSymbols.txt
+Directory.Build.props
+Directory.Packages.props
+gate.sh
+global.json
+scripts/add-migration.sh
+scripts/core-hash.sh
+src/Core/
+src/Packages/

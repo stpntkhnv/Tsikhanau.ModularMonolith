@@ -4,6 +4,8 @@ shopt -s nullglob
 
 cd "$(git rev-parse --show-toplevel)"
 
+bash scripts/core-hash.sh check-staged
+
 solutions=(*.slnx)
 template_solution=template-only/Template.slnx
 

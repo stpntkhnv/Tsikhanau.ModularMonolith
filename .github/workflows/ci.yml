@@ -31,7 +31,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/Directory.Packages.props', '**/*.csproj') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/*.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Gate (build, analyzers, all tests, skipped-test budget)

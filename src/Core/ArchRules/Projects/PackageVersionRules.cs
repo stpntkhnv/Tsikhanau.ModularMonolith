@@ -64,11 +64,15 @@ public static class PackageVersionRules
     }
 
     private static IEnumerable<(String Name, String Version)> ReadAspirePackages(ArchSolution solution) =>
-        XDocument
-            .Load(solution.PackageVersionsPath)
-            .Descendants("PackageVersion")
-            .Select(ReadPackageVersion)
+        solution.PackageVersionPaths
+            .SelectMany(ReadPackageVersions)
             .Where(package => package.Name.StartsWith(AspirePackagePrefix, StringComparison.Ordinal));
+
+    private static IEnumerable<(String Name, String Version)> ReadPackageVersions(String path) =>
+        XDocument
+            .Load(path)
+            .Descendants("PackageVersion")
+            .Select(ReadPackageVersion);
 
     private static (String Name, String Version) ReadPackageVersion(XElement package) =>
         (package.Attribute("Include")!.Value, package.Attribute("Version")!.Value);

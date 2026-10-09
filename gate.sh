@@ -4,6 +4,8 @@ shopt -s nullglob
 
 cd "$(dirname "$0")"
 
+bash scripts/core-hash.sh check
+
 root_solutions=(*.slnx)
 template_solution=template-only/Template.slnx
 test_output=$(mktemp)

@@ -11,6 +11,6 @@ public abstract class PackageVersionTests<TInputs> : ArchRuleTests<TInputs>
     public void Aspire_sdk_and_aspire_packages_share_one_version() =>
         Check(
             PackageVersionRules.AspireSdkAndAspirePackagesShareOneVersion(Solution),
-            "Directory.Packages.props has no Aspire packages",
+            "Directory.Packages.props, Core.Packages.props and App.Packages.props hold no Aspire packages",
             "Bump the Aspire SDK in the AppHost Sdk attribute together with the Aspire packages");
 }
