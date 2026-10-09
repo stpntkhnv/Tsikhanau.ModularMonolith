@@ -3,7 +3,6 @@
     <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
     <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
     <CoreNullableAnalysisOffPattern>(?i)^run-nullable-analysis=never$</CoreNullableAnalysisOffPattern>
-    <_CoreRootFolder>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..'))</_CoreRootFolder>
   </PropertyGroup>
   <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">
     <ItemGroup>
@@ -13,9 +12,6 @@
     <Error
       Condition="'@(_CoreFileNotImported)' != ''"
       Text="$(MSBuildProjectName): the build does not import @(_CoreFileNotImported, ' and '); a Directory.Build.props or Directory.Packages.props nearer to the project hides the root one (set by the core; change it in the template)" />
-    <PropertyGroup>
-      <_CoreIntermediateFolder>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))</_CoreIntermediateFolder>
-    </PropertyGroup>
     <ItemGroup>
       <_CoreNoWarn Include="$([MSBuild]::Unescape($(NoWarn.Replace(',', ';'))))" />
       <_CoreNoWarn Remove="$(CoreNoWarn)" />
@@ -29,9 +25,16 @@
       <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)')" />
       <_CoreAnalyzerMissing Include="@(_CoreAnalyzerExpected)" Exclude="@(_CoreAnalyzerFound)" />
       <_CoreAdditionalFilesMissing Include="@(CoreAdditionalFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
-      <_CoreOwnSource
-        Include="@(Compile)"
-        Condition="$([System.String]::Copy('%(Compile.RootDir)%(Compile.Directory)').StartsWith('$(_CoreRootFolder)')) and !$([System.String]::Copy('%(Compile.RootDir)%(Compile.Directory)').StartsWith('$(_CoreIntermediateFolder)'))" />
+      <_CorePackageFolder Include="$(NuGetPackageRoot);$(NuGetPackageFolders)" />
+      <_CoreForeignFolder Include="$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))" />
+      <_CoreForeignFolder
+        Include="$([MSBuild]::NormalizeDirectory('%(_CorePackageFolder.Identity)'))"
+        Condition="'%(_CorePackageFolder.Identity)' != ''" />
+      <_CoreSourceAndForeignFolder Include="@(Compile->'%(FullPath)')" ForeignFolder="%(_CoreForeignFolder.Identity)" />
+      <_CoreForeignSource
+        Include="@(_CoreSourceAndForeignFolder)"
+        Condition="$([System.String]::Copy('%(RootDir)%(Directory)').StartsWith('%(ForeignFolder)'))" />
+      <_CoreOwnSource Include="@(Compile->'%(FullPath)')" Exclude="@(_CoreForeignSource)" />
       <_CoreEditorConfigMissing
         Include="@(CoreEditorConfigFiles)"
         Exclude="@(EditorConfigFiles->'%(FullPath)')"
