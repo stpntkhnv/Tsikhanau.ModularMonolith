@@ -1,0 +1,86 @@
+<Project>
+  <PropertyGroup>
+    <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
+    <CoreDiagnosticPattern>(?i)^((TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS)?8[67]\d\d)$</CoreDiagnosticPattern>
+  </PropertyGroup>
+  <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_CoreFileNotImported Include="src/Core/Core.Build.props" Condition="'$(CoreBuildPropsImported)' != 'true'" />
+      <_CoreFileNotImported Include="src/Core/Core.Packages.props" Condition="'$(CorePackagesPropsImported)' != 'true'" />
+    </ItemGroup>
+    <Error
+      Condition="'@(_CoreFileNotImported)' != ''"
+      Text="$(MSBuildProjectName): the build does not import @(_CoreFileNotImported, ' and '); a Directory.Build.props or Directory.Packages.props nearer to the project hides the root one (set by the core; change it in the template)" />
+    <ItemGroup>
+      <_CoreNoWarn Include="$([MSBuild]::Unescape($(NoWarn.Replace(',', ';'))))" />
+      <_CoreNoWarn Remove="$(CoreNoWarn)" />
+      <_CoreWarningsNotAsErrors Include="$([MSBuild]::Unescape($(WarningsNotAsErrors.Replace(',', ';'))))" />
+      <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)');@(Analyzer->'%(NuGetPackageId)')" />
+      <_CoreAnalyzerMissing Include="@(CoreAnalyzer)" Exclude="@(_CoreAnalyzerFound)" />
+      <_CoreAdditionalFilesMissing Include="@(CoreAdditionalFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
+      <_CoreSettingChange
+        Include="TreatWarningsAsErrors"
+        Text="TreatWarningsAsErrors is '$(TreatWarningsAsErrors)', not 'true'"
+        Condition="'$(TreatWarningsAsErrors)' != 'true'" />
+      <_CoreSettingChange
+        Include="EnforceCodeStyleInBuild"
+        Text="EnforceCodeStyleInBuild is '$(EnforceCodeStyleInBuild)', not 'true'"
+        Condition="'$(EnforceCodeStyleInBuild)' != 'true'" />
+      <_CoreSettingChange
+        Include="GenerateDocumentationFile"
+        Text="GenerateDocumentationFile is '$(GenerateDocumentationFile)', not 'true'"
+        Condition="'$(GenerateDocumentationFile)' != 'true'" />
+      <_CoreSettingChange
+        Include="Nullable"
+        Text="Nullable is '$(Nullable)', not 'enable'"
+        Condition="'$(Nullable)' != 'enable'" />
+      <_CoreSettingChange
+        Include="WarningLevel"
+        Text="WarningLevel is '$(WarningLevel)', which hides every warning"
+        Condition="'$(WarningLevel)' != '' and $(WarningLevel) &lt; 1" />
+      <_CoreSettingChange
+        Include="RunAnalyzers"
+        Text="RunAnalyzers is 'false'"
+        Condition="'$(RunAnalyzers)' == 'false'" />
+      <_CoreSettingChange
+        Include="RunAnalyzersDuringBuild"
+        Text="RunAnalyzersDuringBuild is 'false'"
+        Condition="'$(RunAnalyzersDuringBuild)' == 'false'" />
+      <_CoreSettingChange
+        Include="EnableNETAnalyzers"
+        Text="EnableNETAnalyzers is 'false'"
+        Condition="'$(EnableNETAnalyzers)' == 'false' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp'" />
+      <_CoreSettingChange
+        Include="CodeAnalysisTreatWarningsAsErrors"
+        Text="CodeAnalysisTreatWarningsAsErrors is 'false'"
+        Condition="'$(CodeAnalysisTreatWarningsAsErrors)' == 'false'" />
+      <_CoreSettingChange
+        Include="DiscoverEditorConfigFiles"
+        Text="DiscoverEditorConfigFiles is 'false'"
+        Condition="'$(DiscoverEditorConfigFiles)' == 'false'" />
+      <_CoreSettingChange
+        Include="CodeAnalysisRuleSet"
+        Text="CodeAnalysisRuleSet is '$(CodeAnalysisRuleSet)'"
+        Condition="'$(CodeAnalysisRuleSet)' != ''" />
+      <_CoreSettingChange
+        Include="NoWarn"
+        Text="NoWarn holds %(_CoreNoWarn.Identity)"
+        Condition="'%(_CoreNoWarn.Identity)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('%(_CoreNoWarn.Identity)', '$(CoreDiagnosticPattern)'))" />
+      <_CoreSettingChange
+        Include="WarningsNotAsErrors"
+        Text="WarningsNotAsErrors holds %(_CoreWarningsNotAsErrors.Identity)"
+        Condition="'%(_CoreWarningsNotAsErrors.Identity)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('%(_CoreWarningsNotAsErrors.Identity)', '$(CoreDiagnosticPattern)'))" />
+      <_CoreSettingChange
+        Include="Analyzer"
+        Text="the analyzer %(_CoreAnalyzerMissing.Identity) is missing"
+        Condition="'%(_CoreAnalyzerMissing.Identity)' != ''" />
+      <_CoreSettingChange
+        Include="AdditionalFiles"
+        Text="AdditionalFiles lacks %(_CoreAdditionalFilesMissing.Identity)"
+        Condition="'%(_CoreAdditionalFilesMissing.Identity)' != ''" />
+    </ItemGroup>
+    <Error
+      Condition="'@(_CoreSettingChange)' != ''"
+      Text="$(MSBuildProjectName): @(_CoreSettingChange->'%(Text)', '; ') (set by the core; change it in the template)" />
+  </Target>
+</Project>

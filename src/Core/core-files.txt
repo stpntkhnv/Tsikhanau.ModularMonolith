@@ -4,6 +4,7 @@
 .githooks/
 BannedSymbols.txt
 Directory.Build.props
+Directory.Build.targets
 Directory.Packages.props
 gate.sh
 global.json

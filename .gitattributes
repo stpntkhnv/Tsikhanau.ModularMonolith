@@ -4,6 +4,7 @@
 /.githooks/** text eol=lf
 /BannedSymbols.txt text eol=lf
 /Directory.Build.props text eol=lf
+/Directory.Build.targets text eol=lf
 /Directory.Packages.props text eol=lf
 /gate.sh text eol=lf
 /global.json text eol=lf

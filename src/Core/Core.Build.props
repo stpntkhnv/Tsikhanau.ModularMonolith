@@ -25,6 +25,7 @@
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
+    <CoreAnalyzer Include="Tsikhanau.Monolith.Analyzers" />
   </ItemGroup>
   <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.ArchRules' and !$(MSBuildProjectName.EndsWith('.Testing.App')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers'">
     <ProjectReference
@@ -32,8 +33,21 @@
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
+    <CoreAnalyzer Include="Tsikhanau.Railway.Analyzers" />
   </ItemGroup>
   <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.ArchRules' and !$(MSBuildProjectName.EndsWith('.Testing.App')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Perf'">
     <AdditionalFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../BannedSymbols.txt'))" />
+    <CoreAdditionalFiles Include="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../../BannedSymbols.txt'))" />
   </ItemGroup>
+  <PropertyGroup>
+    <CoreBuildPropsImported>true</CoreBuildPropsImported>
+    <CoreNoWarn>CS1591</CoreNoWarn>
+  </PropertyGroup>
+  <Target
+    Name="CheckCoreBuildTargetsImported"
+    BeforeTargets="CoreCompile"
+    Condition="'$(CoreBuildTargetsImported)' != 'true'">
+    <Error
+      Text="$(MSBuildProjectName): the build does not import src/Core/Core.Build.targets, which checks the core's build settings; a Directory.Build.targets nearer to the project, ImportDirectoryBuildTargets or DirectoryBuildTargetsPath hides the root one (set by the core; change it in the template)" />
+  </Target>
 </Project>
