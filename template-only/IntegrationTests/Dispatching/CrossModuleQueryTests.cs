@@ -1,4 +1,3 @@
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.GetPongSource;

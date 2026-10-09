@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.IssueToken;
 using Tsikhanau.Monolith.TestModules.Pings.Features.MailToken;

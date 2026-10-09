@@ -38,7 +38,7 @@ dotnet_diagnostic.RS0030.severity = none
 [src/Core/Infrastructure/{Queues/ModuleQueueProcessor.cs,Cleanup/ModuleCleanupProcessor.cs}]
 dotnet_diagnostic.CA1031.severity = none
 
-[{src/Tests/**.cs,template-only/IntegrationTests/**.cs,template-only/UnitTests/**.cs,template-only/Analyzers.Tests/**.cs,template-only/Shared.Tests/**.cs}]
+[{src/Core/Testing/**.cs,src/Tests/**.cs,template-only/IntegrationTests/**.cs,template-only/UnitTests/**.cs,template-only/Analyzers.Tests/**.cs,template-only/Shared.Tests/**.cs}]
 dotnet_diagnostic.CA1031.severity = none
 dotnet_diagnostic.CA2100.severity = none
 dotnet_diagnostic.CA1849.severity = none

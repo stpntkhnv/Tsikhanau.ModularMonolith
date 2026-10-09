@@ -1,5 +1,4 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Testing.Modules;
 using Tsikhanau.Monolith.Api.Endpoints;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
@@ -7,6 +6,7 @@ using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Domain.Aggregates;
 using Tsikhanau.Monolith.Domain.ValueObjects;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Monolith.Testing.Modules;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts;
 
 namespace ModularMonolith.ArchTests.Modules;
@@ -53,15 +53,19 @@ public sealed class RuleCoverageTests
             .ShouldContain(type => TakesDependency<IPingsQueryFacade>(type));
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
-    public void Production_module_loads_its_project_and_its_contracts(String name) =>
+    public void Production_module_loads_its_project_and_its_contracts(String name)
+    {
+        Assert.SkipWhen(name == ProductionModules.Placeholder, "There are no production modules");
+
         ArchModules
             .Get(name).Assemblies
             .Select(assembly => assembly.GetName().Name)
             .ShouldBe(
                 [$"ModularMonolith.Modules.{name}", $"ModularMonolith.Modules.{name}.Contracts"],
                 ignoreOrder: true);
+    }
 
     private static Boolean TakesDependency<TDependency>(Type type) =>
         type

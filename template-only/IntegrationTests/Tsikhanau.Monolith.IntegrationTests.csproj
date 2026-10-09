@@ -1,11 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
-    <ProjectReference Include="..\..\src\Tests\Testing\ModularMonolith.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Core\Testing\Tsikhanau.Monolith.Testing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <None
+      Include="..\..\src\Bootstrapper\*.Bootstrapper\appsettings*.json"
+      Link="%(Filename)%(Extension)"
+      CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

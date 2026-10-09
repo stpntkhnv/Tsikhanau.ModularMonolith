@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;

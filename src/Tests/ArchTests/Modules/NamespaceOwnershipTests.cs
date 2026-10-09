@@ -1,6 +1,6 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Testing.Modules;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Modules;
 
@@ -14,10 +14,12 @@ public sealed class NamespaceOwnershipTests
         UnhandledFixtureNamespace,
     ];
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Module_assembly_holds_only_the_module_namespace_outside_its_contracts(String name)
     {
+        Assert.SkipWhen(name == ProductionModules.Placeholder, "There are no production modules");
+
         var module = ArchModules.Get(name);
 
         var strayTypeNames = ArchModules
@@ -28,10 +30,12 @@ public sealed class NamespaceOwnershipTests
         strayTypeNames.ShouldBeEmpty();
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Contracts_assembly_holds_only_the_contracts_namespace(String name)
     {
+        Assert.SkipWhen(name == ProductionModules.Placeholder, "There are no production modules");
+
         var module = ArchModules.Get(name);
 
         var strayTypeNames = ArchModules

@@ -1,4 +1,4 @@
-using ModularMonolith.Testing.Database;
+using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Xunit.Sdk;
 using Xunit.v3;
 

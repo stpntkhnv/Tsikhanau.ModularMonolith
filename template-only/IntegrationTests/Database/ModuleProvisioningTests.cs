@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Hosting;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

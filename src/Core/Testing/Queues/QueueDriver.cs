@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Xunit;
 
-namespace ModularMonolith.Testing.Queues;
+namespace Tsikhanau.Monolith.Testing.Queues;
 
 public static class QueueDriver
 {

@@ -1,10 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
-using Xunit;
 
-namespace ModularMonolith.Testing.Cleanup;
+namespace Tsikhanau.Monolith.IntegrationTests.Hosting;
 
-public static class CleanupDriver
+internal static class CleanupDriver
 {
     public static async Task<Int32> RunAllAsync(IServiceProvider serviceProvider)
     {

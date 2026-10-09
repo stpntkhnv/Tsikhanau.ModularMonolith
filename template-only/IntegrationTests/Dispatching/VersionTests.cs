@@ -1,4 +1,3 @@
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Features.AddEcho;
 using Tsikhanau.Monolith.TestModules.Pings.Features.InspectPing;

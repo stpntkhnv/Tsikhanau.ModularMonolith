@@ -1,5 +1,5 @@
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 

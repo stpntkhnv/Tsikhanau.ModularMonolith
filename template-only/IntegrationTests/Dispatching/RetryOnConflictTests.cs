@@ -1,4 +1,3 @@
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;

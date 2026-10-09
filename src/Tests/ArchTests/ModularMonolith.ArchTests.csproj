@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj" />
-    <ProjectReference Include="..\Testing\ModularMonolith.Testing.csproj" />
+    <ProjectReference Include="..\..\Core\Testing\Tsikhanau.Monolith.Testing.csproj" />
     <ProjectReference Include="..\..\..\template-only\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
   </ItemGroup>
   <ItemGroup>

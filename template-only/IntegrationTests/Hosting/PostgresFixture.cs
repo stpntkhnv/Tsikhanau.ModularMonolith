@@ -1,7 +1,6 @@
 using Testcontainers.PostgreSql;
-using Xunit;
 
-namespace ModularMonolith.Testing.Database;
+namespace Tsikhanau.Monolith.IntegrationTests.Hosting;
 
 public sealed class PostgresFixture : IAsyncLifetime
 {

@@ -4,7 +4,7 @@ using Respawn.Graph;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Xunit;
 
-namespace ModularMonolith.Testing.Database;
+namespace Tsikhanau.Monolith.Testing.Database;
 
 public sealed class DatabaseResetter
 {

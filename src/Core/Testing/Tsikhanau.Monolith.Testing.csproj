@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj" />
+    <ProjectReference Include="..\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Dapper" />

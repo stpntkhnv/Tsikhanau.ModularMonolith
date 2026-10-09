@@ -1,10 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
-using ModularMonolith.Testing.Database;
-using ModularMonolith.Testing.Modules;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.IntegrationTests.Modules;
 
@@ -21,26 +19,17 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
         WHERE n.nspname = @Schema AND pg_get_userbyid(c.relowner) <> @Login
         """;
 
-    public static TheoryData<String, String> CreateModulePairs()
-    {
-        var modulePairs = new TheoryData<String, String>();
-        foreach (var moduleName in ProductionModules.Names)
-        {
-            foreach (var otherModuleName in ProductionModules.Names.Where(name => name != moduleName))
-            {
-                modulePairs.Add(moduleName, otherModuleName);
-            }
-        }
-
-        return modulePairs;
-    }
-
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public async Task Module_connects_as_its_own_login(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var moduleConnectionProbe = CreateConnectionProbe(name);
-        var loginName = LoginNames.BuildLoginName(App.GetModule(name).Schema);
+        var loginName = App.GetModuleLoginName(name);
 
         var sessionUser = await moduleConnectionProbe.ExecuteScalarAsync<String>("SELECT session_user");
         var currentUser = await moduleConnectionProbe.ExecuteScalarAsync<String>("SELECT current_user");
@@ -51,29 +40,39 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
         isSuperuser.ShouldBeFalse();
     }
 
-    [Theory(SkipTestWithoutData = true)]
-    [MemberData(nameof(CreateModulePairs))]
+    [Theory]
+    [EveryProductionModulePair]
     public async Task Module_cannot_become_another_module(String name, String otherName)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var otherSchema = App.GetModule(otherName).Schema;
-        var otherLoginName = LoginNames.BuildLoginName(otherSchema);
+        var otherLoginName = App.GetModuleLoginName(otherName);
         var outboxAfterResetSql = $"RESET ROLE; SELECT count(*) FROM \"{otherSchema}\".outbox_messages";
 
         var setRoleSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync($"SET ROLE {otherLoginName}");
         var afterResetSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync(outboxAfterResetSql);
         var groupRoleSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync(
-            $"SET ROLE {LoginNames.Group}");
+            $"SET ROLE {App.ModuleGroupName}");
 
         setRoleSqlState.ShouldBe(DeniedSqlState);
         afterResetSqlState.ShouldBe(DeniedSqlState);
         groupRoleSqlState.ShouldBe(DeniedSqlState);
     }
 
-    [Theory(SkipTestWithoutData = true)]
-    [MemberData(nameof(CreateModulePairs))]
+    [Theory]
+    [EveryProductionModulePair]
     public async Task Module_reaches_another_module_only_through_its_inbox(String name, String otherName)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var ownSchema = App.GetModule(name).Schema;
         var foreignSchema = App.GetModule(otherName).Schema;
@@ -112,12 +111,17 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
         deliverySqlState.HasValue.ShouldBeFalse();
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public async Task Module_login_owns_its_schema_and_everything_in_it(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var schema = App.GetModule(name).Schema;
-        var loginName = LoginNames.BuildLoginName(schema);
+        var loginName = App.GetModuleLoginName(name);
 
         var ownerName = await App.Database.ExecuteScalarAsync<String>(OwnerSql, new { Schema = schema });
         var objectsOwnedByOthers = await App.Database.ExecuteScalarAsync<Int64>(
@@ -135,9 +139,6 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
         VALUES ('{{messageId}}', 'probe', '{}'::jsonb, NULL, 0, now(), now(), now())
         ON CONFLICT (id) DO NOTHING
         """;
-
-    private ModuleLoginNames LoginNames =>
-        new(App.Services.GetRequiredService<IOptions<DatabaseSettings>>().Value.LoginPrefix);
 
     private ModuleConnectionProbe CreateConnectionProbe(String name) =>
         new(App.Services.GetRequiredKeyedService<NpgsqlDataSource>(App.GetModule(name).Key));

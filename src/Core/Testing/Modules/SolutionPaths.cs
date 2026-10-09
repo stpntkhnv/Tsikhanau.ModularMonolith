@@ -1,4 +1,4 @@
-namespace ModularMonolith.Testing.Modules;
+namespace Tsikhanau.Monolith.Testing.Modules;
 
 public static class SolutionPaths
 {

@@ -26,14 +26,14 @@
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
   </ItemGroup>
-  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers'">
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'ModularMonolith.Testing.App' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers'">
     <ProjectReference
       Include="$(MSBuildThisFileDirectory)src/Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
   </ItemGroup>
-  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Perf'">
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Testing' and '$(MSBuildProjectName)' != 'ModularMonolith.Testing.App' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Perf'">
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 </Project>

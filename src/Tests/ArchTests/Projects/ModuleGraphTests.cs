@@ -1,5 +1,5 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Projects;
 

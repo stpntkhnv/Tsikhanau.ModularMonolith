@@ -1,10 +1,10 @@
 using System.Reflection;
-using ModularMonolith.Testing.Modules;
 using Tsikhanau.Monolith.Api.Endpoints;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Domain.Aggregates;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Support;
 

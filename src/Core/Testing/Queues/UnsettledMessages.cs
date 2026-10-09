@@ -7,7 +7,7 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Xunit;
 
-namespace ModularMonolith.Testing.Queues;
+namespace Tsikhanau.Monolith.Testing.Queues;
 
 public static class UnsettledMessages
 {

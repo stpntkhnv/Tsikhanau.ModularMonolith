@@ -1,4 +1,4 @@
-namespace ModularMonolith.Testing.Queues;
+namespace Tsikhanau.Monolith.Testing.Queues;
 
 public sealed record UnsettledMessage(String Module, String Table, String Type, Int32 Attempts, String LastError)
 {

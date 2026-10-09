@@ -1,4 +1,4 @@
-namespace ModularMonolith.Testing.App;
+namespace Tsikhanau.Monolith.Testing.App;
 
 public static class TestSettings
 {

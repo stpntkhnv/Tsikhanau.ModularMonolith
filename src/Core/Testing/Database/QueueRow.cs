@@ -1,4 +1,4 @@
-namespace ModularMonolith.Testing.Database;
+namespace Tsikhanau.Monolith.Testing.Database;
 
 public sealed record QueueRow(
     Guid Id,

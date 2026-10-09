@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ScheduleTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Monolith.TestModules.Pongs;

@@ -1,7 +1,7 @@
 using Npgsql;
 using Xunit;
 
-namespace ModularMonolith.Testing.Database;
+namespace Tsikhanau.Monolith.Testing.Database;
 
 public sealed class UncommittedUpdate : IAsyncDisposable
 {

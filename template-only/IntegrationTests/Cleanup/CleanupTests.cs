@@ -1,4 +1,3 @@
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Cleanup;

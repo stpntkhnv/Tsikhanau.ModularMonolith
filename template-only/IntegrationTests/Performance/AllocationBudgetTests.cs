@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 

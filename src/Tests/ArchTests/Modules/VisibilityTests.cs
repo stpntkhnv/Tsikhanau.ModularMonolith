@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Testing.Modules;
 using Tsikhanau.Monolith.Api.Endpoints;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Modules;
 
@@ -44,10 +44,12 @@ public sealed class VisibilityTests
         exposedTypeNames.ShouldBeEmpty();
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Module_assembly_exposes_only_its_module_class(String name)
     {
+        Assert.SkipWhen(name == ProductionModules.Placeholder, "There are no production modules");
+
         var module = ArchModules.Get(name);
 
         var exposedTypeNames = ArchModules

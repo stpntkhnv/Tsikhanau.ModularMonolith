@@ -2,7 +2,7 @@ using Npgsql;
 using Tsikhanau.Railway;
 using Xunit;
 
-namespace ModularMonolith.Testing.Database;
+namespace Tsikhanau.Monolith.Testing.Database;
 
 public sealed class ModuleConnectionProbe(NpgsqlDataSource npgsqlDataSource)
 {

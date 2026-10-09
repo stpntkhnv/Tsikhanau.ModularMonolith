@@ -4,11 +4,11 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

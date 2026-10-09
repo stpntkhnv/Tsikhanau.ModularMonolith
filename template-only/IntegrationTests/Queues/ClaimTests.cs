@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 using Tsikhanau.Monolith.TestModules.Pongs;
 

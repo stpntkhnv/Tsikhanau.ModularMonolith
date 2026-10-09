@@ -1,26 +1,27 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
-using ModularMonolith.Testing.Database;
-using ModularMonolith.Testing.Queues;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.Testing.Queues;
 using Tsikhanau.Railway;
 using Xunit;
 
-namespace ModularMonolith.Testing.App;
+namespace Tsikhanau.Monolith.Testing.App;
 
-public sealed class AppFixture : IAsyncLifetime
+public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
+    where TEntryPoint : class
 {
     private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder("postgres:17-alpine").Build();
-    private readonly AppFactory _appFactory;
+    private readonly AppFactory<TEntryPoint> _appFactory;
     private Optional<DatabaseResetter> _databaseResetter;
 
-    public AppFixture()
+    protected AppFixture()
     {
         Time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 28, 8, 0, 0, TimeSpan.Zero));
-        _appFactory = new AppFactory(Time, Environments.Development);
+        _appFactory = CreateFactory(Time, Environments.Development);
     }
 
     public FakeTimeProvider Time { get; }
@@ -30,6 +31,8 @@ public sealed class AppFixture : IAsyncLifetime
     public String ConnectionString => _postgreSqlContainer.GetConnectionString();
 
     public DatabaseProbe Database => new(ConnectionString);
+
+    public String ModuleGroupName => ModuleLogins.GetGroupName(Services);
 
     public HttpClient CreateClient() => _appFactory.CreateClient();
 
@@ -45,19 +48,22 @@ public sealed class AppFixture : IAsyncLifetime
             .GetRequiredService<ModuleRegistry>().Modules
             .Single(module => module.Name == name);
 
+    public String GetModuleLoginName(String moduleName) =>
+        ModuleLogins.GetLoginName(Services, GetModule(moduleName).Schema);
+
     public Task<UncommittedUpdate> ExecuteUncommittedAsync(String moduleName, String sql) =>
         UncommittedUpdate.ExecuteAsync(GetDataSource(moduleName), sql);
 
-    public AppFactory StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
+    public AppFactory<TEntryPoint> StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
-        var appFactory = new AppFactory(Time, environmentName);
+        var appFactory = CreateFactory(Time, environmentName);
         Start(appFactory, overrides);
         return appFactory;
     }
 
     public Exception CaptureStartupFailure(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
-        using var appFactory = new AppFactory(Time, environmentName);
+        using var appFactory = CreateFactory(Time, environmentName);
         try
         {
             Start(appFactory, overrides);
@@ -91,10 +97,12 @@ public sealed class AppFixture : IAsyncLifetime
         await _postgreSqlContainer.DisposeAsync();
     }
 
+    protected abstract AppFactory<TEntryPoint> CreateFactory(TimeProvider timeProvider, String environmentName);
+
     private NpgsqlDataSource GetDataSource(String moduleName) =>
         Services.GetRequiredKeyedService<NpgsqlDataSource>(GetModule(moduleName).Key);
 
-    private void Start(AppFactory appFactory, IReadOnlyDictionary<String, String> overrides)
+    private void Start(AppFactory<TEntryPoint> appFactory, IReadOnlyDictionary<String, String> overrides)
     {
         var environmentVariables = new Dictionary<String, String>(
             TestSettings.CreateEnvironmentVariables(ConnectionString));

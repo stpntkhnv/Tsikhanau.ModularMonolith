@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 

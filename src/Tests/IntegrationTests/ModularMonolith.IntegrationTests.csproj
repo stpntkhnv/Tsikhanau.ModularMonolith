@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\Testing\ModularMonolith.Testing.csproj" />
+    <ProjectReference Include="..\Testing.App\ModularMonolith.Testing.App.csproj" />
   </ItemGroup>
 </Project>

@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using ModularMonolith.Testing.Database;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.GetPongSource;

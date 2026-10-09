@@ -31,6 +31,9 @@
   <Folder Name="/src/Core/Shared/">
     <Project Path="src/Core/Shared/Tsikhanau.Monolith.Shared.csproj" />
   </Folder>
+  <Folder Name="/src/Core/Testing/">
+    <Project Path="src/Core/Testing/Tsikhanau.Monolith.Testing.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/" />
   <Folder Name="/src/Packages/">
     <Project Path="src/Packages/Tsikhanau.Railway.Analyzers.CodeFixes/Tsikhanau.Railway.Analyzers.CodeFixes.csproj" />
@@ -45,7 +48,10 @@
   <Folder Name="/src/Tests/IntegrationTests/">
     <Project Path="src/Tests/IntegrationTests/ModularMonolith.IntegrationTests.csproj" />
   </Folder>
-  <Folder Name="/src/Tests/Testing/">
-    <Project Path="src/Tests/Testing/ModularMonolith.Testing.csproj" />
+  <Folder Name="/src/Tests/Testing.App/">
+    <Project Path="src/Tests/Testing.App/ModularMonolith.Testing.App.csproj" />
+  </Folder>
+  <Folder Name="/src/Tests/UnitTests/">
+    <Project Path="src/Tests/UnitTests/ModularMonolith.UnitTests.csproj" />
   </Folder>
 </Solution>

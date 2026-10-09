@@ -2,9 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
-using ModularMonolith.Testing.Modules;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Railway;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.IntegrationTests.Modules;
 
@@ -25,26 +24,32 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
             .Select(module => module.Name)
             .ToList();
 
-        Assert.SkipWhen(
-            ProductionModules.Names.Length == 0 && registeredModuleNames.Count == 0,
-            "There are no production modules");
-
         registeredModuleNames.ShouldBe(ProductionModules.Names, ignoreOrder: true);
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Module_facade_is_registered(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var moduleFacade = App.Services.GetService(App.GetModule(name).Key);
 
         moduleFacade.ShouldNotBeNull();
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Query_facade_is_the_module_facade(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var module = App.GetModule(name);
 
         var queryFacade = App.Services.GetService(module.QueryFacadeKey);
@@ -54,23 +59,31 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
         queryFacade.ShouldBeSameAs(moduleFacade);
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Module_settings_are_validated_with_data_annotations(String name)
     {
-        var foundSettingsType = FindSettingsType(App.GetModule(name));
-        Assert.SkipWhen(foundSettingsType.IsNone, $"Module {name} has no settings type");
-        var settingsType = foundSettingsType.Value;
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
 
-        var validatorTypes = GetValidatorTypes(settingsType);
+        var settingsTypesWithoutValidation = GetSettingsTypes(App.GetModule(name))
+            .Where(settingsType => !IsValidatedWithDataAnnotations(settingsType))
+            .ToList();
 
-        validatorTypes.ShouldContain(typeof(DataAnnotationValidateOptions<>).MakeGenericType(settingsType));
+        settingsTypesWithoutValidation.ShouldBeEmpty();
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public async Task Module_schema_holds_exactly_the_queues_and_its_own_tables(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var tableNames = await App.Database.ReadTableNamesAsync(App.GetModule(name).Schema);
 
         String[] expectedTableNames = [.. CommonTables, .. OwnTables.GetValueOrDefault(name, [])];
@@ -78,10 +91,15 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
         tableNames.ShouldBe(expectedTableNames, ignoreOrder: true);
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public async Task Module_database_health_check_is_healthy(String name)
     {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
         var healthCheckName = $"database-{App.GetModule(name).Schema}";
         var healthCheckService = App.Services.GetRequiredService<HealthCheckService>();
 
@@ -91,12 +109,14 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
         healthReport.Entries[healthCheckName].Status.ShouldBe(HealthStatus.Healthy);
     }
 
-    private static Optional<Type> FindSettingsType(ModuleDescriptor module)
-    {
-        var settingsTypeName = $"{module.Key.Namespace}.Settings.{module.Name}Settings";
+    private static IEnumerable<Type> GetSettingsTypes(ModuleDescriptor module) =>
+        module.Key.Assembly
+            .GetTypes()
+            .Where(type => type.FullName == $"{module.Key.Namespace}.Settings.{module.Name}Settings");
 
-        return Optional<Type>.FromNullable(module.Key.Assembly.GetType(settingsTypeName));
-    }
+    private Boolean IsValidatedWithDataAnnotations(Type settingsType) =>
+        GetValidatorTypes(settingsType)
+            .Contains(typeof(DataAnnotationValidateOptions<>).MakeGenericType(settingsType));
 
     private List<Type> GetValidatorTypes(Type settingsType) =>
         App.Services

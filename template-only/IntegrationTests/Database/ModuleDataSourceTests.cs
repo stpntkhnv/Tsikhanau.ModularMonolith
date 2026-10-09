@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings;

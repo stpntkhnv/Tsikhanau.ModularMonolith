@@ -2,7 +2,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Tsikhanau.Monolith.IntegrationTests" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
-    <InternalsVisibleTo Include="ModularMonolith.IntegrationTests" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.Testing" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.Perf" />
   </ItemGroup>
   <ItemGroup>

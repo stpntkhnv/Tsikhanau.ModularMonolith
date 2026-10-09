@@ -1,6 +1,6 @@
 using Xunit.v3;
 
-namespace ModularMonolith.Testing.Modules;
+namespace Tsikhanau.Monolith.Testing.Modules;
 
 public sealed class EveryProductionModuleAttribute : MemberDataAttributeBase
 {

@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.Testing.Database;
 using Npgsql;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;

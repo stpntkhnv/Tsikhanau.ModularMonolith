@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
 using Npgsql;
+using Tsikhanau.Monolith.Testing.App;
 
 namespace ModularMonolith.IntegrationTests.Host;
 

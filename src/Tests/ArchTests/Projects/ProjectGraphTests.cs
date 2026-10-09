@@ -1,14 +1,16 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Projects;
 
 public sealed class ProjectGraphTests
 {
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Module_has_its_project_and_its_contracts(String name)
     {
+        Assert.SkipWhen(name == ProductionModules.Placeholder, "There are no production modules");
+
         var moduleFolder = Path.Combine(SolutionPaths.Modules, name);
         var projectPaths = Directory
             .GetFiles(moduleFolder, "*.csproj", SearchOption.AllDirectories)
@@ -24,10 +26,12 @@ public sealed class ProjectGraphTests
             ignoreOrder: true);
     }
 
-    [Theory(SkipTestWithoutData = true)]
+    [Theory]
     [EveryProductionModule]
     public void Project_references_follow_the_layer_rules(String moduleName)
     {
+        Assert.SkipWhen(moduleName == ProductionModules.Placeholder, "There are no production modules");
+
         var otherModuleContractsNames = ArchModules.Production
             .Where(otherModuleName => otherModuleName != moduleName)
             .Select(otherModuleName => $"ModularMonolith.Modules.{otherModuleName}.Contracts")
