@@ -363,6 +363,33 @@ case_no_source() {
   bash scripts/core-hash.sh check
 }
 
+expect_update_to_b_from() {
+  expect_success
+  expect_core_of "$b_tree"
+  expected_lock "$b_tree" "$1" "$(commit_of B)" > "$work/lock-expected"
+  expect_same "$work/lock-expected" core.lock "core.lock is not version, hash, source $1 and commit of B"
+  bash scripts/core-hash.sh check
+  git diff --quiet || fail "changes left unstaged"
+  [[ -z "$(git ls-files --others --exclude-standard)" ]] || fail "files left untracked"
+  ! git diff --cached --quiet || fail "nothing staged"
+}
+
+case_url_source() {
+  local app url=file://$template
+  app=$(new_consumer url-in-lock)
+  cd "$app"
+  sed -i "s|^source=.*|source=$url|" core.lock
+  git commit -q -am "url source"
+  run_update scripts/update-core.sh B
+  expect_update_to_b_from "$url"
+  app=$(new_consumer url-from)
+  cd "$app"
+  sed -i '/^source=/d' core.lock
+  git commit -q -am "no source"
+  run_update scripts/update-core.sh B --from "$url"
+  expect_update_to_b_from "$url"
+}
+
 dirty_core_file() {
   printf '\n' >> src/Core/Shared/Collections/EnumerableExtensions.cs
 }
@@ -511,6 +538,7 @@ run_case "update works from a subfolder" case_subfolder
 run_case "update works in a git worktree and leaves the main worktree alone" case_worktree
 run_case "a CRLF solution keeps CRLF" case_crlf_solution
 run_case "no source refuses; --from with a relative path works and is recorded absolute" case_no_source
+run_case "a file:// URL works as source= in core.lock and as --from, and is recorded as given" case_url_source
 run_case "refuses an uncommitted core edit" refusal dirty-core dirty_core_file "$uncommitted_refusal" B
 run_case "refuses a staged core edit" refusal staged-core staged_core_file "$uncommitted_refusal" B
 run_case "refuses an untracked core file" refusal untracked-core untracked_core_file "$uncommitted_refusal" B

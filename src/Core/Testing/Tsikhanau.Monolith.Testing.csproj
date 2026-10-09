@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -3,6 +3,7 @@
     <ProjectReference Include="..\..\src\Core\Domain\Tsikhanau.Monolith.Domain.csproj" />
     <ProjectReference Include="..\..\src\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Core\Api\Tsikhanau.Monolith.Api.csproj" />
+    <ProjectReference Include="..\..\src\Core\Testing\Tsikhanau.Monolith.Testing.csproj" />
     <ProjectReference Include="..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
   </ItemGroup>
   <ItemGroup>
