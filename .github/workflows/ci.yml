@@ -28,7 +28,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ env.NUGET_PACKAGES }}
           key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/*.props', '**/*.csproj') }}
