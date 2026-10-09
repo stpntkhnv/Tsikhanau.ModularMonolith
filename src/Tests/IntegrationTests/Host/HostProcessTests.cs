@@ -5,9 +5,9 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Hosting;
-using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
 using ModularMonolith.Testing.App;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace ModularMonolith.IntegrationTests.Host;
 

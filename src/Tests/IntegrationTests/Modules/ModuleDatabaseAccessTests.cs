@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.BuildingBlocks.Infrastructure.Database;
 using ModularMonolith.Testing.App;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.Testing.Modules;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Database;
 
 namespace ModularMonolith.IntegrationTests.Modules;
 

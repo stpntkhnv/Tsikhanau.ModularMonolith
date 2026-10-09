@@ -1,12 +1,12 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Api.Endpoints;
-using ModularMonolith.BuildingBlocks.Application.Commands;
-using ModularMonolith.BuildingBlocks.Application.Queries;
-using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
-using ModularMonolith.BuildingBlocks.Domain.Events;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Application.Queries;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Domain.Events;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Modules;
 

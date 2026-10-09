@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.BuildingBlocks.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues;
 using Xunit;
 
 namespace ModularMonolith.Testing.Queues;

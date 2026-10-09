@@ -2,8 +2,8 @@ using System.Text.RegularExpressions;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Api.Endpoints;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Shared.Reflection;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace ModularMonolith.ArchTests.Modules;
@@ -20,8 +20,8 @@ public sealed class LayerDependencyTests
         "Microsoft.AspNetCore",
         "Npgsql",
         "NpgsqlTypes",
-        "ModularMonolith.BuildingBlocks.Infrastructure",
-        "ModularMonolith.BuildingBlocks.Api");
+        "Tsikhanau.Monolith.Infrastructure",
+        "Tsikhanau.Monolith.Api");
 
     private static readonly String PersistenceTypesOtherThanUnitOfWorkErrors = BuildTypePattern(
         [
@@ -29,9 +29,9 @@ public sealed class LayerDependencyTests
             "Npgsql",
             "NpgsqlTypes",
             "Dapper",
-            "ModularMonolith.BuildingBlocks.Infrastructure",
+            "Tsikhanau.Monolith.Infrastructure",
         ],
-        allowedTypeNames: ["ModularMonolith.BuildingBlocks.Infrastructure.Persistence.UnitOfWorkErrors"]);
+        allowedTypeNames: ["Tsikhanau.Monolith.Infrastructure.Persistence.UnitOfWorkErrors"]);
 
     private static readonly Architecture Architecture =
         new ArchLoader()
@@ -46,7 +46,7 @@ public sealed class LayerDependencyTests
         var allowedNamespaces = BuildNamespacePattern(
             "System",
             $"{module.RootNamespace}.Domain",
-            "ModularMonolith.BuildingBlocks.Domain",
+            "Tsikhanau.Monolith.Domain",
             "Tsikhanau.Railway");
 
         var rule = Types()
@@ -79,7 +79,7 @@ public sealed class LayerDependencyTests
 
         var violations = rule.GetViolationsIn(Architecture);
 
-        violations.ShouldBeEmpty("Domain sees only System, its own Domain, BuildingBlocks.Domain and Railway");
+        violations.ShouldBeEmpty("Domain sees only System, its own Domain, Tsikhanau.Monolith.Domain and Railway");
     }
 
     [Theory]
@@ -203,7 +203,7 @@ public sealed class LayerDependencyTests
         var allowedNamespaces = BuildNamespacePattern(
             "System",
             $"{module.RootNamespace}.Contracts",
-            "ModularMonolith.BuildingBlocks.Contracts",
+            "Tsikhanau.Monolith.Contracts",
             "Tsikhanau.Railway");
 
         var rule = Types()

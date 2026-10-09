@@ -1,8 +1,8 @@
 using ModularMonolith.Bootstrapper.Defaults;
 using ModularMonolith.Bootstrapper.Platform;
-using ModularMonolith.BuildingBlocks.Api.Modules;
-using ModularMonolith.BuildingBlocks.Infrastructure.Diagnostics;
-using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
+using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 
 await using var app = BuildApp(args);
 try

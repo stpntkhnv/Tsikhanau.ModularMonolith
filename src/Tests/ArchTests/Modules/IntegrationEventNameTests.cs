@@ -1,7 +1,7 @@
 using System.Reflection;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.ArchTests.Modules;

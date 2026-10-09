@@ -1,7 +1,7 @@
 using System.Reflection;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Application.Commands;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.ArchTests.Modules;

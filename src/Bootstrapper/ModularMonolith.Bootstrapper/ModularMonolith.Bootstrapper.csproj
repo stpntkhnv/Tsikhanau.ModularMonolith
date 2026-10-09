@@ -10,7 +10,7 @@
     <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\BuildingBlocks\Api\ModularMonolith.BuildingBlocks.Api.csproj" />
-    <ProjectReference Include="..\..\BuildingBlocks\Infrastructure\ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Core\Api\Tsikhanau.Monolith.Api.csproj" />
+    <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

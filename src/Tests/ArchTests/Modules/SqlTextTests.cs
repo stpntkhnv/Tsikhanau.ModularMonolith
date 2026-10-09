@@ -1,10 +1,10 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Application.Queries;
-using ModularMonolith.BuildingBlocks.Contracts.Queries;
-using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Application.Queries;
+using Tsikhanau.Monolith.Contracts.Queries;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.ArchTests.Modules;
@@ -80,7 +80,7 @@ public sealed partial class SqlTextTests
         var literals = StringLiterals.ReadFrom(ArchModules.Get("Pongs"));
 
         literals.ShouldContain((
-            "ModularMonolith.TestModules.Pongs.Features.CountPongs.CountPongsQueryHandler",
+            "Tsikhanau.Monolith.TestModules.Pongs.Features.CountPongs.CountPongsQueryHandler",
             "SELECT count(*)::int FROM pongs.pongs"));
     }
 
@@ -138,7 +138,7 @@ public sealed partial class SqlTextTests
 
     [Theory]
     [InlineData("SELECT own.pings.id FROM own.pings")]
-    [InlineData("ModularMonolith.TestModules.Pings.Features.GetPing")]
+    [InlineData("Tsikhanau.Monolith.TestModules.Pings.Features.GetPing")]
     [InlineData("pings.ping-created")]
     [InlineData("too many pings.")]
     public void Text_that_only_mentions_a_schema_does_not_name_it(String text) =>

@@ -1,14 +1,14 @@
 using System.Reflection;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Application.Commands;
-using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
-using ModularMonolith.BuildingBlocks.Contracts.Queries;
-using ModularMonolith.BuildingBlocks.Domain.Aggregates;
-using ModularMonolith.BuildingBlocks.Domain.Events;
-using ModularMonolith.BuildingBlocks.Domain.Ids;
-using ModularMonolith.BuildingBlocks.Domain.ValueObjects;
-using ModularMonolith.Shared.Reflection;
 using Mono.Cecil;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Contracts.Queries;
+using Tsikhanau.Monolith.Domain.Aggregates;
+using Tsikhanau.Monolith.Domain.Events;
+using Tsikhanau.Monolith.Domain.Ids;
+using Tsikhanau.Monolith.Domain.ValueObjects;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Modules;
 

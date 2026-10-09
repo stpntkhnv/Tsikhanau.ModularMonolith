@@ -1,6 +1,6 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Application.Modules;
-using ModularMonolith.BuildingBlocks.Application.Queries;
+using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Application.Queries;
 
 namespace ModularMonolith.ArchTests.Modules;
 

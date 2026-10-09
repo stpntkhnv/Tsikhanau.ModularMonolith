@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
 using ModularMonolith.Testing.App;
 using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Railway;
 
 namespace ModularMonolith.IntegrationTests.Modules;

@@ -1,10 +1,10 @@
 using System.Reflection;
-using ModularMonolith.BuildingBlocks.Api.Endpoints;
-using ModularMonolith.BuildingBlocks.Application.Modules;
-using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
-using ModularMonolith.BuildingBlocks.Domain.Aggregates;
-using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Domain.Aggregates;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 
 namespace ModularMonolith.ArchTests.Support;
 
@@ -39,12 +39,12 @@ public static class ArchModules
             .SelectMany(name => Get(name).Types)
             .ToList();
 
-    public static Assembly TestModulesAssembly => Assembly.Load("ModularMonolith.TestModules");
+    public static Assembly TestModulesAssembly => Assembly.Load("Tsikhanau.Monolith.TestModules");
 
     public static ArchModule Get(String name) =>
         Production.Contains(name)
             ? new ArchModule(name, $"ModularMonolith.Modules.{name}", LoadProductionAssemblies(name))
-            : new ArchModule(name, $"ModularMonolith.TestModules.{name}", [TestModulesAssembly]);
+            : new ArchModule(name, $"Tsikhanau.Monolith.TestModules.{name}", [TestModulesAssembly]);
 
     public static Assembly LoadModuleAssembly(String name) => Assembly.Load($"ModularMonolith.Modules.{name}");
 

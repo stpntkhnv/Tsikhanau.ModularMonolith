@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\Domain\ModularMonolith.BuildingBlocks.Domain.csproj" />
-    <ProjectReference Include="..\Contracts\ModularMonolith.BuildingBlocks.Contracts.csproj" />
-  </ItemGroup>
-</Project>

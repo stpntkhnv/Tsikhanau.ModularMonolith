@@ -1,10 +1,10 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.BuildingBlocks.Infrastructure.Inbox;
-using ModularMonolith.BuildingBlocks.Infrastructure.InternalCommands;
-using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
-using ModularMonolith.BuildingBlocks.Infrastructure.Outbox;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Inbox;
+using Tsikhanau.Monolith.Infrastructure.InternalCommands;
+using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Xunit;
 
 namespace ModularMonolith.Testing.Queues;

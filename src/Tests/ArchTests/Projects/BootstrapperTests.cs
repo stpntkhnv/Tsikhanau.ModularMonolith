@@ -1,8 +1,8 @@
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Api.Modules;
 using Mono.Cecil;
+using Tsikhanau.Monolith.Api.Modules;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace ModularMonolith.ArchTests.Projects;
@@ -29,6 +29,9 @@ public sealed class BootstrapperTests
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching("^ModularMonolith(?!\\.Bootstrapper\\.Defaults$)(\\..+)?$")
+            .AndShould()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching("^Tsikhanau\\.Monolith(\\..+)?$")
             .GetViolationsIn(Architecture);
 
         defaultsNamespaceTypes.ShouldNotBeEmpty();

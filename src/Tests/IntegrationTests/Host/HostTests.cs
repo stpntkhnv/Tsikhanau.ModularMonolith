@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
 using ModularMonolith.Testing.App;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace ModularMonolith.IntegrationTests.Host;
 

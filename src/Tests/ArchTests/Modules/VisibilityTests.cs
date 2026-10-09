@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Api.Endpoints;
-using ModularMonolith.Shared.Reflection;
 using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Modules;
 

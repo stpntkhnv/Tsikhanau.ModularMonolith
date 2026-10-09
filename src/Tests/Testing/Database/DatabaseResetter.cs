@@ -1,7 +1,7 @@
-using ModularMonolith.BuildingBlocks.Infrastructure.Persistence;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Xunit;
 
 namespace ModularMonolith.Testing.Database;

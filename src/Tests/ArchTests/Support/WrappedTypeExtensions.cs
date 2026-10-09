@@ -1,4 +1,4 @@
-using ModularMonolith.BuildingBlocks.Application.Modules;
+using Tsikhanau.Monolith.Application.Modules;
 
 namespace ModularMonolith.ArchTests.Support;
 

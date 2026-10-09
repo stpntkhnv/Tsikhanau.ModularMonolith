@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\BuildingBlocks\Infrastructure\ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj" />
   </ItemGroup>
   <ItemGroup>

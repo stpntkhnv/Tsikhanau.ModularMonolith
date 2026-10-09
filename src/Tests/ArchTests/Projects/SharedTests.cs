@@ -1,7 +1,7 @@
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Shared.Reflection;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace ModularMonolith.ArchTests.Projects;
@@ -22,10 +22,13 @@ public sealed class SharedTests
 
         var violations = Types()
             .That()
-            .ResideInNamespaceMatching("^ModularMonolith\\.Shared(\\..+)?$")
+            .ResideInNamespaceMatching("^Tsikhanau\\.Monolith\\.Shared(\\..+)?$")
             .Should()
             .NotDependOnAnyTypesThat()
-            .ResideInNamespaceMatching("^ModularMonolith(\\.(?!Shared(\\.|$)).+)?$")
+            .ResideInNamespaceMatching("^ModularMonolith(\\..+)?$")
+            .AndShould()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching("^Tsikhanau\\.Monolith(\\.(?!Shared(\\.|$)).+)?$")
             .GetViolationsIn(Architecture);
 
         sharedTypes.ShouldNotBeEmpty();

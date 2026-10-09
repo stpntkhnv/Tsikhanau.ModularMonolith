@@ -1,43 +1,32 @@
 <Solution>
-  <Folder Name="/perf/">
-    <Project Path="perf/ModularMonolith.Perf/ModularMonolith.Perf.csproj" />
-  </Folder>
   <Folder Name="/src/" />
-  <Folder Name="/src/Bootstrapper/">
-    <Project Path="src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj" />
-  </Folder>
-  <Folder Name="/src/Analyzers/">
-    <Project Path="src/Analyzers/ModularMonolith.Analyzers.Tests/ModularMonolith.Analyzers.Tests.csproj" />
-    <Project Path="src/Analyzers/ModularMonolith.Analyzers/ModularMonolith.Analyzers.csproj" />
-  </Folder>
   <Folder Name="/src/Aspire/">
     <Project Path="src/Aspire/ModularMonolith.AppHost/ModularMonolith.AppHost.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/" />
-  <Folder Name="/src/BuildingBlocks/Api/">
-    <Project Path="src/BuildingBlocks/Api/ModularMonolith.BuildingBlocks.Api.csproj" />
+  <Folder Name="/src/Bootstrapper/">
+    <Project Path="src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Application/">
-    <Project Path="src/BuildingBlocks/Application/ModularMonolith.BuildingBlocks.Application.csproj" />
+  <Folder Name="/src/Core/" />
+  <Folder Name="/src/Core/Analyzers/">
+    <Project Path="src/Core/Analyzers/Tsikhanau.Monolith.Analyzers.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Domain/">
-    <Project Path="src/BuildingBlocks/Domain/ModularMonolith.BuildingBlocks.Domain.csproj" />
+  <Folder Name="/src/Core/Api/">
+    <Project Path="src/Core/Api/Tsikhanau.Monolith.Api.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Infrastructure/">
-    <Project Path="src/BuildingBlocks/Infrastructure/ModularMonolith.BuildingBlocks.Infrastructure.csproj" />
+  <Folder Name="/src/Core/Application/">
+    <Project Path="src/Core/Application/Tsikhanau.Monolith.Application.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Contracts/">
-    <Project Path="src/BuildingBlocks/Contracts/ModularMonolith.BuildingBlocks.Contracts.csproj" />
+  <Folder Name="/src/Core/Contracts/">
+    <Project Path="src/Core/Contracts/Tsikhanau.Monolith.Contracts.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Tests/" />
-  <Folder Name="/src/BuildingBlocks/Tests/IntegrationTests/">
-    <Project Path="src/BuildingBlocks/Tests/IntegrationTests/ModularMonolith.BuildingBlocks.IntegrationTests.csproj" />
+  <Folder Name="/src/Core/Domain/">
+    <Project Path="src/Core/Domain/Tsikhanau.Monolith.Domain.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Tests/TestModules/">
-    <Project Path="src/BuildingBlocks/Tests/TestModules/ModularMonolith.TestModules.csproj" />
+  <Folder Name="/src/Core/Infrastructure/">
+    <Project Path="src/Core/Infrastructure/Tsikhanau.Monolith.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/BuildingBlocks/Tests/UnitTests/">
-    <Project Path="src/BuildingBlocks/Tests/UnitTests/ModularMonolith.BuildingBlocks.UnitTests.csproj" />
+  <Folder Name="/src/Core/Shared/">
+    <Project Path="src/Core/Shared/Tsikhanau.Monolith.Shared.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
   <Folder Name="/src/Packages/">
@@ -45,10 +34,6 @@
     <Project Path="src/Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj" />
     <Project Path="src/Packages/Tsikhanau.Railway.AspNetCore/Tsikhanau.Railway.AspNetCore.csproj" />
     <Project Path="src/Packages/Tsikhanau.Railway/Tsikhanau.Railway.csproj" />
-  </Folder>
-  <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/ModularMonolith.Shared.Tests/ModularMonolith.Shared.Tests.csproj" />
-    <Project Path="src/Shared/ModularMonolith.Shared/ModularMonolith.Shared.csproj" />
   </Folder>
   <Folder Name="/src/Tests/" />
   <Folder Name="/src/Tests/ArchTests/">
@@ -59,5 +44,24 @@
   </Folder>
   <Folder Name="/src/Tests/Testing/">
     <Project Path="src/Tests/Testing/ModularMonolith.Testing.csproj" />
+  </Folder>
+  <Folder Name="/template-only/" />
+  <Folder Name="/template-only/Analyzers.Tests/">
+    <Project Path="template-only/Analyzers.Tests/Tsikhanau.Monolith.Analyzers.Tests.csproj" />
+  </Folder>
+  <Folder Name="/template-only/IntegrationTests/">
+    <Project Path="template-only/IntegrationTests/Tsikhanau.Monolith.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/template-only/Shared.Tests/">
+    <Project Path="template-only/Shared.Tests/Tsikhanau.Monolith.Shared.Tests.csproj" />
+  </Folder>
+  <Folder Name="/template-only/TestModules/">
+    <Project Path="template-only/TestModules/Tsikhanau.Monolith.TestModules.csproj" />
+  </Folder>
+  <Folder Name="/template-only/UnitTests/">
+    <Project Path="template-only/UnitTests/Tsikhanau.Monolith.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/template-only/perf/">
+    <Project Path="template-only/perf/Tsikhanau.Monolith.Perf/Tsikhanau.Monolith.Perf.csproj" />
   </Folder>
 </Solution>

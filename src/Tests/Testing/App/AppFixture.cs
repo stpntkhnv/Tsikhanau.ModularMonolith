@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
-using ModularMonolith.BuildingBlocks.Infrastructure.Modules;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.Testing.Queues;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Railway;
 using Xunit;
 

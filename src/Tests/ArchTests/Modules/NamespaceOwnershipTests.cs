@@ -1,12 +1,12 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Shared.Reflection;
 using ModularMonolith.Testing.Modules;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Modules;
 
 public sealed class NamespaceOwnershipTests
 {
-    private const String UnhandledFixtureNamespace = "ModularMonolith.TestModules.Unhandled";
+    private const String UnhandledFixtureNamespace = "Tsikhanau.Monolith.TestModules.Unhandled";
 
     private static readonly String[] TestModuleNamespaces =
     [

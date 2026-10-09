@@ -1,4 +1,4 @@
-using ModularMonolith.BuildingBlocks.Infrastructure.Platform;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace ModularMonolith.Bootstrapper.Platform;
 

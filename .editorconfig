@@ -29,16 +29,16 @@ dotnet_diagnostic.IDE0005.severity = none
 dotnet_diagnostic.IDE0049.severity = none
 dotnet_diagnostic.RCS0056.severity = none
 
-[src/BuildingBlocks/Tests/TestModules/{Pings/Features/ThrowAfterTouch/ThrowAfterTouchCommandHandler.cs,Pongs/Features/PingCreated/PingCreatedIntegrationEventHandler.cs}]
+[template-only/TestModules/{Pings/Features/ThrowAfterTouch/ThrowAfterTouchCommandHandler.cs,Pongs/Features/PingCreated/PingCreatedIntegrationEventHandler.cs}]
 dotnet_diagnostic.TS0005.severity = none
 
-[src/BuildingBlocks/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs]
+[src/Core/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs]
 dotnet_diagnostic.RS0030.severity = none
 
-[src/BuildingBlocks/Infrastructure/{Queues/ModuleQueueProcessor.cs,Cleanup/ModuleCleanupProcessor.cs}]
+[src/Core/Infrastructure/{Queues/ModuleQueueProcessor.cs,Cleanup/ModuleCleanupProcessor.cs}]
 dotnet_diagnostic.CA1031.severity = none
 
-[{src/Tests/**.cs,src/BuildingBlocks/Tests/IntegrationTests/**.cs,src/BuildingBlocks/Tests/UnitTests/**.cs,src/Analyzers/ModularMonolith.Analyzers.Tests/**.cs,src/Shared/ModularMonolith.Shared.Tests/**.cs}]
+[{src/Tests/**.cs,template-only/IntegrationTests/**.cs,template-only/UnitTests/**.cs,template-only/Analyzers.Tests/**.cs,template-only/Shared.Tests/**.cs}]
 dotnet_diagnostic.CA1031.severity = none
 dotnet_diagnostic.CA2100.severity = none
 dotnet_diagnostic.CA1849.severity = none

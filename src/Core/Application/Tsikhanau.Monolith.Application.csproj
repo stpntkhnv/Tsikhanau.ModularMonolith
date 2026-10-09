@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Tsikhanau.Monolith.Domain.csproj" />
+    <ProjectReference Include="..\Contracts\Tsikhanau.Monolith.Contracts.csproj" />
+  </ItemGroup>
+</Project>

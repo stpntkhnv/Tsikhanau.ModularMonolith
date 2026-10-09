@@ -1,6 +1,6 @@
 using System.Reflection;
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Modules;
 

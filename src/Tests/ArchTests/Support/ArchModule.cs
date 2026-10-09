@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using ModularMonolith.BuildingBlocks.Application.Commands;
-using ModularMonolith.BuildingBlocks.Application.Events;
-using ModularMonolith.BuildingBlocks.Application.Queries;
-using ModularMonolith.Shared.Reflection;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Application.Events;
+using Tsikhanau.Monolith.Application.Queries;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace ModularMonolith.ArchTests.Support;
 

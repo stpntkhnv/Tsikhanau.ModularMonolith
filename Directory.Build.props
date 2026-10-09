@@ -18,21 +18,21 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3.mtp-v2" />
   </ItemGroup>
-  <ItemGroup Condition="'$(MSBuildProjectName)' != 'ModularMonolith.Analyzers' and '$(MSBuildProjectName)' != 'ModularMonolith.Analyzers.Tests'">
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers.Tests'">
     <ProjectReference
-      Include="$(MSBuildThisFileDirectory)src/Analyzers/ModularMonolith.Analyzers/ModularMonolith.Analyzers.csproj"
+      Include="$(MSBuildThisFileDirectory)src/Core/Analyzers/Tsikhanau.Monolith.Analyzers.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
   </ItemGroup>
-  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'ModularMonolith.Analyzers'">
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Analyzers'">
     <ProjectReference
       Include="$(MSBuildThisFileDirectory)src/Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       IsAspireProjectResource="false" />
   </ItemGroup>
-  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'ModularMonolith.Perf'">
+  <ItemGroup Condition="!$(MSBuildProjectName.EndsWith('Tests')) and '$(MSBuildProjectName)' != 'ModularMonolith.Testing' and '$(MSBuildProjectName)' != 'Tsikhanau.Monolith.Perf'">
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 </Project>

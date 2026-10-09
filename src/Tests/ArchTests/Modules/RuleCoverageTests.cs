@@ -1,13 +1,13 @@
 using ModularMonolith.ArchTests.Support;
-using ModularMonolith.BuildingBlocks.Api.Endpoints;
-using ModularMonolith.BuildingBlocks.Application.Commands;
-using ModularMonolith.BuildingBlocks.Application.Events;
-using ModularMonolith.BuildingBlocks.Contracts.IntegrationEvents;
-using ModularMonolith.BuildingBlocks.Domain.Aggregates;
-using ModularMonolith.BuildingBlocks.Domain.ValueObjects;
-using ModularMonolith.Shared.Reflection;
 using ModularMonolith.Testing.Modules;
-using ModularMonolith.TestModules.Pings.Contracts;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Application.Events;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Domain.Aggregates;
+using Tsikhanau.Monolith.Domain.ValueObjects;
+using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Monolith.TestModules.Pings.Contracts;
 
 namespace ModularMonolith.ArchTests.Modules;
 

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.IntegrationTests" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
+    <InternalsVisibleTo Include="ModularMonolith.IntegrationTests" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.Perf" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Application\Tsikhanau.Monolith.Application.csproj" />
+    <ProjectReference Include="..\Shared\Tsikhanau.Monolith.Shared.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+</Project>

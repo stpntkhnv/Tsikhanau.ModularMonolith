@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using ModularMonolith.BuildingBlocks.Infrastructure.Cleanup;
+using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Xunit;
 
 namespace ModularMonolith.Testing.Cleanup;

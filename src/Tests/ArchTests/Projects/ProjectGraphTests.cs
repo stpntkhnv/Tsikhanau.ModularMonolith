@@ -36,14 +36,14 @@ public sealed class ProjectGraphTests
         var contractsReferences = ReadProjectReferences(moduleName, $"ModularMonolith.Modules.{moduleName}.Contracts");
         var moduleReferences = ReadProjectReferences(moduleName, $"ModularMonolith.Modules.{moduleName}");
 
-        contractsReferences.ShouldBeSubsetOf(["ModularMonolith.BuildingBlocks.Contracts"]);
+        contractsReferences.ShouldBeSubsetOf(["Tsikhanau.Monolith.Contracts"]);
         moduleReferences.ShouldBeSubsetOf(
             [
                 $"ModularMonolith.Modules.{moduleName}.Contracts",
-                "ModularMonolith.BuildingBlocks.Domain",
-                "ModularMonolith.BuildingBlocks.Application",
-                "ModularMonolith.BuildingBlocks.Infrastructure",
-                "ModularMonolith.BuildingBlocks.Api",
+                "Tsikhanau.Monolith.Domain",
+                "Tsikhanau.Monolith.Application",
+                "Tsikhanau.Monolith.Infrastructure",
+                "Tsikhanau.Monolith.Api",
                 .. otherModuleContractsNames,
             ]);
     }

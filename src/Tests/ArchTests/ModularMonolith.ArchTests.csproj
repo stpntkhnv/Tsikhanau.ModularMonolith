@@ -2,7 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Bootstrapper\ModularMonolith.Bootstrapper\ModularMonolith.Bootstrapper.csproj" />
     <ProjectReference Include="..\Testing\ModularMonolith.Testing.csproj" />
-    <ProjectReference Include="..\..\BuildingBlocks\Tests\TestModules\ModularMonolith.TestModules.csproj" />
+    <ProjectReference Include="..\..\..\template-only\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" />

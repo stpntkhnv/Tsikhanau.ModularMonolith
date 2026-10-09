@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.IntegrationTests" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.Perf" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Core\Api\Tsikhanau.Monolith.Api.csproj" />
+  </ItemGroup>
+</Project>
