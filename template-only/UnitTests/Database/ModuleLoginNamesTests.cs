@@ -42,6 +42,29 @@ public sealed class ModuleLoginNamesTests
             + "the group role of the module logins");
     }
 
+    [Theory]
+    [InlineData("pg_x")]
+    [InlineData("pg")]
+    public void Schema_that_postgres_reserves_is_refused(String schema)
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => LoginNames.BuildLoginName(schema));
+
+        exception.Message.ShouldBe(
+            $"'{schema}' is not a valid module schema name: it must start with a letter, hold only a-z, 0-9 and _, "
+            + "be neither pg nor start with pg_, which PostgreSQL reserves, "
+            + $"and its login monolith_{schema} must fit in 63 characters");
+    }
+
+    [Theory]
+    [InlineData("pgx")]
+    [InlineData("p_g")]
+    public void Schema_that_only_starts_like_a_reserved_name_is_accepted(String schema)
+    {
+        var loginName = LoginNames.BuildLoginName(schema);
+
+        loginName.ShouldBe($"monolith_{schema}");
+    }
+
     [Fact]
     public void Login_name_of_63_characters_is_accepted()
     {
@@ -62,6 +85,7 @@ public sealed class ModuleLoginNamesTests
 
         exception.Message.ShouldBe(
             $"'{schema}' is not a valid module schema name: it must start with a letter, hold only a-z, 0-9 and _, "
+            + "be neither pg nor start with pg_, which PostgreSQL reserves, "
             + $"and its login {LoginPrefixOf30Characters}_{schema} must fit in 63 characters");
     }
 }

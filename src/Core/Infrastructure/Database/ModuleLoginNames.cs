@@ -4,7 +4,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Database;
 
 internal sealed partial class ModuleLoginNames
 {
-    public const String IdentifierPattern = @"\A[a-z][a-z0-9_]*\z";
+    public const String IdentifierPattern = @"\A(?!pg(_|\z))[a-z][a-z0-9_]*\z";
 
     private const String GroupSuffix = "modules";
 
@@ -40,6 +40,7 @@ internal sealed partial class ModuleLoginNames
             ? schema
             : throw new InvalidOperationException(
                 $"'{schema}' is not a valid module schema name: it must start with a letter, hold only a-z, 0-9 and _, "
+                + "be neither pg nor start with pg_, which PostgreSQL reserves, "
                 + $"and its login {_roleNamePrefix}{schema} must fit in {MaxIdentifierLength} characters");
     }
 

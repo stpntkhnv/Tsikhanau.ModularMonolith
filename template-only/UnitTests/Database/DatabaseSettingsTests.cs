@@ -9,7 +9,8 @@ namespace Tsikhanau.Monolith.UnitTests.Database;
 public sealed class DatabaseSettingsTests
 {
     private const String IdentifierRuleMessage =
-        "App:Database:LoginPrefix must start with a letter and hold only a-z, 0-9 and _";
+        "App:Database:LoginPrefix must start with a letter, hold only a-z, 0-9 and _, "
+        + "and be neither pg nor start with pg_, which PostgreSQL reserves";
 
     [Fact]
     public void Prepare_timeout_comes_from_configuration()
@@ -67,6 +68,26 @@ public sealed class DatabaseSettingsTests
         var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginPrefix(loginPrefix));
 
         exception.Message.ShouldContain(IdentifierRuleMessage);
+    }
+
+    [Theory]
+    [InlineData("pg")]
+    [InlineData("pg_tools")]
+    public void Login_prefix_whose_roles_postgres_reserves_is_refused(String loginPrefix)
+    {
+        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginPrefix(loginPrefix));
+
+        exception.Message.ShouldContain(IdentifierRuleMessage);
+    }
+
+    [Theory]
+    [InlineData("pgx")]
+    [InlineData("p_g")]
+    public void Login_prefix_that_only_starts_like_a_reserved_name_is_accepted(String loginPrefix)
+    {
+        var settings = ResolveSettingsWithLoginPrefix(loginPrefix);
+
+        settings.LoginPrefix.ShouldBe(loginPrefix);
     }
 
     [Fact]

@@ -15,7 +15,8 @@ public sealed record DatabaseSettings
     [StringLength(30, ErrorMessage = $"{LoginPrefixSetting} must be at most 30 characters long")]
     [RegularExpression(
         ModuleLoginNames.IdentifierPattern,
-        ErrorMessage = $"{LoginPrefixSetting} must start with a letter and hold only a-z, 0-9 and _")]
+        ErrorMessage = $"{LoginPrefixSetting} must start with a letter, hold only a-z, 0-9 and _, "
+            + "and be neither pg nor start with pg_, which PostgreSQL reserves")]
     public required String LoginPrefix { get; init; }
 
     [Range(1, 10_000)]
