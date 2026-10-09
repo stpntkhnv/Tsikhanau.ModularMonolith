@@ -2,11 +2,9 @@
   <PropertyGroup>
     <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
     <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
-    <CoreNullableAnalysisOffPattern>(?i)^\s*run-nullable-analysis\s*=\s*never\s*$</CoreNullableAnalysisOffPattern>
+    <CoreNullableAnalysisOffPattern>(?i)^run-nullable-analysis=never$</CoreNullableAnalysisOffPattern>
+    <_CoreRootFolder>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..'))</_CoreRootFolder>
   </PropertyGroup>
-  <ItemGroup>
-    <_CoreEditorConfigExpected Include="@(CoreEditorConfigFiles)" Condition="'@(Compile)' != ''" />
-  </ItemGroup>
   <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">
     <ItemGroup>
       <_CoreFileNotImported Include="src/Core/Core.Build.props" Condition="'$(CoreBuildPropsImported)' != 'true'" />
@@ -15,11 +13,14 @@
     <Error
       Condition="'@(_CoreFileNotImported)' != ''"
       Text="$(MSBuildProjectName): the build does not import @(_CoreFileNotImported, ' and '); a Directory.Build.props or Directory.Packages.props nearer to the project hides the root one (set by the core; change it in the template)" />
+    <PropertyGroup>
+      <_CoreIntermediateFolder>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))</_CoreIntermediateFolder>
+    </PropertyGroup>
     <ItemGroup>
       <_CoreNoWarn Include="$([MSBuild]::Unescape($(NoWarn.Replace(',', ';'))))" />
       <_CoreNoWarn Remove="$(CoreNoWarn)" />
       <_CoreWarningsNotAsErrors Include="$([MSBuild]::Unescape($(WarningsNotAsErrors.Replace(',', ';'))))" />
-      <_CoreFeatures Include="$([MSBuild]::Unescape($(Features.Replace(',', ';'))))" />
+      <_CoreFeatures Include="$([MSBuild]::Unescape($([System.Text.RegularExpressions.Regex]::Replace('$(Features)', '[\s,]+', ';'))))" />
       <_CoreAnalyzerExpected Include="@(CoreAnalyzer)" />
       <_CoreAnalyzerExpected Include="Microsoft.CodeAnalysis.CodeStyle;Microsoft.CodeAnalysis.CSharp.CodeStyle" />
       <_CoreAnalyzerExpected
@@ -28,7 +29,13 @@
       <_CoreAnalyzerFound Include="@(Analyzer->'%(Filename)')" />
       <_CoreAnalyzerMissing Include="@(_CoreAnalyzerExpected)" Exclude="@(_CoreAnalyzerFound)" />
       <_CoreAdditionalFilesMissing Include="@(CoreAdditionalFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
-      <_CoreEditorConfigMissing Include="@(_CoreEditorConfigExpected)" Exclude="@(EditorConfigFiles->'%(FullPath)')" />
+      <_CoreOwnSource
+        Include="@(Compile)"
+        Condition="$([System.String]::Copy('%(Compile.RootDir)%(Compile.Directory)').StartsWith('$(_CoreRootFolder)')) and !$([System.String]::Copy('%(Compile.RootDir)%(Compile.Directory)').StartsWith('$(_CoreIntermediateFolder)'))" />
+      <_CoreEditorConfigMissing
+        Include="@(CoreEditorConfigFiles)"
+        Exclude="@(EditorConfigFiles->'%(FullPath)')"
+        Condition="'@(_CoreOwnSource)' != ''" />
       <_CoreSettingChange
         Include="TreatWarningsAsErrors"
         Text="TreatWarningsAsErrors is '$(TreatWarningsAsErrors)', not 'true'"
