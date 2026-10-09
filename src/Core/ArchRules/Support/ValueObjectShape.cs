@@ -1,8 +1,8 @@
 using System.Reflection;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class ValueObjectShape
+internal static class ValueObjectShape
 {
     public static Boolean HasPublicFrom(Type type) =>
         type.GetMethod("From", BindingFlags.Public | BindingFlags.Static) is not null;

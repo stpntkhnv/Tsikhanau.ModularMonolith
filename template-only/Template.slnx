@@ -2,6 +2,9 @@
   <Folder Name="/Analyzers.Tests/">
     <Project Path="Analyzers.Tests/Tsikhanau.Monolith.Analyzers.Tests.csproj" />
   </Folder>
+  <Folder Name="/ArchRules.Tests/">
+    <Project Path="ArchRules.Tests/Tsikhanau.Monolith.ArchRules.Tests.csproj" />
+  </Folder>
   <Folder Name="/IntegrationTests/">
     <Project Path="IntegrationTests/Tsikhanau.Monolith.IntegrationTests.csproj" />
   </Folder>

@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class Mutability
+internal static class Mutability
 {
     public static IEnumerable<String> GetPublicSetters(Type type) =>
         type

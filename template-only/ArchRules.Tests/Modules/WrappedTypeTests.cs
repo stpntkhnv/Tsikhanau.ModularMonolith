@@ -1,8 +1,8 @@
-using ModularMonolith.ArchTests.Support;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
+using Tsikhanau.Monolith.ArchRules.Support;
 
-namespace ModularMonolith.ArchTests.Modules;
+namespace Tsikhanau.Monolith.ArchRules.Tests.Modules;
 
 public sealed class WrappedTypeTests
 {

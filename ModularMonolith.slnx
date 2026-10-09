@@ -16,6 +16,9 @@
   <Folder Name="/src/Core/Application/">
     <Project Path="src/Core/Application/Tsikhanau.Monolith.Application.csproj" />
   </Folder>
+  <Folder Name="/src/Core/ArchRules/">
+    <Project Path="src/Core/ArchRules/Tsikhanau.Monolith.ArchRules.csproj" />
+  </Folder>
   <Folder Name="/src/Core/Contracts/">
     <Project Path="src/Core/Contracts/Tsikhanau.Monolith.Contracts.csproj" />
   </Folder>

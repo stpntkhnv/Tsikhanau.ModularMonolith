@@ -1,8 +1,8 @@
 using Tsikhanau.Monolith.Application.Modules;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class WrappedTypeExtensions
+internal static class WrappedTypeExtensions
 {
     extension(Type type)
     {

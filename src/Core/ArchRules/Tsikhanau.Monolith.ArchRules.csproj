@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.ArchRules.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Api\Tsikhanau.Monolith.Api.csproj" />
+    <ProjectReference Include="..\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
+    <ProjectReference Include="..\Testing\Tsikhanau.Monolith.Testing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="TngTech.ArchUnitNET" />
+    <PackageReference Include="xunit.v3.assert" />
+    <PackageReference Include="xunit.v3.extensibility.core" />
+  </ItemGroup>
+</Project>

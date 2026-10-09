@@ -1,13 +1,15 @@
 using System.Reflection;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class AssemblyExtensions
+internal static class AssemblyExtensions
 {
     private const String EmbeddedAttributeName = "Microsoft.CodeAnalysis.EmbeddedAttribute";
 
     extension(Assembly assembly)
     {
+        public String Name => assembly.GetName().Name!;
+
         public IEnumerable<Type> HandwrittenTypes =>
             assembly
                 .GetTypes()

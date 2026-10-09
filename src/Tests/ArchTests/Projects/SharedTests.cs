@@ -1,6 +1,11 @@
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using ModularMonolith.ArchTests.Support;
+using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Domain.Aggregates;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Shared.Reflection;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
@@ -10,7 +15,13 @@ public sealed class SharedTests
 {
     private static readonly Architecture Architecture =
         new ArchLoader()
-            .LoadAssemblies([typeof(ReflectionExtensions).Assembly, .. ArchModules.BuildingBlockAssemblies])
+            .LoadAssemblies(
+                typeof(ReflectionExtensions).Assembly,
+                typeof(AggregateRoot<>).Assembly,
+                typeof(IntegrationEvent).Assembly,
+                typeof(IModuleFacade).Assembly,
+                typeof(ModuleDbContext).Assembly,
+                typeof(IEndpoint).Assembly)
             .Build();
 
     [Fact]

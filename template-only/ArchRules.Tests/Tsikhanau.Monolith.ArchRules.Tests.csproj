@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\ArchRules\Tsikhanau.Monolith.ArchRules.csproj" />
+    <ProjectReference Include="..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
+  </ItemGroup>
+</Project>

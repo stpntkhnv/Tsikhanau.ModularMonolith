@@ -1,9 +1,10 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Tsikhanau.Monolith.ArchRules.Inputs;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static class StringLiterals
+internal static class StringLiterals
 {
     public static IReadOnlyList<(String TypeName, String Literal)> ReadFrom(ArchModule module)
     {

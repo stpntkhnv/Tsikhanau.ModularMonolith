@@ -3,9 +3,9 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Mono.Cecil;
 
-namespace ModularMonolith.ArchTests.Support;
+namespace Tsikhanau.Monolith.ArchRules.Support;
 
-public static partial class CompilerGeneratedExtensions
+internal static partial class CompilerGeneratedExtensions
 {
     [GeneratedRegex("^<[^>]+>F[0-9A-F]+__")]
     private static partial Regex FileLocalTypeName { get; }

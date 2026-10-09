@@ -1,6 +1,6 @@
-using ModularMonolith.ArchTests.Support;
 using Mono.Cecil;
 using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace ModularMonolith.ArchTests.Projects;
 
@@ -11,10 +11,10 @@ public sealed class BootstrapperTests
     {
         var addedModuleNames = ReadModulesAddedByTheHost();
         Assert.SkipWhen(
-            ArchModules.Production.Length == 0 && addedModuleNames.Count == 0,
+            ProductionModules.Names.Length == 0 && addedModuleNames.Count == 0,
             "There are no production modules");
 
-        var expectedModuleNames = ArchModules.Production.Select(BuildModuleClassName);
+        var expectedModuleNames = ProductionModules.Names.Select(BuildModuleClassName);
 
         addedModuleNames.ShouldBe(expectedModuleNames, ignoreOrder: true);
     }

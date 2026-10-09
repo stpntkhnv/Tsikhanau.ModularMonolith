@@ -32,7 +32,7 @@ public sealed class ProjectGraphTests
     {
         Assert.SkipWhen(moduleName == ProductionModules.Placeholder, "There are no production modules");
 
-        var otherModuleContractsNames = ArchModules.Production
+        var otherModuleContractsNames = ProductionModules.Names
             .Where(otherModuleName => otherModuleName != moduleName)
             .Select(otherModuleName => $"ModularMonolith.Modules.{otherModuleName}.Contracts")
             .ToList();
