@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
 using ModularMonolith.Testing.Database;
 using ModularMonolith.Testing.Modules;
@@ -39,7 +40,7 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     public async Task Module_connects_as_its_own_login(String name)
     {
         var moduleConnectionProbe = CreateConnectionProbe(name);
-        var loginName = ModuleLogin.BuildName(App.GetModule(name).Schema);
+        var loginName = LoginNames.BuildLoginName(App.GetModule(name).Schema);
 
         var sessionUser = await moduleConnectionProbe.ExecuteScalarAsync<String>("SELECT session_user");
         var currentUser = await moduleConnectionProbe.ExecuteScalarAsync<String>("SELECT current_user");
@@ -56,13 +57,13 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     {
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var otherSchema = App.GetModule(otherName).Schema;
-        var otherLoginName = ModuleLogin.BuildName(otherSchema);
+        var otherLoginName = LoginNames.BuildLoginName(otherSchema);
         var outboxAfterResetSql = $"RESET ROLE; SELECT count(*) FROM \"{otherSchema}\".outbox_messages";
 
         var setRoleSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync($"SET ROLE {otherLoginName}");
         var afterResetSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync(outboxAfterResetSql);
         var groupRoleSqlState = await moduleConnectionProbe.ExecuteAndFindSqlStateAsync(
-            $"SET ROLE {ModuleLogin.Group}");
+            $"SET ROLE {LoginNames.Group}");
 
         setRoleSqlState.ShouldBe(DeniedSqlState);
         afterResetSqlState.ShouldBe(DeniedSqlState);
@@ -116,7 +117,7 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     public async Task Module_login_owns_its_schema_and_everything_in_it(String name)
     {
         var schema = App.GetModule(name).Schema;
-        var loginName = ModuleLogin.BuildName(schema);
+        var loginName = LoginNames.BuildLoginName(schema);
 
         var ownerName = await App.Database.ExecuteScalarAsync<String>(OwnerSql, new { Schema = schema });
         var objectsOwnedByOthers = await App.Database.ExecuteScalarAsync<Int64>(
@@ -134,6 +135,9 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
         VALUES ('{{messageId}}', 'probe', '{}'::jsonb, NULL, 0, now(), now(), now())
         ON CONFLICT (id) DO NOTHING
         """;
+
+    private ModuleLoginNames LoginNames =>
+        new(App.Services.GetRequiredService<IOptions<DatabaseSettings>>().Value.LoginPrefix);
 
     private ModuleConnectionProbe CreateConnectionProbe(String name) =>
         new(App.Services.GetRequiredKeyedService<NpgsqlDataSource>(App.GetModule(name).Key));

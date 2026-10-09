@@ -21,10 +21,11 @@ internal static class ModuleDataSourceFactory
         var settings = serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
         var handlerTimeout = serviceProvider.GetRequiredService<IOptions<QueueSettings>>().Value.HandlerTimeout;
         var moduleCount = serviceProvider.GetRequiredService<ModuleRegistry>().Modules.Count;
-        var login = connectionStrings.CreateModuleLogin(module.Schema);
+        var loginNames = new ModuleLoginNames(settings.LoginPrefix);
+        var login = connectionStrings.CreateModuleLogin(loginNames, module.Schema);
         var connectionString = connectionStrings.BuildForModule(
             login,
-            $"modularmonolith-{module.Schema}",
+            loginNames.BuildApplicationName(module.Schema),
             settings.CalculatePoolSizePerModule(moduleCount),
             handlerTimeout);
 

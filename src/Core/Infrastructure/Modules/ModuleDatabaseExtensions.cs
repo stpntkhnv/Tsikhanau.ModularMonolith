@@ -51,8 +51,9 @@ public static class ModuleDatabaseExtensions
             serviceProvider.GetRequiredService<IConfiguration>(),
             serviceProvider.GetRequiredService<IHostEnvironment>());
 
+        var loginNames = new ModuleLoginNames(settings.LoginPrefix);
         var logins = modules
-            .Select(module => connectionStrings.CreateModuleLogin(module.Schema))
+            .Select(module => connectionStrings.CreateModuleLogin(loginNames, module.Schema))
             .ToList();
 
         DatabasePreparationLog.WaitingForLock(CreateLogger(serviceProvider));
@@ -62,18 +63,26 @@ public static class ModuleDatabaseExtensions
 
         await ModuleDatabaseProvisioner.ProvisionAsync(
             adminSession.DataSource,
+            loginNames.Group,
             logins,
             settings.MaxConnections,
             cancellationToken);
 
-        await MigrateAndGrantInboxDeliveryAsync(serviceProvider, modules, settings.PrepareTimeout, cancellationToken);
-        await ModuleBoundaryVerifier.VerifyAsync(adminSession.Connection, logins, cancellationToken);
+        await MigrateAndGrantInboxDeliveryAsync(
+            serviceProvider,
+            modules,
+            loginNames.Group,
+            settings.PrepareTimeout,
+            cancellationToken);
+
+        await ModuleBoundaryVerifier.VerifyAsync(adminSession.Connection, loginNames.Group, logins, cancellationToken);
         await adminSession.UnlockAsync(cancellationToken);
     }
 
     private static async Task MigrateAndGrantInboxDeliveryAsync(
         IServiceProvider serviceProvider,
         IEnumerable<ModuleDescriptor> modules,
+        String group,
         TimeSpan prepareTimeout,
         CancellationToken cancellationToken)
     {
@@ -83,7 +92,9 @@ public static class ModuleDatabaseExtensions
             var dbContext = ResolveDbContext(module, scope.ServiceProvider);
             dbContext.Database.SetCommandTimeout(prepareTimeout.TotalSecondsRoundedUp);
             await dbContext.Database.MigrateAsync(cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(BuildInboxDeliveryGrantsSql(module.Schema), cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                BuildInboxDeliveryGrantsSql(module.Schema, group),
+                cancellationToken);
         }
     }
 
@@ -95,10 +106,10 @@ public static class ModuleDatabaseExtensions
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(ModuleDatabaseExtensions));
 
-    private static String BuildInboxDeliveryGrantsSql(String schema) =>
+    private static String BuildInboxDeliveryGrantsSql(String schema, String group) =>
         $"""
-        GRANT USAGE ON SCHEMA "{schema}" TO "{ModuleLogin.Group}";
-        GRANT INSERT, SELECT (id) ON "{schema}".{InboxMessage.Table} TO "{ModuleLogin.Group}";
+        GRANT USAGE ON SCHEMA "{schema}" TO "{group}";
+        GRANT INSERT, SELECT (id) ON "{schema}".{InboxMessage.Table} TO "{group}";
         """;
 
     private static DbContext ResolveDbContext(ModuleDescriptor module, IServiceProvider serviceProvider) =>

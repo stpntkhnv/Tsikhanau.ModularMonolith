@@ -15,8 +15,10 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         ORDER BY nspname
         """;
 
+    private static readonly ModuleLoginNames LoginNames = new("monolith");
+
     private static readonly ModuleLogin[] RaceLogins =
-        [ModuleLogin.Create("race_a", "race"), ModuleLogin.Create("race_b", "race")];
+        [ModuleLogin.Create(LoginNames, "race_a", "race"), ModuleLogin.Create(LoginNames, "race_b", "race")];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -34,7 +36,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
                 var schemaOwners = await new DatabaseProbe(connectionString).QueryAsync<SchemaOwner>(RaceOwnersSql);
 
                 schemaOwners.ShouldBe(
-                    [new("race_a", "modularmonolith_race_a"), new("race_b", "modularmonolith_race_b")]);
+                    [new("race_a", "monolith_race_a"), new("race_b", "monolith_race_b")]);
             }
         }
     }
@@ -48,7 +50,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             connectionString,
             canCreateSchemas: true);
 
-        var login = ModuleLogin.Create("creator_probe", "creator_ok");
+        var login = ModuleLogin.Create(LoginNames, "creator_probe", "creator_ok");
 
         await ProvisionAsync(creatorConnectionString, [login], maxConnections: 10);
 
@@ -56,7 +58,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             OwnerSql,
             new { Schema = "creator_probe" });
 
-        owner.ShouldBe("modularmonolith_creator_probe");
+        owner.ShouldBe("monolith_creator_probe");
     }
 
     [Fact]
@@ -71,7 +73,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [ModuleLogin.Create("nocreate_probe", "x")],
+                [ModuleLogin.Create(LoginNames, "nocreate_probe", "x")],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("CREATE on the database");
@@ -82,8 +84,8 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
     {
         var connectionString = await CreateDatabaseAsync();
         await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync(
-            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'modularmonolith_foreign_probe') "
-            + "THEN CREATE ROLE modularmonolith_foreign_probe LOGIN; END IF; END $$");
+            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'monolith_foreign_probe') "
+            + "THEN CREATE ROLE monolith_foreign_probe LOGIN; END IF; END $$");
 
         var creatorConnectionString = await CreateAdminLoginAsync(
             "creator_foreign",
@@ -93,7 +95,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [ModuleLogin.Create("foreign_probe", "x")],
+                [ModuleLogin.Create(LoginNames, "foreign_probe", "x")],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("ADMIN option");
@@ -111,7 +113,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [ModuleLogin.Create("budget_probe", "x")],
+                [ModuleLogin.Create(LoginNames, "budget_probe", "x")],
                 maxConnections: 5000));
 
         exception.Message.ShouldContain("MaxConnections");
@@ -129,7 +131,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [ModuleLogin.Create("budget_a", "x"), ModuleLogin.Create("budget_b", "x")],
+                [ModuleLogin.Create(LoginNames, "budget_a", "x"), ModuleLogin.Create(LoginNames, "budget_b", "x")],
                 maxConnections: 3));
 
         exception.Message.ShouldContain(
@@ -148,7 +150,10 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await Should.NotThrowAsync(
             () => ProvisionAsync(
                 adminConnectionString,
-                [ModuleLogin.Create("budget_exact_a", "x"), ModuleLogin.Create("budget_exact_b", "x")],
+                [
+                    ModuleLogin.Create(LoginNames, "budget_exact_a", "x"),
+                    ModuleLogin.Create(LoginNames, "budget_exact_b", "x"),
+                ],
                 maxConnections: 4));
     }
 
@@ -170,6 +175,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await using var adminSession = await AdminSession.OpenLockedAsync(adminConnectionString, CancellationToken);
         await ModuleDatabaseProvisioner.ProvisionAsync(
             adminSession.DataSource,
+            LoginNames.Group,
             logins,
             maxConnections,
             CancellationToken);
@@ -196,11 +202,11 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             + $"THEN CREATE ROLE {roleName} LOGIN CREATEROLE PASSWORD '{roleName}'; END IF; END $$");
 
         await superuserDatabaseProbe.ExecuteAsync(
-            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'modularmonolith_modules') "
-            + "THEN CREATE ROLE modularmonolith_modules NOLOGIN; END IF; END $$");
+            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'monolith_modules') "
+            + "THEN CREATE ROLE monolith_modules NOLOGIN; END IF; END $$");
 
         await superuserDatabaseProbe.ExecuteAsync(
-            $"GRANT modularmonolith_modules TO {roleName} WITH ADMIN TRUE, INHERIT FALSE, SET FALSE");
+            $"GRANT monolith_modules TO {roleName} WITH ADMIN TRUE, INHERIT FALSE, SET FALSE");
 
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
         {

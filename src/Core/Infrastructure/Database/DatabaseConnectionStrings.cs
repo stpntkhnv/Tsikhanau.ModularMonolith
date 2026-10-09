@@ -51,8 +51,8 @@ internal sealed class DatabaseConnectionStrings
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
 
-    public ModuleLogin CreateModuleLogin(String schema) =>
-        ModuleLogin.Create(schema, _adminConnectionStringBuilder.Password!);
+    public ModuleLogin CreateModuleLogin(ModuleLoginNames loginNames, String schema) =>
+        ModuleLogin.Create(loginNames, schema, _adminConnectionStringBuilder.Password!);
 
     public String BuildForModule(
         ModuleLogin login,

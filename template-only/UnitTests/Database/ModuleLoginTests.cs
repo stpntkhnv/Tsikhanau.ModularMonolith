@@ -4,22 +4,24 @@ namespace Tsikhanau.Monolith.UnitTests.Database;
 
 public sealed class ModuleLoginTests
 {
-    [Fact]
-    public void Login_is_named_after_the_schema()
-    {
-        var login = ModuleLogin.Create("ping_echoes", "admin");
+    private static readonly ModuleLoginNames LoginNames = new("monolith");
 
-        login.Name.ShouldBe("modularmonolith_ping_echoes");
+    [Fact]
+    public void Login_is_named_after_the_prefix_and_the_schema()
+    {
+        var login = ModuleLogin.Create(LoginNames, "ping_echoes", "admin");
+
+        login.Name.ShouldBe("monolith_ping_echoes");
         login.Schema.ShouldBe("ping_echoes");
     }
 
     [Fact]
     public void Password_is_stable_for_one_admin_password_and_changes_with_it()
     {
-        var firstLogin = ModuleLogin.Create("pings", "admin");
-        var recreatedLogin = ModuleLogin.Create("pings", "admin");
-        var rotatedLogin = ModuleLogin.Create("pings", "rotated");
-        var otherSchemaLogin = ModuleLogin.Create("pongs", "admin");
+        var firstLogin = ModuleLogin.Create(LoginNames, "pings", "admin");
+        var recreatedLogin = ModuleLogin.Create(LoginNames, "pings", "admin");
+        var rotatedLogin = ModuleLogin.Create(LoginNames, "pings", "rotated");
+        var otherSchemaLogin = ModuleLogin.Create(LoginNames, "pongs", "admin");
 
         firstLogin.Password.ShouldBe(recreatedLogin.Password);
         firstLogin.Password.ShouldNotBe(rotatedLogin.Password);
@@ -30,7 +32,7 @@ public sealed class ModuleLoginTests
     [Fact]
     public void Text_form_never_shows_the_password()
     {
-        var login = ModuleLogin.Create("pings", "admin");
+        var login = ModuleLogin.Create(LoginNames, "pings", "admin");
 
         var text = login.ToString();
 
@@ -45,5 +47,5 @@ public sealed class ModuleLoginTests
     [InlineData("pings\n")]
     [InlineData("")]
     public void Invalid_schema_name_is_refused(String schema) =>
-        Should.Throw<InvalidOperationException>(() => ModuleLogin.Create(schema, "admin"));
+        Should.Throw<InvalidOperationException>(() => ModuleLogin.Create(LoginNames, schema, "admin"));
 }

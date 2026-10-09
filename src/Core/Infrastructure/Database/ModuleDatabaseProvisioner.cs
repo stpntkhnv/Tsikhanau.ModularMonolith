@@ -9,6 +9,10 @@ internal sealed class ModuleDatabaseProvisioner
     private const String GroupAttributes = "NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS";
     private const String DropAdvice = "Drop the old development database (the Aspire data volume) and start again.";
 
+    private const String OwnershipAdvice =
+        $"If {DatabaseSettings.LoginPrefixSetting} changed, set it back to the prefix that owns these schemas; "
+        + "if this is a development database (the Aspire data volume), you can also drop it and start again.";
+
     private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
 
     private const String MaxConnectionsSetting =
@@ -73,25 +77,29 @@ internal sealed class ModuleDatabaseProvisioner
 
     private readonly NpgsqlConnection _connection;
     private readonly NpgsqlTransaction _transaction;
+    private readonly String _group;
     private readonly CancellationToken _cancellationToken;
 
     private ModuleDatabaseProvisioner(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
+        String group,
         CancellationToken cancellationToken)
     {
         _connection = connection;
         _transaction = transaction;
+        _group = group;
         _cancellationToken = cancellationToken;
     }
 
     public static Task ProvisionAsync(
         NpgsqlDataSource adminNpgsqlDataSource,
+        String group,
         IReadOnlyList<ModuleLogin> logins,
         Int32 maxConnections,
         CancellationToken cancellationToken) =>
         RetryParallelStartCollisionsAsync(
-            () => ProvisionOnceAsync(adminNpgsqlDataSource, logins, maxConnections, cancellationToken),
+            () => ProvisionOnceAsync(adminNpgsqlDataSource, group, logins, maxConnections, cancellationToken),
             cancellationToken);
 
     private static async Task RetryParallelStartCollisionsAsync(
@@ -121,13 +129,14 @@ internal sealed class ModuleDatabaseProvisioner
 
     private static async Task ProvisionOnceAsync(
         NpgsqlDataSource adminNpgsqlDataSource,
+        String group,
         IReadOnlyList<ModuleLogin> logins,
         Int32 maxConnections,
         CancellationToken cancellationToken)
     {
         await using var connection = await adminNpgsqlDataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        var provisioner = new ModuleDatabaseProvisioner(connection, transaction, cancellationToken);
+        var provisioner = new ModuleDatabaseProvisioner(connection, transaction, group, cancellationToken);
 
         await provisioner.EnsureSupportedServerAsync();
         await provisioner.EnsureAdminCanProvisionAsync();
@@ -173,11 +182,11 @@ internal sealed class ModuleDatabaseProvisioner
 
     private async Task EnsureGroupAsync()
     {
-        await EnsureRoleAsync(ModuleLogin.Group, GroupAttributes);
+        await EnsureRoleAsync(_group, GroupAttributes);
         var problems = new List<String>();
-        problems.AddRange(await ReadExcessRightsAsync(ModuleLogin.Group, ExcessGroupRightsSql));
-        problems.AddRange(await ReadParentRolesAsync(ModuleLogin.Group, allowedParentRole: String.Empty));
-        ThrowIfAny(problems);
+        problems.AddRange(await ReadExcessRightsAsync(_group, ExcessGroupRightsSql));
+        problems.AddRange(await ReadParentRolesAsync(_group, allowedParentRole: String.Empty));
+        ThrowIfAny(problems, DropAdvice);
     }
 
     private async Task EnsureRoleAsync(String name, String attributes)
@@ -197,7 +206,7 @@ internal sealed class ModuleDatabaseProvisioner
                 $"ALTER ROLE \"{login.Name}\" PASSWORD {QuoteLiteral(ScramPasswordHasher.Hash(login.Password))}");
 
             await ExecuteAsync(
-                $"GRANT \"{ModuleLogin.Group}\" TO \"{login.Name}\" WITH ADMIN FALSE, INHERIT TRUE, SET FALSE");
+                $"GRANT \"{_group}\" TO \"{login.Name}\" WITH ADMIN FALSE, INHERIT TRUE, SET FALSE");
 
             await ExecuteAsync($"GRANT \"{login.Name}\" TO CURRENT_USER WITH SET TRUE, INHERIT FALSE");
         }
@@ -205,7 +214,7 @@ internal sealed class ModuleDatabaseProvisioner
         {
             throw new InvalidOperationException(
                 $"The login in {ConnectionStringSetting} cannot manage {login.Name}: "
-                + $"it needs the ADMIN option on {login.Name} and {ModuleLogin.Group} (it has it on roles it created). "
+                + $"it needs the ADMIN option on {login.Name} and {_group} (it has it on roles it created). "
                 + exception.MessageText,
                 exception);
         }
@@ -218,10 +227,10 @@ internal sealed class ModuleDatabaseProvisioner
         var problems = new List<String>();
         problems.AddRange(await ReadExcessRightsAsync(login.Name, ExcessLoginRightsSql));
         problems.AddRange(await ReadGroupMembershipProblemsAsync(login));
-        problems.AddRange(await ReadParentRolesAsync(login.Name, allowedParentRole: ModuleLogin.Group));
+        problems.AddRange(await ReadParentRolesAsync(login.Name, allowedParentRole: _group));
         problems.AddRange(await ReadSchemaOwnerProblemsAsync(login));
         problems.AddRange(await ReadObjectsOwnedByOthersAsync(login));
-        ThrowIfAny(problems);
+        ThrowIfAny(problems, OwnershipAdvice);
     }
 
     private async Task<IEnumerable<String>> ReadExcessRightsAsync(String role, String sql) =>
@@ -230,9 +239,9 @@ internal sealed class ModuleDatabaseProvisioner
             : [];
 
     private async Task<IEnumerable<String>> ReadGroupMembershipProblemsAsync(ModuleLogin login) =>
-        await ExecuteScalarAsync<Boolean>(PlainGroupMembershipSql, new { Group = ModuleLogin.Group, login.Name })
+        await ExecuteScalarAsync<Boolean>(PlainGroupMembershipSql, new { Group = _group, login.Name })
             ? []
-            : [$"login {login.Name} must inherit {ModuleLogin.Group} without ADMIN or SET"];
+            : [$"login {login.Name} must inherit {_group} without ADMIN or SET"];
 
     private async Task<IEnumerable<String>> ReadParentRolesAsync(String role, String allowedParentRole)
     {
@@ -252,11 +261,11 @@ internal sealed class ModuleDatabaseProvisioner
         return objectsOwnedByOthers.Select(objectName => $"{login.Schema}.{objectName} is not owned by {login.Name}");
     }
 
-    private static void ThrowIfAny(List<String> problems)
+    private static void ThrowIfAny(List<String> problems, String advice)
     {
         if (problems.Count > 0)
         {
-            throw new InvalidOperationException($"{String.Join("; ", problems)}. {DropAdvice}");
+            throw new InvalidOperationException($"{String.Join("; ", problems)}. {advice}");
         }
     }
 

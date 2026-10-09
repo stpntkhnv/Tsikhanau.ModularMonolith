@@ -59,6 +59,7 @@ internal static class ModuleBoundaryVerifier
 
     public static async Task VerifyAsync(
         NpgsqlConnection adminNpgsqlConnection,
+        String group,
         IReadOnlyList<ModuleLogin> logins,
         CancellationToken cancellationToken)
     {
@@ -66,9 +67,12 @@ internal static class ModuleBoundaryVerifier
         if (forbiddenPrivileges.Count > 0)
         {
             throw new InvalidOperationException(
-                $"{Problem}. Revoke the forbidden privileges: {String.Join("; ", forbiddenPrivileges)}");
+                $"{Problem}. Revoke the forbidden privileges: {BuildDescriptions(forbiddenPrivileges, group)}");
         }
     }
+
+    private static String BuildDescriptions(IEnumerable<ForbiddenPrivilege> forbiddenPrivileges, String group) =>
+        String.Join("; ", forbiddenPrivileges.Select(forbiddenPrivilege => forbiddenPrivilege.BuildDescription(group)));
 
     private static async Task<IReadOnlyList<ForbiddenPrivilege>> ReadForbiddenPrivilegesAsync(
         NpgsqlConnection adminNpgsqlConnection,

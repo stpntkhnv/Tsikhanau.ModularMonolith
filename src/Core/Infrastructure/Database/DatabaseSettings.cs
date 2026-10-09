@@ -9,6 +9,15 @@ public sealed record DatabaseSettings
 
     internal const Int32 MinConnectionsPerModule = 2;
 
+    internal const String LoginPrefixSetting = $"{Section}:{nameof(LoginPrefix)}";
+
+    [Required(ErrorMessage = $"{LoginPrefixSetting} is required")]
+    [StringLength(30, ErrorMessage = $"{LoginPrefixSetting} must be at most 30 characters long")]
+    [RegularExpression(
+        ModuleLoginNames.IdentifierPattern,
+        ErrorMessage = $"{LoginPrefixSetting} must start with a letter and hold only a-z, 0-9 and _")]
+    public required String LoginPrefix { get; init; }
+
     [Range(1, 10_000)]
     public required Int32 MaxConnections { get; init; }
 
