@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Tsikhanau.Monolith.Contracts.Json;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;
@@ -27,6 +28,7 @@ internal static class MessageSerializer
     private static JsonSerializerOptions CreateOptions()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new OptionalJsonConverterFactory());
         options.MakeReadOnly(populateMissingResolver: true);
         return options;
     }
