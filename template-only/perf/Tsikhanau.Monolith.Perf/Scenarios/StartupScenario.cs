@@ -2,14 +2,14 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Monolith.TestModules.Pings;
-using Tsikhanau.Monolith.TestModules.Pings.Infrastructure;
-using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure;
+using Tsikhanau.Monolith.TestModules.Pongs;
 
 namespace Tsikhanau.Monolith.Perf.Scenarios;
 
@@ -43,9 +43,10 @@ internal sealed class StartupScenario : IScenario
         StepTimer stepTimer,
         CancellationToken cancellationToken)
     {
-        _ = new ServiceCollection()
-            .AddPingsInfrastructure()
-            .AddPongsInfrastructure();
+        _ = Host
+            .CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings())
+            .AddModule<PingsModule>()
+            .AddModule<PongsModule>();
 
         stepTimer.Mark("module registration (scan + validate, 2 modules)");
         var host = PerfHost.Build(database.ConnectionString, hostSettings);

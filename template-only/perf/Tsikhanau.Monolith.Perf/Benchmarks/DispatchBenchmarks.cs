@@ -24,7 +24,8 @@ namespace Tsikhanau.Monolith.Perf.Benchmarks;
 [Config(typeof(InProcessConfig))]
 public class DispatchBenchmarks
 {
-    private const String FakeConnectionString = "Host=127.0.0.1;Port=1;Database=x;Username=postgres;Password=postgres";
+    private const String FakeConnectionString =
+        "Host=127.0.0.1;Port=1;Database=x;Username=postgres;Password=postgres;SSL Mode=Disable";
 
     private IHost _host = null!;
     private ILogger _logger = null!;

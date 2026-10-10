@@ -1,14 +1,14 @@
 using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Tsikhanau.Monolith.Api.Callers;
+using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues;
-using Tsikhanau.Monolith.TestModules.Pings.Infrastructure;
-using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure;
+using Tsikhanau.Monolith.TestModules.Pings;
+using Tsikhanau.Monolith.TestModules.Pongs;
 
 namespace Tsikhanau.Monolith.Perf.Hosting;
 
@@ -25,9 +25,9 @@ internal static class PerfHost
         ConfigureLogging(builder.Logging, settings);
         builder.EnsureConnectionString();
         builder.Services.AddPlatformServices(builder.Configuration);
-        builder.Services.AddCaller();
-        builder.Services.AddPingsInfrastructure();
-        builder.Services.AddPongsInfrastructure();
+        builder
+            .AddModule<PingsModule>()
+            .AddModule<PongsModule>();
 
         return builder.Build();
     }
@@ -74,6 +74,8 @@ internal static class PerfHost
             settings.MaxConnections.ToString(CultureInfo.InvariantCulture);
 
         configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.PrepareTimeout)}"] = "00:10:00";
+        configuration["App:Modules:Pings:Limit"] = "10";
+        configuration["App:Modules:Pongs:Limit"] = "10";
     }
 
     private static void ConfigureLogging(ILoggingBuilder logging, PerfHostSettings settings)

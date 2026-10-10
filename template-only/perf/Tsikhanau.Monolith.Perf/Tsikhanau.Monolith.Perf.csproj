@@ -5,6 +5,9 @@
     <GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
   </ItemGroup>
   <ItemGroup>
