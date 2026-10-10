@@ -3,7 +3,7 @@ using static Tsikhanau.Monolith.Scaffold.Modules.CodeLayout;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;
 
-internal sealed class ModuleTemplate(ScaffoldedModule module)
+internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSettings)
 {
     private const String CoreFolder = @"..\..\..\Core";
 
@@ -20,7 +20,11 @@ internal sealed class ModuleTemplate(ScaffoldedModule module)
         _facadeTemplate.FacadeClassFile,
         new(module.InProject($"Infrastructure/Persistence/{module.DbContext}.cs"), DbContext),
         new(module.InProject($"Infrastructure/Persistence/{module.DbContext}DesignTimeFactory.cs"), DesignTimeFactory),
+        .. SettingsFiles,
     ];
+
+    private IEnumerable<NewFile> SettingsFiles =>
+        hasSettings ? [new(module.InProject($"Settings/{SettingsName}.cs"), SettingsRecord)] : [];
 
     private static String ContractsProject =>
         $$"""
@@ -75,9 +79,28 @@ internal sealed class ModuleTemplate(ScaffoldedModule module)
         $"{Namespace}.Infrastructure.Persistence",
         "Tsikhanau.Monolith.Api.Modules",
         "Tsikhanau.Monolith.Infrastructure.Modules",
+        .. SettingsUsings,
     ];
 
-    private String AddServices =>
+    private IEnumerable<String> SettingsUsings => hasSettings ? [$"{Namespace}.Settings"] : [];
+
+    private String AddServices => hasSettings ? AddServicesWithSettings : AddServicesWithoutSettings;
+
+    private String AddServicesWithSettings =>
+        FirstThatFits(
+            $"""
+                 protected override void AddServices(IServiceCollection services) =>
+                     AddSettings<{SettingsName}>(services)
+                         .AddModuleInfrastructure<{InfrastructureTypes(", ")}>();
+             """,
+            $"""
+                 protected override void AddServices(IServiceCollection services) =>
+                     AddSettings<{SettingsName}>(services)
+                         .AddModuleInfrastructure<
+                             {InfrastructureTypes(",\n                ")}>();
+             """);
+
+    private String AddServicesWithoutSettings =>
         FirstThatFits(
             $"""
                  protected override void AddServices(IServiceCollection services) =>
@@ -133,6 +156,16 @@ internal sealed class ModuleTemplate(ScaffoldedModule module)
              """);
 
     private String DesignTimeFactoryName => $"{module.DbContext}DesignTimeFactory";
+
+    private String SettingsRecord =>
+        $$"""
+        namespace {{Namespace}}.Settings;
+
+        internal sealed record {{SettingsName}};
+
+        """;
+
+    private String SettingsName => $"{module.Name}Settings";
 
     private String InfrastructureTypes(String separator) =>
         String.Join(separator, module.FacadeContract, module.FacadeClass, module.DbContext);

@@ -13,12 +13,14 @@ public sealed class ModuleTemplateTests
     private const String LongFolder =
         "src/Modules/InventoryReservationAdjustmentApprovals/Acme.Shop.Modules.InventoryReservationAdjustmentApprovals";
 
+    private const String MaxName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
     [Fact]
     public void Fresh_module_is_two_projects_and_five_wiring_files_without_markers()
     {
         var notes = SampleModules.Create("Notes");
 
-        var files = new ModuleTemplate(notes).CreateFiles();
+        var files = new ModuleTemplate(notes, hasSettings: false).CreateFiles();
 
         files.ShouldBe(
         [
@@ -126,7 +128,7 @@ public sealed class ModuleTemplateTests
     {
         var module = SampleModules.Create(LongName);
 
-        var files = new ModuleTemplate(module)
+        var files = new ModuleTemplate(module, hasSettings: false)
             .CreateFiles()
             .Where(newFile => newFile.Path.EndsWith(".cs", StringComparison.Ordinal))
             .Where(newFile => Path.GetFileName(newFile.Path) != $"I{LongName}Module.cs");
@@ -197,16 +199,101 @@ public sealed class ModuleTemplateTests
         ]);
     }
 
+    [Fact]
+    public void Module_with_settings_adds_an_empty_settings_record_and_binds_it_first()
+    {
+        var notes = SampleModules.Create("Notes");
+        var filesWithoutSettings = new ModuleTemplate(notes, hasSettings: false).CreateFiles();
+
+        var files = new ModuleTemplate(notes, hasSettings: true).CreateFiles();
+
+        var replacedPaths = filesWithoutSettings
+            .Except(files)
+            .Select(newFile => newFile.Path);
+
+        files
+            .Except(filesWithoutSettings)
+            .ShouldBe(
+            [
+                new NewFile(
+                    $"{NotesFolder}/NotesModule.cs",
+                    """
+                    using Acme.Shop.Modules.Notes.Infrastructure;
+                    using Acme.Shop.Modules.Notes.Infrastructure.Persistence;
+                    using Acme.Shop.Modules.Notes.Settings;
+                    using Microsoft.Extensions.DependencyInjection;
+                    using Tsikhanau.Monolith.Api.Modules;
+                    using Tsikhanau.Monolith.Infrastructure.Modules;
+
+                    namespace Acme.Shop.Modules.Notes;
+
+                    public sealed class NotesModule : Module
+                    {
+                        protected override void AddServices(IServiceCollection services) =>
+                            AddSettings<NotesSettings>(services)
+                                .AddModuleInfrastructure<INotesModule, NotesModuleFacade, NotesDbContext>();
+                    }
+
+                    """),
+                new NewFile(
+                    $"{NotesFolder}/Settings/NotesSettings.cs",
+                    """
+                    namespace Acme.Shop.Modules.Notes.Settings;
+
+                    internal sealed record NotesSettings;
+
+                    """),
+            ]);
+
+        replacedPaths.ShouldBe([$"{NotesFolder}/NotesModule.cs"]);
+    }
+
+    [Fact]
+    public void Long_name_with_settings_wraps_the_infrastructure_type_arguments()
+    {
+        var module = SampleModules.Create(LongName);
+
+        var moduleClass = new ModuleTemplate(module, hasSettings: true)
+            .CreateFiles()
+            .Single(newFile => newFile.Path.EndsWith($"/{LongName}Module.cs", StringComparison.Ordinal))
+            .Content;
+
+        moduleClass.ShouldBe(
+            """
+            using Acme.Shop.Modules.InventoryReservationAdjustmentApprovals.Infrastructure;
+            using Acme.Shop.Modules.InventoryReservationAdjustmentApprovals.Infrastructure.Persistence;
+            using Acme.Shop.Modules.InventoryReservationAdjustmentApprovals.Settings;
+            using Microsoft.Extensions.DependencyInjection;
+            using Tsikhanau.Monolith.Api.Modules;
+            using Tsikhanau.Monolith.Infrastructure.Modules;
+
+            namespace Acme.Shop.Modules.InventoryReservationAdjustmentApprovals;
+
+            public sealed class InventoryReservationAdjustmentApprovalsModule : Module
+            {
+                protected override void AddServices(IServiceCollection services) =>
+                    AddSettings<InventoryReservationAdjustmentApprovalsSettings>(services)
+                        .AddModuleInfrastructure<
+                            IInventoryReservationAdjustmentApprovalsModule,
+                            InventoryReservationAdjustmentApprovalsModuleFacade,
+                            InventoryReservationAdjustmentApprovalsDbContext>();
+            }
+
+            """);
+    }
+
     [Theory]
-    [InlineData("Notes")]
-    [InlineData("InventoryReservations")]
-    [InlineData(LongName)]
-    [InlineData("Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")]
-    public void Every_generated_line_fits_in_120_characters(String name)
+    [InlineData("Notes", false)]
+    [InlineData("InventoryReservations", false)]
+    [InlineData(LongName, false)]
+    [InlineData(MaxName, false)]
+    [InlineData(LongName, true)]
+    [InlineData(MaxName, true)]
+    public void Every_generated_line_fits_in_120_characters(String name, Boolean hasSettings)
     {
         var module = SampleModules.Create(name);
 
-        var longLines = new ModuleTemplate(module)
+        var longLines = new ModuleTemplate(module, hasSettings)
             .CreateFiles()
             .Where(newFile => newFile.Path.EndsWith(".cs", StringComparison.Ordinal))
             .SelectMany(newFile => newFile.Content.Split('\n'))
@@ -220,7 +307,7 @@ public sealed class ModuleTemplateTests
     {
         var notes = SampleModules.Create("Notes", appName: "Zeta");
 
-        var moduleClass = new ModuleTemplate(notes)
+        var moduleClass = new ModuleTemplate(notes, hasSettings: false)
             .CreateFiles()
             .Single(newFile => newFile.Path.EndsWith("/NotesModule.cs", StringComparison.Ordinal))
             .Content;

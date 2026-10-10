@@ -11,7 +11,7 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Cli;
 
 public sealed class ScaffoldToolTests : IDisposable
 {
-    private const String Usage = "usage: bash scripts/scaffold.sh module <Name>";
+    private const String Usage = "usage: bash scripts/scaffold.sh module <Name> [--settings]";
 
     private const String NewFilePath = "src/Modules/Notes/NotesModule.cs";
 
@@ -48,7 +48,11 @@ public sealed class ScaffoldToolTests : IDisposable
     [Theory]
     [InlineData("module")]
     [InlineData("module Notes Tags")]
-    public async Task Module_command_without_exactly_one_name_is_refused_with_the_usage(String commandLine)
+    [InlineData("module --settings")]
+    [InlineData("module --settings Notes")]
+    [InlineData("module Notes --setting")]
+    [InlineData("module Notes --settings --settings")]
+    public async Task Module_command_without_one_name_and_at_most_the_settings_option_is_refused(String commandLine)
     {
         var before = _app.TakeSnapshot();
 
@@ -58,7 +62,7 @@ public sealed class ScaffoldToolTests : IDisposable
         var error = _error.ToString();
 
         exitCode.ShouldBe(2);
-        error.ShouldBe($"scaffold: module takes exactly one name; {Usage}\n");
+        error.ShouldBe($"scaffold: module takes one name and optionally --settings; {Usage}\n");
         after.ShouldBe(before);
     }
 

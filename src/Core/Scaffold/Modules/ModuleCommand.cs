@@ -7,7 +7,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;
 
-internal sealed class ModuleCommand(String name) : IScaffoldCommand
+internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffoldCommand
 {
     private const String MigrationName = "Initial";
 
@@ -36,15 +36,15 @@ internal sealed class ModuleCommand(String name) : IScaffoldCommand
             .GetFileName(folder)
             .Equals(module.Name, StringComparison.OrdinalIgnoreCase);
 
-    private static Result<ScaffoldPlan> PlanModule(ScaffoldedModule module) =>
+    private Result<ScaffoldPlan> PlanModule(ScaffoldedModule module) =>
         Result
             .Collect(CreateFiles(module))
             .And(PlanEdits(module))
             .Map((newFiles, fileEdits) => new ScaffoldPlan(newFiles, fileEdits, [CreateMigrationStep(module)]));
 
-    private static Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module)
+    private Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module)
     {
-        var newFiles = new ModuleTemplate(module).CreateFiles();
+        var newFiles = new ModuleTemplate(module, hasSettings).CreateFiles();
 
         return CodeLayout
             .FindTooLongLine(newFiles)
@@ -55,11 +55,17 @@ internal sealed class ModuleCommand(String name) : IScaffoldCommand
                 () => Result.Success(newFiles));
     }
 
-    private static Result<IReadOnlyList<FileEdit>> PlanEdits(ScaffoldedModule module) =>
+    private Result<IReadOnlyList<FileEdit>> PlanEdits(ScaffoldedModule module) =>
         Result.CombineAll(
+        [
             SolutionEdit.AddModule(module.App.Solution, module),
             HostProjectEdit.AddModule(module.App.HostProject, module),
-            ProgramEdit.AddModule(module.App.Program, module));
+            ProgramEdit.AddModule(module.App.Program, module),
+            .. PlanSettingsEdits(module),
+        ]);
+
+    private IEnumerable<Result<FileEdit>> PlanSettingsEdits(ScaffoldedModule module) =>
+        hasSettings ? [AppSettingsEdit.AddModule(module.App.AppSettings, module)] : [];
 
     private static ExternalStep CreateMigrationStep(ScaffoldedModule module) =>
         new("bash", ["scripts/add-migration.sh", module.Name, MigrationName]);

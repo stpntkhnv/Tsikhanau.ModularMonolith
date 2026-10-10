@@ -27,6 +27,10 @@ public sealed class ModuleCommandTests : IDisposable
     private const String NotesDesignTimeFactory =
         $"{NotesProjectFolder}/Infrastructure/Persistence/NotesDbContextDesignTimeFactory.cs";
 
+    private const String NotesSettings = $"{NotesProjectFolder}/Settings/NotesSettings.cs";
+
+    private const String QueuesEnd = "      \"ClaimBatchSize\": 16\n    }\n";
+
     private const Int32 FirstNewFile = 1;
 
     private const Int32 LastNewFile = 7;
@@ -34,6 +38,10 @@ public sealed class ModuleCommandTests : IDisposable
     private const Int32 SolutionEdit = 8;
 
     private const Int32 ProgramEdit = 10;
+
+    private const Int32 SettingsFile = 8;
+
+    private const Int32 AppSettingsEdit = 12;
 
     private readonly SampleApp _app = SampleApp.Create();
 
@@ -159,7 +167,7 @@ public sealed class ModuleCommandTests : IDisposable
     {
         var before = _app.TakeSnapshot();
 
-        var exitCode = await RunAsync("Notes", new FailingFileSystem(_app.Root, failingWrite: failingWrite));
+        var exitCode = await RunAsync(new FailingFileSystem(_app.Root, failingWrite: failingWrite), "Notes");
 
         var after = _app.TakeSnapshot();
         var error = _error.ToString();
@@ -192,6 +200,87 @@ public sealed class ModuleCommandTests : IDisposable
         error.ShouldBe($"scaffold: the migration failed; {RolledBack}\n");
         after.ShouldBe(before);
         hasModuleFolder.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Module_with_settings_adds_its_settings_record_and_its_section_in_the_host_settings()
+    {
+        var exitCode = await RunAsync("Notes", "--settings");
+
+        var status = _app
+            .TakeSnapshot()
+            .Status
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        var appSettings = _app.Read(SampleApp.AppSettingsPath);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        _processRunner.Steps.ShouldBe(["bash scripts/add-migration.sh Notes Initial"]);
+        status.ShouldBe(
+            [
+                $" M {SampleApp.SolutionPath}",
+                $" M {SampleApp.HostProjectPath}",
+                $" M {SampleApp.ProgramPath}",
+                $" M {SampleApp.AppSettingsPath}",
+                $"?? {NotesContractsProject}",
+                $"?? {NotesProjectFolder}/Acme.Shop.Modules.Notes.csproj",
+                $"?? {NotesProjectFolder}/NotesModule.cs",
+                $"?? {NotesProjectFolder}/INotesModule.cs",
+                $"?? {NotesProjectFolder}/Infrastructure/NotesModuleFacade.cs",
+                $"?? {NotesProjectFolder}/Infrastructure/Persistence/NotesDbContext.cs",
+                $"?? {NotesDesignTimeFactory}",
+                $"?? {NotesSettings}",
+            ],
+            ignoreOrder: true);
+
+        appSettings.ShouldBe(
+            WithModules(
+                """
+                    "Modules": {
+                      "Notes": {}
+                    }
+                """));
+    }
+
+    [Theory]
+    [InlineData(SettingsFile, NotesSettings)]
+    [InlineData(AppSettingsEdit, SampleApp.AppSettingsPath)]
+    public async Task Failed_write_of_a_module_with_settings_leaves_the_tree_as_it_was(
+        Int32 failingWrite,
+        String failingPath)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(
+            new FailingFileSystem(_app.Root, failingWrite: failingWrite),
+            "Notes",
+            "--settings");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe($"scaffold: cannot write {failingPath}: disk full; {RolledBack}\n");
+        after.ShouldBe(before);
+        _processRunner.Steps.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Module_whose_settings_section_exists_is_refused_before_anything_is_written()
+    {
+        _app.Write(SampleApp.AppSettingsPath, WithModules("    \"Modules\": {\n      \"Notes\": {}\n    }"));
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("Notes", "--settings");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe($"scaffold: {SampleApp.AppSettingsPath} must hold no App:Modules:Notes yet\n");
+        after.ShouldBe(before);
+        _processRunner.Steps.ShouldBeEmpty();
     }
 
     [Theory]
@@ -283,10 +372,17 @@ public sealed class ModuleCommandTests : IDisposable
             + "more than the 120 the build allows; choose a shorter name\n");
     }
 
-    private Task<Int32> RunAsync(String name) => RunAsync(name, _app.FileSystem);
+    private Task<Int32> RunAsync(params String[] moduleArguments) => RunAsync(_app.FileSystem, moduleArguments);
 
-    private Task<Int32> RunAsync(String name, IFileSystem fileSystem) =>
-        new ScaffoldTool(fileSystem, _processRunner, _output, _error).RunAsync(["module", name], CancellationToken);
+    private Task<Int32> RunAsync(IFileSystem fileSystem, params String[] moduleArguments) =>
+        new ScaffoldTool(fileSystem, _processRunner, _output, _error)
+            .RunAsync(["module", .. moduleArguments], CancellationToken);
+
+    private static String WithModules(String modules) =>
+        SampleApp.AppSettings.Replace(
+            QueuesEnd,
+            $"      \"ClaimBatchSize\": 16\n    }},\n{modules}\n",
+            StringComparison.Ordinal);
 
     private static String Insert(String text, String anchor, String addition) =>
         text.Replace(anchor, anchor + addition, StringComparison.Ordinal);
