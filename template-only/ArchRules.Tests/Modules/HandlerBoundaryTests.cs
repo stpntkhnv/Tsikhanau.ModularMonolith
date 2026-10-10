@@ -17,12 +17,25 @@ public sealed class HandlerBoundaryTests : HandlerBoundaryTests<TestModuleInputs
     [Fact]
     public void Write_side_taken_by_a_type_nested_in_a_query_handler_is_checked()
     {
-        var sampleModule = new ArchModule("Samples", SampleNamespace, () => [typeof(HandlerBoundaryTests).Assembly]);
-
-        var evaluation = HandlerBoundaryRules.QueryHandlersTakeNoWriteSideDependencies(sampleModule);
+        var evaluation = HandlerBoundaryRules.QueryHandlersTakeNoWriteSideDependencies(SampleModule);
 
         evaluation.Violations.ShouldContain($"{SampleQueryHandlerName}+OutboxWriter takes IOutbox`1 outbox");
     }
+
+    [Fact]
+    public void Query_marker_rule_is_silent_on_a_module_without_a_query_marker()
+    {
+        var sampleModule = SampleModule;
+
+        var evaluation = HandlerBoundaryRules.QueryMarkerIsImplementedOnlyInsideItsModule(
+            new ArchModules([sampleModule]),
+            sampleModule);
+
+        evaluation.Violations.ShouldBeEmpty();
+    }
+
+    private static ArchModule SampleModule =>
+        new("Samples", SampleNamespace, () => [typeof(HandlerBoundaryTests).Assembly]);
 
     private interface ISampleModule : IModuleFacade;
 

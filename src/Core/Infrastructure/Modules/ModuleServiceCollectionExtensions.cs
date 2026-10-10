@@ -27,7 +27,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 public static class ModuleServiceCollectionExtensions
 {
-    private const String QueryFacadeProblem = "must extend exactly one query facade, like INotesQueryFacade";
+    private const String QueryFacadeProblem = "must extend at most one query facade, like INotesQueryFacade";
 
     public static IServiceCollection AddModuleInfrastructure<TModule, TFacade, TDbContext>(
         this IServiceCollection services)
@@ -52,7 +52,7 @@ public static class ModuleServiceCollectionExtensions
         where TFacade : class, TModule
         where TDbContext : ModuleDbContext
     {
-        var queryFacadeType = GetQueryFacadeType<TModule>();
+        var queryFacadeType = FindQueryFacadeType<TModule>();
         var moduleTypes = GetModuleTypes(definition, queryFacadeType);
         EnsureHandlersAreValid(definition, moduleTypes);
         EnsureInternalCommandsAreNamed(definition, moduleTypes);
@@ -73,29 +73,49 @@ public static class ModuleServiceCollectionExtensions
             .AddIntegrationEventHandlers(moduleTypes, descriptor);
     }
 
-    private static Type GetQueryFacadeType<TModule>()
+    private static Optional<Type> FindQueryFacadeType<TModule>()
     {
         var queryFacadeTypes = typeof(TModule)
             .GetInterfaces()
             .Where(IsQueryFacade)
             .ToList();
 
-        return queryFacadeTypes is [var queryFacadeType]
-            ? queryFacadeType
-            : throw new InvalidOperationException($"Module facade {typeof(TModule).FullName} {QueryFacadeProblem}");
+        return queryFacadeTypes switch
+        {
+            [] => Optional<Type>.None(),
+            [var queryFacadeType] => Optional<Type>.Some(queryFacadeType),
+            _ => throw new InvalidOperationException($"Module facade {typeof(TModule).FullName} {QueryFacadeProblem}"),
+        };
     }
 
     private static Boolean IsQueryFacade(Type type) =>
         type != typeof(IModuleQueryFacade) && type.Implements<IModuleQueryFacade>();
 
-    private static List<Type> GetModuleTypes(ModuleDefinition definition, Type queryFacadeType) =>
+    private static List<Type> GetModuleTypes(ModuleDefinition definition, Optional<Type> queryFacadeType) =>
         GetModuleAssemblies(definition, queryFacadeType)
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type.IsInNamespace(definition.RootNamespace))
             .ToList();
 
-    private static IEnumerable<Assembly> GetModuleAssemblies(ModuleDefinition definition, Type queryFacadeType) =>
-        new[] { definition.Assembly, queryFacadeType.Assembly }.Distinct();
+    private static IEnumerable<Assembly> GetModuleAssemblies(
+        ModuleDefinition definition,
+        Optional<Type> queryFacadeType) =>
+        LoadOwnReferencedAssemblies(definition)
+            .Prepend(definition.Assembly)
+            .Concat(GetAssemblyOf(queryFacadeType))
+            .Distinct();
+
+    private static IEnumerable<Assembly> LoadOwnReferencedAssemblies(ModuleDefinition definition) =>
+        definition.Assembly
+            .GetReferencedAssemblies()
+            .Where(assemblyName => IsNamedUnder(assemblyName, definition.RootNamespace))
+            .Select(Assembly.Load);
+
+    private static Boolean IsNamedUnder(AssemblyName assemblyName, String rootNamespace) =>
+        assemblyName.Name is { } name && name.StartsWith($"{rootNamespace}.", StringComparison.Ordinal);
+
+    private static Assembly[] GetAssemblyOf(Optional<Type> queryFacadeType) =>
+        queryFacadeType.Match<Type, Assembly[]>(type => [type.Assembly], () => []);
 
     private static void EnsureHandlersAreValid(ModuleDefinition definition, IReadOnlyCollection<Type> moduleTypes) =>
         EnsureNoProblems(
@@ -126,7 +146,9 @@ public static class ModuleServiceCollectionExtensions
         }
     }
 
-    private static ModuleDescriptor Describe<TModule, TDbContext>(ModuleDefinition definition, Type queryFacadeType) =>
+    private static ModuleDescriptor Describe<TModule, TDbContext>(
+        ModuleDefinition definition,
+        Optional<Type> queryFacadeType) =>
         new(
             typeof(TModule),
             queryFacadeType,
@@ -202,8 +224,20 @@ public static class ModuleServiceCollectionExtensions
         where TFacade : class, TModule =>
         services
             .AddSingleton<TModule, TFacade>()
-            .AddSingleton(descriptor.QueryFacadeKey, serviceProvider => serviceProvider.GetRequiredService<TModule>())
+            .AddQueryFacade<TModule>(descriptor.QueryFacadeKey)
             .AddScoped<ModuleDispatcher<TModule>>();
+
+    private static IServiceCollection AddQueryFacade<TModule>(
+        this IServiceCollection services,
+        Optional<Type> queryFacadeKey)
+        where TModule : class, IModuleFacade =>
+        queryFacadeKey.Match(
+            queryFacadeType => services.AddSingleton(queryFacadeType, ResolveModuleFacade<TModule>),
+            () => services);
+
+    private static TModule ResolveModuleFacade<TModule>(IServiceProvider serviceProvider)
+        where TModule : class, IModuleFacade =>
+        serviceProvider.GetRequiredService<TModule>();
 
     private static IServiceCollection AddOutbox<TModule>(this IServiceCollection services)
         where TModule : class, IModuleFacade =>

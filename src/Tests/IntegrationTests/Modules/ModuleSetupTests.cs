@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Testing.Modules;
+using Tsikhanau.Railway;
 
 namespace ModularMonolith.IntegrationTests.Modules;
 
@@ -51,12 +52,11 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
         }
 
         var module = App.GetModule(name);
+        var moduleFacade = App.Services.GetRequiredService(module.Key);
 
-        var queryFacade = App.Services.GetService(module.QueryFacadeKey);
-        var moduleFacade = App.Services.GetService(module.Key);
-
-        queryFacade.ShouldNotBeNull();
-        queryFacade.ShouldBeSameAs(moduleFacade);
+        module.QueryFacadeKey
+            .Map(App.Services.GetRequiredService)
+            .Tap(queryFacade => queryFacade.ShouldBeSameAs(moduleFacade));
     }
 
     [Theory]

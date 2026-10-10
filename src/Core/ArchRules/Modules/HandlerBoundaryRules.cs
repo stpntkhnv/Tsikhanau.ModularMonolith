@@ -54,16 +54,12 @@ public static class HandlerBoundaryRules
             .Where(IsQueryMarker)
             .ToList();
 
-        var foreignQueryTypeNames = modules.Assemblies
+        return modules.Assemblies
             .SelectMany(assembly => assembly.HandwrittenTypes)
             .Where(type => type.IsConcrete)
             .Where(type => !module.Contains(type))
             .Where(type => queryMarkers.Any(queryMarker => type.Implements(queryMarker)))
             .Select(type => type.FullNameOrName);
-
-        return queryMarkers.Count == 0
-            ? [$"{module.Name} has no query marker in its Contracts (I{module.Name}Query<T> : IQuery<T>)"]
-            : foreignQueryTypeNames;
     }
 
     private static IEnumerable<String> GetFacadeReferences(ArchModule module, IReadOnlyList<Type> subjectTypes)

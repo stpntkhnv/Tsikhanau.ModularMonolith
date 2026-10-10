@@ -4,7 +4,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 public sealed record ModuleDescriptor(
     Type Key,
-    Type QueryFacadeKey,
+    Optional<Type> QueryFacadeKey,
     String Name,
     String Schema,
     Type DbContextType,

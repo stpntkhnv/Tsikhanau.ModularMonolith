@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.Contracts.Modules;
@@ -13,6 +14,7 @@ using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure;
 using Tsikhanau.Monolith.TestModules.Unhandled;
 using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.Misplaced.Infrastructure;
 using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.Nested;
+using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.Queryless;
 using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.SharedInternalCommandName;
 using Tsikhanau.Railway;
 
@@ -28,7 +30,9 @@ public sealed class ModuleRegistrationTests
 
     private const String SchemaProblem = "must name its schema in a const String SchemaName";
 
-    private const String QueryFacadeProblem = "must extend exactly one query facade, like INotesQueryFacade";
+    private const String QueryFacadeProblem = "must extend at most one query facade, like INotesQueryFacade";
+
+    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
     public void Registers_a_module_with_one_handler_per_request() =>
@@ -84,7 +88,7 @@ public sealed class ModuleRegistrationTests
         module.Key.ShouldBe(typeof(IPongsModule));
         module.Name.ShouldBe("Pongs");
         module.Schema.ShouldBe("test");
-        module.QueryFacadeKey.ShouldBe(typeof(IPongsQueryFacade));
+        module.QueryFacadeKey.ShouldBe(Optional<Type>.Some(typeof(IPongsQueryFacade)));
         module.DbContextType.ShouldBe(typeof(TestDbContext));
         module.ConstraintErrors.ShouldBeEmpty();
     }
@@ -152,12 +156,30 @@ public sealed class ModuleRegistrationTests
     }
 
     [Fact]
-    public void Rejects_a_facade_without_a_query_facade()
+    public void Registers_a_module_without_a_query_facade()
     {
-        var exception = Should.Throw<InvalidOperationException>(() =>
-            Register<IQuerylessModule, QuerylessModuleFacade>($"{Scenarios}.Valid"));
+        var services = Register<IQuerylessModule, QuerylessModuleFacade>($"{Scenarios}.Queryless");
 
-        exception.Message.ShouldBe($"Module facade {typeof(IQuerylessModule).FullName} {QueryFacadeProblem}");
+        var module = services
+            .GetOrAddInstance<ModuleRegistry>().Modules
+            .ShouldHaveSingleItem();
+
+        module.QueryFacadeKey.ShouldBe(Optional<Type>.None());
+    }
+
+    [Fact]
+    public async Task Facade_of_a_module_without_a_query_facade_answers_commands()
+    {
+        var answer = Error.Failure("Queryless.Answer", "Answered without a query facade");
+        await using var serviceProvider = Register<IQuerylessModule, QuerylessModuleFacade>($"{Scenarios}.Queryless")
+            .AddLogging()
+            .BuildServiceProvider();
+
+        var result = await serviceProvider
+            .GetRequiredService<IQuerylessModule>()
+            .ExecuteCommandAsync(new FailCommand(answer), CancellationToken);
+
+        result.ShouldBe(Result.Failure(answer));
     }
 
     [Fact]
@@ -322,10 +344,23 @@ public sealed class ModuleRegistrationTests
     private sealed class MisplacedModuleFacade(IServiceScopeFactory serviceScopeFactory)
         : ModuleFacade<IMisplacedModule>(serviceScopeFactory), IMisplacedModule;
 
-    private interface IQuerylessModule : IModuleFacade;
+    private interface IQuerylessModule : IModuleFacade
+    {
+        Task<Result<TResult>> ExecuteCommandAsync<TResult>(
+            ICommand<TResult> command,
+            CancellationToken cancellationToken)
+            where TResult : notnull;
+    }
 
     private sealed class QuerylessModuleFacade(IServiceScopeFactory serviceScopeFactory)
-        : ModuleFacade<IQuerylessModule>(serviceScopeFactory), IQuerylessModule;
+        : ModuleFacade<IQuerylessModule>(serviceScopeFactory), IQuerylessModule
+    {
+        public Task<Result<TResult>> ExecuteCommandAsync<TResult>(
+            ICommand<TResult> command,
+            CancellationToken cancellationToken)
+            where TResult : notnull =>
+            SendAsync(command, cancellationToken);
+    }
 
     private interface IOtherQueryFacade : IModuleQueryFacade;
 
