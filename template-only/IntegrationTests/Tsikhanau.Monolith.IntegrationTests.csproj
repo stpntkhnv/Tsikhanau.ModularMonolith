@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\TestHost\Tsikhanau.Monolith.TestHost.csproj" />
     <ProjectReference Include="..\TestModules\Tsikhanau.Monolith.TestModules.csproj" />
     <ProjectReference Include="..\..\src\Core\Testing\Tsikhanau.Monolith.Testing.csproj" />
     <ProjectReference Include="..\..\src\Core\Hosting\Tsikhanau.Monolith.Hosting.csproj" />

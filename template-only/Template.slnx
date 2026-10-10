@@ -11,6 +11,9 @@
   <Folder Name="/Shared.Tests/">
     <Project Path="Shared.Tests/Tsikhanau.Monolith.Shared.Tests.csproj" />
   </Folder>
+  <Folder Name="/TestHost/">
+    <Project Path="TestHost/Tsikhanau.Monolith.TestHost.csproj" />
+  </Folder>
   <Folder Name="/TestModules/">
     <Project Path="TestModules/Tsikhanau.Monolith.TestModules.csproj" />
   </Folder>
