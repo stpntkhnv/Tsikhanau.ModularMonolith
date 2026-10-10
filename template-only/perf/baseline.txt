@@ -1,208 +1,208 @@
-measured on 88f1ec8
+measured on 9f20b2d
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- command n=3000 warmup=1000 conc=1,8,32
-# command n=3000 warmup=1000 conc=1,8,32 | cpus 12 | servergc True | datas 0 | load 5.51
-create c=1 n=3000: 1430 ops/s, p50 0.674 ms, p95 0.918 ms, p99 1.092 ms, mean 0.699 ms, alloc 45953 B/op, cpu 1325 us/op, gc0/1/2 0/0/0, load 5.31
+# command n=3000 warmup=1000 conc=1,8,32 | cpus 12 | servergc True | datas 0 | load 4.47
+create c=1 n=3000: 1389 ops/s, p50 0.719 ms, p95 0.931 ms, p99 0.987 ms, mean 0.720 ms, alloc 46109 B/op, cpu 1383 us/op, gc0/1/2 0/0/0, load 4.35
   statements per op (pg_stat_statements, 3000 ops):
      1.00 x  mean    20.0 us  [monolith_pings] INSERT INTO pings.outbox_messages (id, attempts, failed_on, last_error, next_attempt_on, occurred_on, payload, processed_on, trace_parent, type) VALUES ($1, $2,
-     1.00 x  mean     9.5 us  [monolith_pings] INSERT INTO pings.pings (id, label, touches, version, archived_on, nickname, schedule_interval, schedule_repeats) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     1.00 x  mean     9.8 us  [monolith_pings] INSERT INTO pings.pings (id, label, touches, version, archived_on, nickname, schedule_interval, schedule_repeats) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      1.00 x  mean     2.1 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
      1.00 x  mean     2.0 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.00 x  mean     1.7 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.8 us  [monolith_pings] RESET ALL
+     1.00 x  mean     0.9 us  [monolith_pings] RESET ALL
      1.00 x  mean     0.3 us  [monolith_pings] COMMIT
      1.00 x  mean     0.3 us  [monolith_pings] CLOSE ALL
      1.00 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.00 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.00 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-create c=8 n=3000: 10555 ops/s, p50 0.744 ms, p95 0.922 ms, p99 1.057 ms, mean 0.757 ms, alloc 44565 B/op, cpu 472 us/op, gc0/1/2 0/0/0, load 5.29
-create c=32 n=3000: 11233 ops/s, p50 2.513 ms, p95 4.386 ms, p99 7.758 ms, mean 2.833 ms, alloc 45731 B/op, cpu 377 us/op, gc0/1/2 0/0/0, load 5.29
-wall 7615 ms
+create c=8 n=3000: 10470 ops/s, p50 0.747 ms, p95 0.948 ms, p99 1.144 ms, mean 0.763 ms, alloc 44589 B/op, cpu 474 us/op, gc0/1/2 0/0/0, load 4.96
+create c=32 n=3000: 12163 ops/s, p50 2.364 ms, p95 3.699 ms, p99 6.410 ms, mean 2.614 ms, alloc 45601 B/op, cpu 319 us/op, gc0/1/2 0/0/0, load 4.96
+wall 7551 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- command n=3000 warmup=1000 conc=1,8,32
-# command n=3000 warmup=1000 conc=1,8,32 | cpus 12 | servergc True | datas 0 | load 4.13
-create c=1 n=3000: 1398 ops/s, p50 0.693 ms, p95 0.941 ms, p99 1.166 ms, mean 0.715 ms, alloc 46101 B/op, cpu 1343 us/op, gc0/1/2 0/0/0, load 3.89
+# command n=3000 warmup=1000 conc=1,8,32 | cpus 12 | servergc True | datas 0 | load 2.63
+create c=1 n=3000: 1451 ops/s, p50 0.682 ms, p95 0.926 ms, p99 0.995 ms, mean 0.689 ms, alloc 45891 B/op, cpu 1311 us/op, gc0/1/2 0/0/0, load 2.70
   statements per op (pg_stat_statements, 3000 ops):
      1.00 x  mean    20.2 us  [monolith_pings] INSERT INTO pings.outbox_messages (id, attempts, failed_on, last_error, next_attempt_on, occurred_on, payload, processed_on, trace_parent, type) VALUES ($1, $2,
-     1.00 x  mean     9.6 us  [monolith_pings] INSERT INTO pings.pings (id, label, touches, version, archived_on, nickname, schedule_interval, schedule_repeats) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     1.00 x  mean     9.7 us  [monolith_pings] INSERT INTO pings.pings (id, label, touches, version, archived_on, nickname, schedule_interval, schedule_repeats) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      1.00 x  mean     2.1 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
      1.00 x  mean     2.0 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.00 x  mean     1.7 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     0.9 us  [monolith_pings] RESET ALL
+     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
      1.00 x  mean     0.3 us  [monolith_pings] CLOSE ALL
-     1.00 x  mean     0.2 us  [monolith_pings] COMMIT
      1.00 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.00 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.00 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-create c=8 n=3000: 10342 ops/s, p50 0.756 ms, p95 0.965 ms, p99 1.163 ms, mean 0.773 ms, alloc 44612 B/op, cpu 482 us/op, gc0/1/2 0/0/0, load 3.89
-create c=32 n=3000: 11644 ops/s, p50 2.456 ms, p95 4.056 ms, p99 7.215 ms, mean 2.732 ms, alloc 45606 B/op, cpu 337 us/op, gc0/1/2 0/0/0, load 3.89
-wall 7691 ms
+create c=8 n=3000: 9968 ops/s, p50 0.771 ms, p95 1.052 ms, p99 1.467 ms, mean 0.802 ms, alloc 44571 B/op, cpu 487 us/op, gc0/1/2 0/0/0, load 2.70
+create c=32 n=3000: 11658 ops/s, p50 2.489 ms, p95 3.845 ms, p99 6.507 ms, mean 2.728 ms, alloc 45595 B/op, cpu 343 us/op, gc0/1/2 0/0/0, load 2.70
+wall 7549 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- query n=5000 conc=1,8
-# query n=5000 conc=1,8 | cpus 12 | servergc True | datas 0 | load 5.02
-query-facade c=1 n=5000: 4308 ops/s, p50 0.223 ms, p95 0.267 ms, p99 0.306 ms, mean 0.232 ms, alloc 4676 B/op, cpu 458 us/op, gc0/1/2 0/0/0, load 4.70
+# query n=5000 conc=1,8 | cpus 12 | servergc True | datas 0 | load 4.73
+query-facade c=1 n=5000: 4372 ops/s, p50 0.224 ms, p95 0.266 ms, p99 0.291 ms, mean 0.229 ms, alloc 4623 B/op, cpu 446 us/op, gc0/1/2 0/0/0, load 4.43
   statements per op (pg_stat_statements, 5000 ops):
-     1.00 x  mean    19.7 us  [monolith_pings] SELECT id AS "Id", label AS "Label", nickname AS "Nickname", touches AS "Touches", version AS "Version" FROM pings.pings WHERE id = $1
+     1.00 x  mean    19.1 us  [monolith_pings] SELECT id AS "Id", label AS "Label", nickname AS "Nickname", touches AS "Touches", version AS "Version" FROM pings.pings WHERE id = $1
      1.00 x  mean     1.9 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
+     1.00 x  mean     1.8 us  [monolith_pings] SELECT pg_advisory_unlock_all()
+     1.00 x  mean     0.7 us  [monolith_pings] RESET ALL
+     1.00 x  mean     0.3 us  [monolith_pings] CLOSE ALL
+     1.00 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
+     1.00 x  mean     0.2 us  [monolith_pings] UNLISTEN *
+     1.00 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
+query-facade c=8 n=5000: 22293 ops/s, p50 0.347 ms, p95 0.494 ms, p99 0.582 ms, mean 0.358 ms, alloc 4367 B/op, cpu 181 us/op, gc0/1/2 0/0/0, load 4.43
+wall 5979 ms
+
+$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- query n=5000 conc=1,8
+# query n=5000 conc=1,8 | cpus 12 | servergc True | datas 0 | load 2.72
+query-facade c=1 n=5000: 4332 ops/s, p50 0.226 ms, p95 0.269 ms, p99 0.296 ms, mean 0.231 ms, alloc 4654 B/op, cpu 475 us/op, gc0/1/2 0/0/0, load 2.50
+  statements per op (pg_stat_statements, 5000 ops):
+     1.00 x  mean    19.2 us  [monolith_pings] SELECT id AS "Id", label AS "Label", nickname AS "Nickname", touches AS "Touches", version AS "Version" FROM pings.pings WHERE id = $1
+     1.00 x  mean     1.8 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
      1.00 x  mean     1.8 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.00 x  mean     0.7 us  [monolith_pings] RESET ALL
      1.00 x  mean     0.2 us  [monolith_pings] CLOSE ALL
      1.00 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.00 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.00 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-query-facade c=8 n=5000: 21506 ops/s, p50 0.347 ms, p95 0.540 ms, p99 0.787 ms, mean 0.372 ms, alloc 4378 B/op, cpu 169 us/op, gc0/1/2 0/0/0, load 4.70
-wall 6074 ms
-
-$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- query n=5000 conc=1,8
-# query n=5000 conc=1,8 | cpus 12 | servergc True | datas 0 | load 3.73
-query-facade c=1 n=5000: 4282 ops/s, p50 0.224 ms, p95 0.268 ms, p99 0.304 ms, mean 0.233 ms, alloc 4691 B/op, cpu 417 us/op, gc0/1/2 0/0/0, load 3.59
-  statements per op (pg_stat_statements, 5000 ops):
-     1.00 x  mean    19.2 us  [monolith_pings] SELECT id AS "Id", label AS "Label", nickname AS "Nickname", touches AS "Touches", version AS "Version" FROM pings.pings WHERE id = $1
-     1.00 x  mean     1.9 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
-     1.00 x  mean     1.8 us  [monolith_pings] SELECT pg_advisory_unlock_all()
-     1.00 x  mean     0.7 us  [monolith_pings] RESET ALL
-     1.00 x  mean     0.3 us  [monolith_pings] CLOSE ALL
-     1.00 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
-     1.00 x  mean     0.2 us  [monolith_pings] UNLISTEN *
-     1.00 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-query-facade c=8 n=5000: 21135 ops/s, p50 0.362 ms, p95 0.519 ms, p99 0.655 ms, mean 0.378 ms, alloc 4778 B/op, cpu 207 us/op, gc0/1/2 0/0/0, load 3.59
-wall 6103 ms
+query-facade c=8 n=5000: 23053 ops/s, p50 0.333 ms, p95 0.473 ms, p99 0.569 ms, mean 0.347 ms, alloc 4227 B/op, cpu 158 us/op, gc0/1/2 0/0/0, load 2.50
+wall 5962 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-direct n=2000
-# queue-direct n=2000 | cpus 12 | servergc True | datas 0 | load 4.53
-direct-outbox c=1 n=2000: 863 ops/s, p50 1.159 ms, p95 1.159 ms, p99 1.159 ms, mean 1.159 ms, alloc 43745 B/op, cpu 2171 us/op, gc0/1/2 0/0/0, load 4.61
+# queue-direct n=2000 | cpus 12 | servergc True | datas 0 | load 4.22
+direct-outbox c=1 n=2000: 867 ops/s, p50 1.153 ms, p95 1.153 ms, p99 1.153 ms, mean 1.153 ms, alloc 43763 B/op, cpu 2163 us/op, gc0/1/2 0/0/0, load 3.96
   statements per op (pg_stat_statements, 2000 ops):
      1.06 x  mean     2.2 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
-     1.06 x  mean     2.1 us  [monolith_pings] SELECT pg_advisory_unlock_all()
-     1.06 x  mean     1.0 us  [monolith_pings] RESET ALL
-     1.06 x  mean     0.3 us  [monolith_pings] CLOSE ALL
-     1.06 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
-     1.06 x  mean     0.2 us  [monolith_pings] UNLISTEN *
-     1.06 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    40.1 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, 0, 
-     1.00 x  mean    34.9 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    32.0 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean     1.8 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
-direct-inbox c=1 n=2000: 1099 ops/s, p50 0.910 ms, p95 0.910 ms, p99 0.910 ms, mean 0.910 ms, alloc 56798 B/op, cpu 1830 us/op, gc0/1/2 0/0/0, load 4.61
-  statements per op (pg_stat_statements, 2000 ops):
-     1.06 x  mean     1.9 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
-     1.06 x  mean     1.9 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.06 x  mean     0.7 us  [monolith_pongs] RESET ALL
-     1.06 x  mean     0.3 us  [monolith_pongs] CLOSE ALL
-     1.06 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
-     1.06 x  mean     0.1 us  [monolith_pongs] UNLISTEN *
-     1.06 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
-     1.00 x  mean    29.2 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    28.9 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    14.5 us  [monolith_pongs] SELECT EXISTS ( SELECT 1 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     5.8 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
-     1.00 x  mean     1.5 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
-end-to-end sequential (outbox then inbox): 483 events/s
-wall 9825 ms
-
-$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-direct n=2000
-# queue-direct n=2000 | cpus 12 | servergc True | datas 0 | load 3.59
-direct-outbox c=1 n=2000: 886 ops/s, p50 1.129 ms, p95 1.129 ms, p99 1.129 ms, mean 1.129 ms, alloc 43552 B/op, cpu 2199 us/op, gc0/1/2 0/0/0, load 3.43
-  statements per op (pg_stat_statements, 2000 ops):
-     1.06 x  mean     2.2 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
-     1.06 x  mean     2.1 us  [monolith_pings] SELECT pg_advisory_unlock_all()
+     1.06 x  mean     2.2 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.06 x  mean     1.1 us  [monolith_pings] RESET ALL
      1.06 x  mean     0.3 us  [monolith_pings] CLOSE ALL
      1.06 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.06 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.06 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    39.3 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, 0, 
-     1.00 x  mean    35.4 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    33.0 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean     1.8 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
+     1.00 x  mean    39.5 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, 0, 
+     1.00 x  mean    34.9 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    31.6 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean     1.9 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     0.3 us  [monolith_pings] COMMIT
-direct-inbox c=1 n=2000: 1097 ops/s, p50 0.912 ms, p95 0.912 ms, p99 0.912 ms, mean 0.912 ms, alloc 56880 B/op, cpu 1742 us/op, gc0/1/2 0/0/0, load 3.43
+direct-inbox c=1 n=2000: 1101 ops/s, p50 0.909 ms, p95 0.909 ms, p99 0.909 ms, mean 0.909 ms, alloc 56974 B/op, cpu 1824 us/op, gc0/1/2 0/0/0, load 3.81
   statements per op (pg_stat_statements, 2000 ops):
      1.06 x  mean     1.9 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.06 x  mean     1.8 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
+     1.06 x  mean     1.9 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
      1.06 x  mean     0.7 us  [monolith_pongs] RESET ALL
-     1.06 x  mean     0.2 us  [monolith_pongs] CLOSE ALL
+     1.06 x  mean     0.3 us  [monolith_pongs] CLOSE ALL
      1.06 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
      1.06 x  mean     0.2 us  [monolith_pongs] UNLISTEN *
      1.06 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
-     1.00 x  mean    29.4 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    29.2 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    14.4 us  [monolith_pongs] SELECT EXISTS ( SELECT 1 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     5.6 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
-     1.00 x  mean     1.5 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
+     1.00 x  mean    29.1 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    28.7 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    13.9 us  [monolith_pongs] SELECT EXISTS ( SELECT 1 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     5.7 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean     1.6 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
-end-to-end sequential (outbox then inbox): 490 events/s
-wall 9821 ms
+end-to-end sequential (outbox then inbox): 485 events/s
+wall 9767 ms
+
+$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-direct n=2000
+# queue-direct n=2000 | cpus 12 | servergc True | datas 0 | load 2.43
+direct-outbox c=1 n=2000: 853 ops/s, p50 1.172 ms, p95 1.172 ms, p99 1.172 ms, mean 1.172 ms, alloc 43916 B/op, cpu 2143 us/op, gc0/1/2 0/0/0, load 2.53
+  statements per op (pg_stat_statements, 2000 ops):
+     1.06 x  mean     2.3 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
+     1.06 x  mean     2.2 us  [monolith_pings] SELECT pg_advisory_unlock_all()
+     1.06 x  mean     1.3 us  [monolith_pings] RESET ALL
+     1.06 x  mean     0.3 us  [monolith_pings] CLOSE ALL
+     1.06 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
+     1.06 x  mean     0.2 us  [monolith_pings] UNLISTEN *
+     1.06 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
+     1.00 x  mean    40.4 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, 0, 
+     1.00 x  mean    35.4 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    32.5 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean     1.9 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
+     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
+direct-inbox c=1 n=2000: 1088 ops/s, p50 0.919 ms, p95 0.919 ms, p99 0.919 ms, mean 0.919 ms, alloc 56869 B/op, cpu 1830 us/op, gc0/1/2 0/0/0, load 2.53
+  statements per op (pg_stat_statements, 2000 ops):
+     1.06 x  mean     1.9 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
+     1.06 x  mean     1.9 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
+     1.06 x  mean     0.7 us  [monolith_pongs] RESET ALL
+     1.06 x  mean     0.3 us  [monolith_pongs] CLOSE ALL
+     1.06 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
+     1.06 x  mean     0.2 us  [monolith_pongs] UNLISTEN *
+     1.06 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
+     1.00 x  mean    29.1 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    29.1 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    14.2 us  [monolith_pongs] SELECT EXISTS ( SELECT 1 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     5.7 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean     1.6 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
+     1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
+end-to-end sequential (outbox then inbox): 478 events/s
+wall 9905 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-background n=2000 instances=1
-# queue-background n=2000 instances=1 | cpus 12 | servergc True | datas 0 | load 4.30
-background x1: n=2000 outbox drained 2.60 s (769/s), all pongs 2.99 s (670 events/s end to end), alloc 112039 B/event, cpu 3993 us/event, load 4.10
+# queue-background n=2000 instances=1 | cpus 12 | servergc True | datas 0 | load 3.69
+background x1: n=2000 outbox drained 2.52 s (795/s), all pongs 2.85 s (702 events/s end to end), alloc 111345 B/event, cpu 3986 us/event, load 4.04
   statements per op (pg_stat_statements, 2000 ops):
      1.19 x  mean     2.1 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.19 x  mean     2.0 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
+     1.19 x  mean     2.1 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
      1.19 x  mean     0.7 us  [monolith_pongs] RESET ALL
      1.19 x  mean     0.3 us  [monolith_pongs] CLOSE ALL
      1.19 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
      1.19 x  mean     0.2 us  [monolith_pongs] UNLISTEN *
      1.19 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
      1.19 x  mean     2.1 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
-     1.19 x  mean     2.0 us  [monolith_pings] SELECT pg_advisory_unlock_all()
+     1.19 x  mean     2.1 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.19 x  mean     0.7 us  [monolith_pings] RESET ALL
      1.19 x  mean     0.3 us  [monolith_pings] CLOSE ALL
      1.19 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.19 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.19 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    41.1 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
-     1.00 x  mean    33.8 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    30.8 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    29.1 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    28.8 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    15.7 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     6.4 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean    40.0 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
+     1.00 x  mean    33.7 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    30.6 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    29.5 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    28.6 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    15.5 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     6.5 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
      1.00 x  mean     1.7 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     1.7 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     0.3 us  [monolith_pings] COMMIT
      1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
-     0.14 x  mean     4.4 us  [postgres] DISCARD ALL
-wall 9082 ms
+     0.14 x  mean     4.2 us  [postgres] DISCARD ALL
+wall 8795 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-background n=2000 instances=1
-# queue-background n=2000 instances=1 | cpus 12 | servergc True | datas 0 | load 3.45
-background x1: n=2000 outbox drained 2.62 s (764/s), all pongs 3.06 s (653 events/s end to end), alloc 112277 B/event, cpu 3943 us/event, load 3.46
+# queue-background n=2000 instances=1 | cpus 12 | servergc True | datas 0 | load 2.53
+background x1: n=2000 outbox drained 2.56 s (781/s), all pongs 2.92 s (686 events/s end to end), alloc 111947 B/event, cpu 3978 us/event, load 2.62
   statements per op (pg_stat_statements, 2000 ops):
      1.19 x  mean     2.1 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.19 x  mean     2.0 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
+     1.19 x  mean     2.1 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
      1.19 x  mean     0.7 us  [monolith_pongs] RESET ALL
      1.19 x  mean     0.3 us  [monolith_pongs] CLOSE ALL
      1.19 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
      1.19 x  mean     0.2 us  [monolith_pongs] UNLISTEN *
      1.19 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
+     1.19 x  mean     2.1 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.19 x  mean     2.1 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
-     1.19 x  mean     2.0 us  [monolith_pings] SELECT pg_advisory_unlock_all()
      1.19 x  mean     0.7 us  [monolith_pings] RESET ALL
      1.19 x  mean     0.3 us  [monolith_pings] CLOSE ALL
      1.19 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.19 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.19 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    39.8 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
-     1.00 x  mean    33.6 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    30.1 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    28.9 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    40.0 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
+     1.00 x  mean    32.9 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    30.7 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
      1.00 x  mean    28.9 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    15.8 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     6.3 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean    28.4 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    15.4 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     6.5 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
      1.00 x  mean     1.7 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     1.6 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
      1.00 x  mean     0.3 us  [monolith_pings] COMMIT
-     0.15 x  mean     4.1 us  [postgres] DISCARD ALL
-wall 9156 ms
+     1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
+     0.14 x  mean     5.0 us  [postgres] DISCARD ALL
+wall 8963 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-background n=2000 instances=2
-# queue-background n=2000 instances=2 | cpus 12 | servergc True | datas 0 | load 4.01
-background x2: n=2000 outbox drained 1.40 s (1432/s), all pongs 1.63 s (1229 events/s end to end), alloc 112419 B/event, cpu 3155 us/event, load 4.19
+# queue-background n=2000 instances=2 | cpus 12 | servergc True | datas 0 | load 3.57
+background x2: n=2000 outbox drained 1.34 s (1487/s), all pongs 1.58 s (1269 events/s end to end), alloc 112390 B/event, cpu 3121 us/event, load 3.37
   statements per op (pg_stat_statements, 2000 ops):
      1.19 x  mean     2.1 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
      1.19 x  mean     2.0 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
@@ -211,29 +211,29 @@ background x2: n=2000 outbox drained 1.40 s (1432/s), all pongs 1.63 s (1229 eve
      1.19 x  mean     0.2 us  [monolith_pongs] DISCARD SEQUENCES
      1.19 x  mean     0.2 us  [monolith_pongs] UNLISTEN *
      1.19 x  mean     0.1 us  [monolith_pongs] DISCARD TEMP
-     1.18 x  mean     2.0 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
+     1.18 x  mean     2.1 us  [monolith_pings] SET SESSION AUTHORIZATION DEFAULT
      1.18 x  mean     2.0 us  [monolith_pings] SELECT pg_advisory_unlock_all()
-     1.18 x  mean     0.8 us  [monolith_pings] RESET ALL
+     1.18 x  mean     0.7 us  [monolith_pings] RESET ALL
      1.18 x  mean     0.3 us  [monolith_pings] CLOSE ALL
      1.18 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.18 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.18 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    41.4 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
-     1.00 x  mean    35.7 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    31.6 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    28.9 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    28.1 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    16.3 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     6.8 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
-     1.00 x  mean     1.9 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
+     1.00 x  mean    40.8 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
+     1.00 x  mean    34.0 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    31.1 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    28.2 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    27.9 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    15.8 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     6.7 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean     1.8 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     1.7 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
      1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
-wall 7798 ms
+     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
+wall 7567 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- queue-background n=2000 instances=2
-# queue-background n=2000 instances=2 | cpus 12 | servergc True | datas 0 | load 3.27
-background x2: n=2000 outbox drained 1.38 s (1452/s), all pongs 1.59 s (1259 events/s end to end), alloc 112440 B/event, cpu 2975 us/event, load 3.48
+# queue-background n=2000 instances=2 | cpus 12 | servergc True | datas 0 | load 2.49
+background x2: n=2000 outbox drained 1.35 s (1480/s), all pongs 1.58 s (1265 events/s end to end), alloc 112428 B/event, cpu 3169 us/event, load 2.66
   statements per op (pg_stat_statements, 2000 ops):
      1.19 x  mean     2.1 us  [monolith_pongs] SET SESSION AUTHORIZATION DEFAULT
      1.19 x  mean     2.0 us  [monolith_pongs] SELECT pg_advisory_unlock_all()
@@ -249,67 +249,67 @@ background x2: n=2000 outbox drained 1.38 s (1452/s), all pongs 1.59 s (1259 eve
      1.18 x  mean     0.2 us  [monolith_pings] DISCARD SEQUENCES
      1.18 x  mean     0.2 us  [monolith_pings] UNLISTEN *
      1.18 x  mean     0.1 us  [monolith_pings] DISCARD TEMP
-     1.00 x  mean    41.3 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
-     1.00 x  mean    34.5 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
-     1.00 x  mean    31.4 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    41.2 us  [monolith_pings] INSERT INTO "pongs".inbox_messages (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on) VALUES ($1, $2, $3::jsonb, $4, $7,
+     1.00 x  mean    35.8 us  [monolith_pings] UPDATE pings.outbox_messages SET processed_on = $1 WHERE id = $2
+     1.00 x  mean    31.7 us  [monolith_pongs] UPDATE pongs.inbox_messages SET processed_on = $1 WHERE id = $2
      1.00 x  mean    28.9 us  [monolith_pings] SELECT * FROM "pings".outbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    28.5 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
-     1.00 x  mean    16.3 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
-     1.00 x  mean     6.6 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
+     1.00 x  mean    28.3 us  [monolith_pongs] SELECT * FROM "pongs".inbox_messages WHERE id = $1 AND attempts = $2 AND next_attempt_on = $3 AND processed_on IS NULL AND failed_on IS NULL FOR UPDATE
+     1.00 x  mean    16.1 us  [monolith_pongs] SELECT EXISTS ( SELECT $2 FROM pongs.pongs AS p WHERE p.id = $1)
+     1.00 x  mean     6.8 us  [monolith_pongs] INSERT INTO pongs.pongs (id, label, ping_id, version) VALUES ($1, $2, $3, $4)
      1.00 x  mean     1.8 us  [monolith_pongs] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
      1.00 x  mean     1.7 us  [monolith_pings] BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED
-     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
      1.00 x  mean     0.3 us  [monolith_pongs] COMMIT
-wall 7781 ms
+     1.00 x  mean     0.3 us  [monolith_pings] COMMIT
+wall 7752 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- unit-of-work reps=30
-# unit-of-work reps=30 | cpus 12 | servergc True | datas 0 | load 4.02
-CommitAsync tracked=   1 addedEchoes=  0: p50       815 us, p95       921 us, alloc      38209 B, load 3.77
-CommitAsync tracked=   1 addedEchoes= 50: p50      5177 us, p95      6024 us, alloc     450637 B, load 3.77
-CommitAsync tracked= 100 addedEchoes=  0: p50      1805 us, p95      1935 us, alloc     164162 B, load 3.77
-CommitAsync tracked= 100 addedEchoes= 50: p50      6231 us, p95      7213 us, alloc     595991 B, load 3.77
-CommitAsync tracked=1000 addedEchoes=  0: p50     15710 us, p95     21302 us, alloc    1310620 B, load 3.71
-CommitAsync tracked=1000 addedEchoes= 50: p50     12155 us, p95     24678 us, alloc    2004838 B, load 3.71
-wall 8045 ms
+# unit-of-work reps=30 | cpus 12 | servergc True | datas 0 | load 3.16
+CommitAsync tracked=   1 addedEchoes=  0: p50       810 us, p95       985 us, alloc      38221 B, load 2.99
+CommitAsync tracked=   1 addedEchoes= 50: p50      5133 us, p95      5851 us, alloc     450605 B, load 2.99
+CommitAsync tracked= 100 addedEchoes=  0: p50      1713 us, p95      1959 us, alloc     164125 B, load 2.99
+CommitAsync tracked= 100 addedEchoes= 50: p50      5939 us, p95      6842 us, alloc     595902 B, load 2.99
+CommitAsync tracked=1000 addedEchoes=  0: p50     17550 us, p95     21121 us, alloc    1310384 B, load 2.99
+CommitAsync tracked=1000 addedEchoes= 50: p50      8384 us, p95     10765 us, alloc    1992774 B, load 2.99
+wall 10131 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- unit-of-work reps=30
-# unit-of-work reps=30 | cpus 12 | servergc True | datas 0 | load 3.10
-CommitAsync tracked=   1 addedEchoes=  0: p50       778 us, p95       927 us, alloc      38209 B, load 3.75
-CommitAsync tracked=   1 addedEchoes= 50: p50      5408 us, p95      5810 us, alloc     450599 B, load 3.75
-CommitAsync tracked= 100 addedEchoes=  0: p50      1616 us, p95      1828 us, alloc     164125 B, load 3.75
-CommitAsync tracked= 100 addedEchoes= 50: p50      5845 us, p95      6377 us, alloc     595902 B, load 3.75
-CommitAsync tracked=1000 addedEchoes=  0: p50      9012 us, p95     18777 us, alloc    1310131 B, load 3.75
-CommitAsync tracked=1000 addedEchoes= 50: p50     10799 us, p95     24721 us, alloc    2006398 B, load 3.75
-wall 13713 ms
+# unit-of-work reps=30 | cpus 12 | servergc True | datas 0 | load 2.56
+CommitAsync tracked=   1 addedEchoes=  0: p50       832 us, p95       940 us, alloc      38221 B, load 2.56
+CommitAsync tracked=   1 addedEchoes= 50: p50      5172 us, p95      5607 us, alloc     450643 B, load 2.56
+CommitAsync tracked= 100 addedEchoes=  0: p50      1759 us, p95      2069 us, alloc     164119 B, load 2.56
+CommitAsync tracked= 100 addedEchoes= 50: p50      6063 us, p95      6654 us, alloc     595896 B, load 2.67
+CommitAsync tracked=1000 addedEchoes=  0: p50     16445 us, p95     18702 us, alloc    1309294 B, load 2.67
+CommitAsync tracked=1000 addedEchoes= 50: p50     10046 us, p95     13546 us, alloc    1982168 B, load 2.67
+wall 7829 ms
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- startup
-# startup | cpus 12 | servergc True | datas 0 | load 3.49
-  module registration (scan + validate, 2 modules)      36.7 ms
-  host build (second registration + Build)          46.9 ms
-  Pings: EF model build                            529.2 ms
-  Pongs: EF model build                             30.0 ms
-  PrepareModuleDatabasesAsync                      505.5 ms
-  host.StartAsync                                    3.6 ms
-  first CreatePing (cold)                          226.5 ms
-  second CreatePing                                  2.7 ms
-  first GetPing (cold)                              12.8 ms
-  second GetPing                                     0.7 ms
-  total to ready 1152 ms, to first warm request 1395 ms, load 3.54
-  PrepareModuleDatabasesAsync on an already prepared db (same process, model cached): 173 ms
-wall 4431 ms
-
-$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- startup
-# startup | cpus 12 | servergc True | datas 0 | load 3.77
-  module registration (scan + validate, 2 modules)      36.0 ms
-  host build (second registration + Build)          43.1 ms
-  Pings: EF model build                            527.9 ms
-  Pongs: EF model build                             29.7 ms
-  PrepareModuleDatabasesAsync                      522.4 ms
-  host.StartAsync                                    4.1 ms
-  first CreatePing (cold)                          226.0 ms
-  second CreatePing                                  2.7 ms
-  first GetPing (cold)                              13.0 ms
+# startup | cpus 12 | servergc True | datas 0 | load 2.83
+  module registration (scan + validate, 2 modules)      44.6 ms
+  host build (second registration + Build)          49.2 ms
+  Pings: EF model build                            519.6 ms
+  Pongs: EF model build                             28.7 ms
+  PrepareModuleDatabasesAsync                      504.9 ms
+  host.StartAsync                                    3.4 ms
+  first CreatePing (cold)                          216.8 ms
+  second CreatePing                                  2.4 ms
+  first GetPing (cold)                              12.7 ms
   second GetPing                                     0.6 ms
-  total to ready 1163 ms, to first warm request 1406 ms, load 4.35
-  PrepareModuleDatabasesAsync on an already prepared db (same process, model cached): 177 ms
-wall 5793 ms
+  total to ready 1151 ms, to first warm request 1383 ms, load 2.68
+  PrepareModuleDatabasesAsync on an already prepared db (same process, model cached): 171 ms
+wall 4370 ms
+
+$ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- startup
+# startup | cpus 12 | servergc True | datas 0 | load 2.62
+  module registration (scan + validate, 2 modules)      43.6 ms
+  host build (second registration + Build)          49.2 ms
+  Pings: EF model build                            525.6 ms
+  Pongs: EF model build                             28.8 ms
+  PrepareModuleDatabasesAsync                      502.4 ms
+  host.StartAsync                                    3.6 ms
+  first CreatePing (cold)                          219.0 ms
+  second CreatePing                                  2.6 ms
+  first GetPing (cold)                              12.7 ms
+  second GetPing                                     0.6 ms
+  total to ready 1153 ms, to first warm request 1388 ms, load 2.49
+  PrepareModuleDatabasesAsync on an already prepared db (same process, model cached): 176 ms
+wall 4446 ms
