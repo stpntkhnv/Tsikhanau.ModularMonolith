@@ -50,6 +50,28 @@ run_solution() {
   results+=("$solution $skipped")
 }
 
+check_rule_markers() {
+  local rulebook
+  if [[ ${CI-} == true ]]; then
+    echo "gate: rule markers: skipped, CI=true; the check needs the rulebook that a developer copy links"
+    return
+  fi
+  if ! rulebook=$(linked_rulebook); then
+    echo "gate: the rules are not linked: AGENTS.md is not a link into a rulebook that holds check-markers.cs; run bash scripts/init.sh" >&2
+    exit 1
+  fi
+  echo "gate: rule markers: checking with $rulebook/check-markers.cs"
+  dotnet run --file "$rulebook/check-markers.cs" -- .
+}
+
+linked_rulebook() {
+  local agents
+  [[ -L AGENTS.md ]] || return 1
+  agents=$(readlink -f AGENTS.md) || return 1
+  [[ -f "$(dirname "$agents")/check-markers.cs" ]] || return 1
+  dirname "$agents"
+}
+
 if [[ ${#root_solutions[@]} -ne 1 ]]; then
   echo "gate: the root must hold exactly one *.slnx, found ${#root_solutions[@]}: ${root_solutions[*]:-none}" >&2
   exit 1
@@ -62,6 +84,8 @@ if [[ -f "$template_solution" ]]; then
   bash template-only/scripts/test-update-core.sh
   bash template-only/scripts/test-init.sh
 fi
+
+check_rule_markers
 
 printf -v recorded '%s, ' "${results[@]}"
 echo "gate: green, skipped tests as recorded: ${recorded%, }"

@@ -597,19 +597,84 @@ if [[ "$1" == test ]]; then
   grep -oE '[^/"]+Tests\.csproj"' "$3" | sed -E 's/\.csproj"$/.dll (net10.0|x64) passed/; s/^/  /'
   echo "  skipped: 0"
 fi
+if [[ "$1" == run ]]; then
+  printf '%s\n' "$*" >> "$(dirname "$0")/runs"
+  echo "check-markers: stub"
+  exit "${STUB_RUN_EXIT:-0}"
+fi
 EOF
   chmod +x "$1/dotnet"
 }
 
-expect_green_gate() {
+run_gate() {
   local gate_status=0
   stub_dotnet "$work/stub-dotnet"
-  PATH="$work/stub-dotnet:$PATH" bash gate.sh > "$work/gate" 2>&1 || gate_status=$?
+  rm -f -- "$work/stub-dotnet/runs"
+  env "$@" PATH="$work/stub-dotnet:$PATH" bash gate.sh > "$work/gate" 2>&1 || gate_status=$?
+  return "$gate_status"
+}
+
+expect_green_gate() {
+  local gate_status=0
+  run_gate "$@" || gate_status=$?
   if [[ $gate_status -ne 0 ]]; then
     tail -n 5 "$work/gate"
     fail "the gate failed with exit code $gate_status"
   fi
   grep -qx 'gate: green, skipped tests as recorded: Acme.Shop.slnx 0' "$work/gate" || fail "the gate did not end green for Acme.Shop.slnx alone"
+}
+
+expect_red_gate() {
+  local gate_status=0 message=$1
+  shift
+  run_gate "$@" || gate_status=$?
+  [[ $gate_status -ne 0 ]] || fail "the gate passed"
+  grep -qF -- "$message" "$work/gate" || fail "the gate did not say: $message"
+  ! grep -qF 'gate: green' "$work/gate" || fail "the gate said green"
+}
+
+fake_rulebook() {
+  local rulebook=$work/rulebooks/$1
+  mkdir -p "$rulebook"
+  printf '# AGENTS.md\n' > "$rulebook/AGENTS.md"
+  if [[ $2 == with-check ]]; then
+    printf 'return 0;\n' > "$rulebook/check-markers.cs"
+  fi
+  printf '%s\n' "$rulebook"
+}
+
+case_gate_needs_linked_rules() {
+  local app rulebook not_linked='gate: the rules are not linked: AGENTS.md is not a link into a rulebook that holds check-markers.cs; run bash scripts/init.sh'
+  app=$(new_consumer no-rules)
+  cd "$app"
+  expect_red_gate "$not_linked" CI=
+  grep -qF 'Test run summary' "$work/gate" || fail "the gate checked the rules before the tests"
+  printf '# AGENTS.md\n' > AGENTS.md
+  expect_red_gate "$not_linked" CI=
+  rulebook=$(fake_rulebook no-check without-check)
+  ln -sfn -- "$rulebook/AGENTS.md" AGENTS.md
+  expect_red_gate "$not_linked" CI=
+}
+
+case_gate_checks_rule_markers() {
+  local app rulebook
+  app=$(new_consumer markers)
+  cd "$app"
+  rulebook=$(fake_rulebook markers with-check)
+  ln -s -- "$rulebook/AGENTS.md" AGENTS.md
+  expect_green_gate CI=
+  grep -qxF "gate: rule markers: checking with $rulebook/check-markers.cs" "$work/gate" || fail "the gate did not name the check"
+  [[ "$(cat "$work/stub-dotnet/runs")" == "run --file $rulebook/check-markers.cs -- ." ]] || fail "the gate did not run the check once on the app"
+  expect_red_gate 'check-markers: stub' CI= STUB_RUN_EXIT=1
+}
+
+case_gate_skips_rule_markers_in_ci() {
+  local app
+  app=$(new_consumer markers-in-ci)
+  cd "$app"
+  expect_green_gate CI=true
+  grep -qxF 'gate: rule markers: skipped, CI=true; the check needs the rulebook that a developer copy links' "$work/gate" || fail "the gate did not say it skipped the check"
+  [[ ! -e "$work/stub-dotnet/runs" ]] || fail "the gate ran the check in CI"
 }
 
 case_leftover_template_folder() {
@@ -621,7 +686,7 @@ case_leftover_template_folder() {
   expect_check 1 "a hand edit"
   grep -qF 'the core was changed in this app' "$work/check" || fail "core-hash gives the template's advice"
   git checkout -q -- src/Core/Shared/Collections/EnumerableExtensions.cs
-  expect_green_gate
+  expect_green_gate CI=true
   ! grep -qF 'test-update-core' "$work/gate" || fail "the gate of an app ran the template's test"
   run_update scripts/update-core.sh B
   expect_success
@@ -633,7 +698,7 @@ case_gate_reads_a_crlf_skip_file() {
   app=$(new_consumer crlf-skips)
   cd "$app"
   printf '0\r\n' > .gate/skips
-  expect_green_gate
+  expect_green_gate CI=true
 }
 
 dirty_core_file() {
@@ -1051,6 +1116,9 @@ run_case "core-hash print and check fail when sha256sum fails on the data" case_
 run_case "core-hash check refuses a core.lock whose hash is not sha256: and 64 lowercase hex digits" case_mangled_lock
 run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
 run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
+run_case "the gate stops after the tests and names init when AGENTS.md is not a link into a rulebook with check-markers.cs" case_gate_needs_linked_rules
+run_case "the gate runs the linked rulebook's check-markers.cs on the app and fails when it fails" case_gate_checks_rule_markers
+run_case "with CI=true the gate skips the marker check with a message" case_gate_skips_rule_markers_in_ci
 run_case "core-hash and update-core name a missing tool, exit 2 and change nothing" case_missing_tools
 run_case "refuses an uncommitted core edit" refusal dirty-core dirty_core_file "$uncommitted_refusal" B
 run_case "refuses a staged core edit" refusal staged-core staged_core_file "$uncommitted_refusal" B
