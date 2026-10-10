@@ -16,8 +16,11 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
     private const String GetPingOperation = "GET /pings/{pingId}";
     private const String ProduceErrorOperation = "GET /pings/errors/{kind}";
     private const String ThrowAfterTouchOperation = "POST /pings/{pingId}/throw";
-    private const String ProblemDetailsSchema = "#/components/schemas/ProblemDetails";
-    private const String ValidationProblemDetailsSchema = "#/components/schemas/HttpValidationProblemDetails";
+    private const String ComponentSchemaPrefix = "#/components/schemas/";
+    private const String ProblemDetailsName = "ProblemDetails";
+    private const String ValidationProblemDetailsName = "HttpValidationProblemDetails";
+    private const String ProblemDetailsSchema = $"{ComponentSchemaPrefix}{ProblemDetailsName}";
+    private const String ValidationProblemDetailsSchema = $"{ComponentSchemaPrefix}{ValidationProblemDetailsName}";
     private const String ProblemJson = "application/problem+json";
 
     private static readonly String[] ModulePathPrefixes = ["/pings", "/pongs"];
@@ -26,7 +29,9 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
 
     private static readonly String[] OperationMethods = ["get", "put", "post", "delete", "patch"];
 
-    private static readonly String[] ProblemMembers = ["type", "title", "status", "code", "errors"];
+    private static readonly String[] ProblemSchemaNames = [ProblemDetailsName, ValidationProblemDetailsName];
+
+    private static readonly String[] ProblemExtensionMembers = ["code", "traceId"];
 
     private static readonly String[] DescribedErrorResponses =
     [
@@ -38,12 +43,6 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
         $"422 {ProblemJson} {ProblemDetailsSchema}",
         $"500 {ProblemJson} {ProblemDetailsSchema}"
     ];
-
-    private static readonly Dictionary<String, String> MembersBySchema = new(StringComparer.Ordinal)
-    {
-        [ProblemDetailsSchema] = "type title status code",
-        [ValidationProblemDetailsSchema] = "type title status code errors"
-    };
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -180,10 +179,29 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
         var document = await ReadDocumentAsync(httpClient);
 
         var answers = await ProduceEveryErrorAsync(testModulesHost, httpClient);
-        var answerShapes = answers.Select(DescribeShape);
-        var describedShapes = answers.Select(answer => DescribeDocumentedShape(document, answer));
+        var differences = answers.SelectMany(answer => FindDifferencesFromTheDocument(document, answer));
 
-        answerShapes.ShouldBe(describedShapes);
+        differences.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Problem_schemas_describe_the_code_and_the_trace_id_as_strings_that_are_not_required()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var document = await ReadDocumentAsync(httpClient);
+        var extensionMembers = ProblemSchemaNames.SelectMany(name => DescribeExtensionMembers(document, name));
+
+        extensionMembers.ShouldBe(
+        [
+            """ProblemDetails code: {"type":"string"}""",
+            """ProblemDetails traceId: {"type":"string"}""",
+            "ProblemDetails required: (none)",
+            """HttpValidationProblemDetails code: {"type":"string"}""",
+            """HttpValidationProblemDetails traceId: {"type":"string"}""",
+            "HttpValidationProblemDetails required: (none)"
+        ]);
     }
 
     [Fact]
@@ -285,10 +303,13 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
             ? [$"{operation.Name} {DescribeContent(requestBody)}"]
             : [];
 
-    private static IReadOnlyList<String> ReadSchemaNames(JsonElement document) =>
+    private static JsonElement ReadSchemas(JsonElement document) =>
         document
             .GetProperty("components")
-            .GetProperty("schemas")
+            .GetProperty("schemas");
+
+    private static IReadOnlyList<String> ReadSchemaNames(JsonElement document) =>
+        ReadSchemas(document)
             .EnumerateObject()
             .Select(schema => schema.Name)
             .ToList();
@@ -345,33 +366,147 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
                 .EnumerateArray()
                 .Select(message => message.ToString()));
 
-    private static String DescribeShape(ErrorAnswer answer) =>
-        $"{DescribeRequest(answer)} {answer.ContentType} {JoinProblemMembers(answer.Body)}";
-
     private static String DescribeRequest(ErrorAnswer answer) =>
         $"{answer.Name} {answer.Operation} {answer.StatusCode}";
 
-    private static String JoinProblemMembers(JsonElement body) =>
-        String.Join(" ", ProblemMembers.Where(member => body.TryGetProperty(member, out _)));
-
-    private static String DescribeDocumentedShape(JsonElement document, ErrorAnswer answer)
+    private static IEnumerable<String> FindDifferencesFromTheDocument(JsonElement document, ErrorAnswer answer)
     {
-        var operation = GetOperation(document, answer.Operation);
-        return operation.Responses.TryGetProperty($"{answer.StatusCode}", out var response)
-            ? $"{DescribeRequest(answer)} {DescribeDocumentedProblem(response)}"
-            : $"{DescribeRequest(answer)} not described";
+        var responses = GetOperation(document, answer.Operation).Responses;
+        if (!responses.TryGetProperty($"{answer.StatusCode}", out var response))
+        {
+            return [$"{DescribeRequest(answer)}: not a response of the operation"];
+        }
+
+        if (!TryReadMediaTypeSchema(response, answer.ContentType, out var schema))
+        {
+            return [$"{DescribeRequest(answer)}: {answer.ContentType} is not a content type of the response"];
+        }
+
+        var reference = ReadMember(schema, "$ref");
+        if (!TryReadComponent(document, reference, out var component))
+        {
+            return [$"{DescribeRequest(answer)}: {reference} is not a component of the document"];
+        }
+
+        return
+        [
+            .. FindStatusDifferences(answer),
+            .. FindValueDifferences($"{DescribeRequest(answer)} {reference}", answer.Body, component)
+        ];
     }
 
-    private static String DescribeDocumentedProblem(JsonElement response) =>
-        response.TryGetProperty("content", out var content)
-            ? JoinMediaTypes(content, DescribeDocumentedMembers)
-            : "no content";
-
-    private static String DescribeDocumentedMembers(JsonProperty mediaType)
+    private static Boolean TryReadMediaTypeSchema(JsonElement response, String contentType, out JsonElement schema)
     {
-        var schema = ReadMember(mediaType.Value.GetProperty("schema"), "$ref");
-        return $"{mediaType.Name} {MembersBySchema.GetValueOrDefault(schema, schema)}";
+        schema = default;
+        return response.TryGetProperty("content", out var content)
+            && content.TryGetProperty(contentType, out var mediaType)
+            && mediaType.TryGetProperty("schema", out schema);
     }
+
+    private static Boolean TryReadComponent(JsonElement document, String reference, out JsonElement component)
+    {
+        component = default;
+        return reference.StartsWith(ComponentSchemaPrefix, StringComparison.Ordinal)
+            && ReadSchemas(document)
+                .TryGetProperty(reference[ComponentSchemaPrefix.Length..], out component);
+    }
+
+    private static IEnumerable<String> FindStatusDifferences(ErrorAnswer answer)
+    {
+        var status = ReadMember(answer.Body, "status");
+        return status == $"{answer.StatusCode}"
+            ? []
+            : [$"{DescribeRequest(answer)}: the body says status {status}"];
+    }
+
+    private static IEnumerable<String> FindValueDifferences(String path, JsonElement value, JsonElement schema) =>
+        AllowsTypeOf(schema, value)
+            ? FindDifferencesInside(path, value, schema)
+            : [$"{path}: {value.GetRawText()} where the document declares {JsonSerializer.Serialize(schema)}"];
+
+    private static Boolean AllowsTypeOf(JsonElement schema, JsonElement value) =>
+        ReadDeclaredTypes(schema)
+            .Intersect(ReadJsonTypes(value))
+            .Any();
+
+    private static IEnumerable<String> ReadDeclaredTypes(JsonElement schema) =>
+        schema.TryGetProperty("type", out var type) ? ReadOneOrMany(type) : [];
+
+    private static IEnumerable<String> ReadOneOrMany(JsonElement element) =>
+        element.ValueKind == JsonValueKind.Array
+            ? element
+                .EnumerateArray()
+                .Select(item => $"{item}")
+            : [$"{element}"];
+
+    private static IEnumerable<String> ReadJsonTypes(JsonElement value) =>
+        value.ValueKind switch
+        {
+            JsonValueKind.String => ["string"],
+            JsonValueKind.Number => value.TryGetInt64(out _) ? ["integer", "number"] : ["number"],
+            JsonValueKind.True or JsonValueKind.False => ["boolean"],
+            JsonValueKind.Object => ["object"],
+            JsonValueKind.Array => ["array"],
+            _ => ["null"]
+        };
+
+    private static IEnumerable<String> FindDifferencesInside(String path, JsonElement value, JsonElement schema) =>
+        value.ValueKind switch
+        {
+            JsonValueKind.Object => value
+                .EnumerateObject()
+                .SelectMany(member => FindMemberDifferences(path, member, schema)),
+            JsonValueKind.Array => FindItemDifferences(path, value, schema),
+            _ => []
+        };
+
+    private static IEnumerable<String> FindMemberDifferences(String path, JsonProperty member, JsonElement schema) =>
+        TryReadMemberSchema(schema, member.Name, out var memberSchema)
+            ? FindValueDifferences($"{path} {member.Name}", member.Value, memberSchema)
+            : [$"{path} {member.Name}: not declared"];
+
+    private static Boolean TryReadMemberSchema(JsonElement schema, String name, out JsonElement memberSchema) =>
+        TryReadDeclaredMemberSchema(schema, name, out memberSchema)
+        || TryReadAdditionalMemberSchema(schema, out memberSchema);
+
+    private static Boolean TryReadDeclaredMemberSchema(JsonElement schema, String name, out JsonElement memberSchema)
+    {
+        memberSchema = default;
+        return schema.TryGetProperty("properties", out var properties)
+            && properties.TryGetProperty(name, out memberSchema);
+    }
+
+    private static Boolean TryReadAdditionalMemberSchema(JsonElement schema, out JsonElement memberSchema) =>
+        schema.TryGetProperty("additionalProperties", out memberSchema)
+        && memberSchema.ValueKind == JsonValueKind.Object;
+
+    private static IEnumerable<String> FindItemDifferences(String path, JsonElement value, JsonElement schema) =>
+        schema.TryGetProperty("items", out var itemSchema)
+            ? value
+                .EnumerateArray()
+                .SelectMany((item, index) => FindValueDifferences($"{path}[{index}]", item, itemSchema))
+            : [$"{path}: items not declared"];
+
+    private static IEnumerable<String> DescribeExtensionMembers(JsonElement document, String schemaName)
+    {
+        var schema = ReadSchemas(document)
+            .GetProperty(schemaName);
+
+        var members = ProblemExtensionMembers.Select(
+            member => $"{schemaName} {member}: {DescribeMemberSchema(schema, member)}");
+
+        return [.. members, $"{schemaName} required: {DescribeRequired(schema)}"];
+    }
+
+    private static String DescribeMemberSchema(JsonElement schema, String member) =>
+        TryReadDeclaredMemberSchema(schema, member, out var memberSchema)
+            ? JsonSerializer.Serialize(memberSchema)
+            : "(not declared)";
+
+    private static String DescribeRequired(JsonElement schema) =>
+        schema.TryGetProperty("required", out var required)
+            ? String.Join(", ", ReadOneOrMany(required))
+            : "(none)";
 
     private static String ReadMember(JsonElement element, String name) =>
         element.TryGetProperty(name, out var value) ? value.ToString() : $"(no {name})";

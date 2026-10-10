@@ -35,7 +35,7 @@ public static class ServiceDefaultsExtensions
             routeHandlerOptions => routeHandlerOptions.ThrowOnBadRequest = true);
 
         builder.Services.ConfigureHttpJsonOptions(ReadAndWriteOptionals);
-        builder.Services.AddOpenApi(DescribeOptionals);
+        builder.Services.AddOpenApi(DescribeOptionalsAndProblems);
 
         return builder;
     }
@@ -93,9 +93,10 @@ public static class ServiceDefaultsExtensions
     private static void ReadAndWriteOptionals(JsonOptions jsonOptions) =>
         jsonOptions.SerializerOptions.Converters.Add(new OptionalJsonConverterFactory());
 
-    private static void DescribeOptionals(OpenApiOptions openApiOptions)
+    private static void DescribeOptionalsAndProblems(OpenApiOptions openApiOptions)
     {
         openApiOptions.CreateSchemaReferenceId = OptionalSchemaTransformer.CreateSchemaReferenceId;
         openApiOptions.AddSchemaTransformer<OptionalSchemaTransformer>();
+        openApiOptions.AddSchemaTransformer<ProblemDetailsSchemaTransformer>();
     }
 }
