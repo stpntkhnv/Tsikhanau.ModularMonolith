@@ -91,14 +91,16 @@ internal sealed class TestModulesHost : IAsyncDisposable
         Int32 maxConnections = 20,
         TimeSpan? handlerTimeout = null,
         Boolean writesLogs = true,
-        Action<IHostApplicationBuilder>? configure = null) =>
+        Action<IHostApplicationBuilder>? configure = null,
+        String? environmentName = null) =>
         BuildAndStartAsync(
             connectionString,
             runInBackground,
             maxConnections,
             handlerTimeout ?? HandlerTimeout,
             writesLogs,
-            configure);
+            configure,
+            environmentName ?? Environments.Development);
 
     internal static IHost BuildUnstarted(String connectionString) =>
         BuildUnstarted(connectionString, new FakeTimeProvider(TestStartedOn));
@@ -111,7 +113,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             maxConnections: 20,
             HandlerTimeout,
             writesLogs: true,
-            configure: null);
+            configure: null,
+            Environments.Development);
 
     internal static IHost BuildUnstarted(String connectionString, Action<IHostApplicationBuilder> configure) =>
         Build(
@@ -121,7 +124,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             maxConnections: 20,
             HandlerTimeout,
             writesLogs: true,
-            configure);
+            configure,
+            Environments.Development);
 
     public AsyncServiceScope CreateScope() => Services.CreateAsyncScope();
 
@@ -211,7 +215,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
         Int32 maxConnections,
         TimeSpan handlerTimeout,
         Boolean writesLogs,
-        Action<IHostApplicationBuilder>? configure)
+        Action<IHostApplicationBuilder>? configure,
+        String environmentName)
     {
         var fakeTimeProvider = new FakeTimeProvider(TestStartedOn);
         var app = Build(
@@ -221,7 +226,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             maxConnections,
             handlerTimeout,
             writesLogs,
-            configure);
+            configure,
+            environmentName);
 
         try
         {
@@ -243,10 +249,10 @@ internal sealed class TestModulesHost : IAsyncDisposable
         Int32 maxConnections,
         TimeSpan handlerTimeout,
         Boolean writesLogs,
-        Action<IHostApplicationBuilder>? configure)
+        Action<IHostApplicationBuilder>? configure,
+        String environmentName)
     {
-        var builder = WebApplication.CreateBuilder(
-            new WebApplicationOptions { EnvironmentName = Environments.Development });
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
 
         builder.WebHost.UseTestServer();
         builder.AddHttpDefaults();

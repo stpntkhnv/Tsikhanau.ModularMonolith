@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
@@ -26,8 +27,10 @@ public static class ServiceDefaultsExtensions
         builder.AddHealth();
         builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
         builder.Services.AddProblemDetails(
-            problemDetailsOptions =>
-                problemDetailsOptions.CustomizeProblemDetails = ServerErrorProblemDetails.Customize);
+            problemDetailsOptions => problemDetailsOptions.CustomizeProblemDetails = CustomizeProblemDetails);
+
+        builder.Services.Configure<RouteHandlerOptions>(
+            routeHandlerOptions => routeHandlerOptions.ThrowOnBadRequest = true);
 
         builder.Services.ConfigureHttpJsonOptions(ReadAndWriteOptionals);
         builder.Services.AddOpenApi(DescribeOptionals);
@@ -40,9 +43,8 @@ public static class ServiceDefaultsExtensions
         app.UseExceptionHandler(
             new ExceptionHandlerOptions
             {
-                StatusCodeSelector = exception => exception is BadHttpRequestException badHttpRequestException
-                    ? badHttpRequestException.StatusCode
-                    : StatusCodes.Status500InternalServerError
+                StatusCodeSelector = BadRequestProblemDetails.SelectStatusCode,
+                SuppressDiagnosticsCallback = BadRequestProblemDetails.IsBadRequest
             });
 
         app.UseStatusCodePages();
@@ -59,6 +61,12 @@ public static class ServiceDefaultsExtensions
         }
 
         return app;
+    }
+
+    private static void CustomizeProblemDetails(ProblemDetailsContext context)
+    {
+        BadRequestProblemDetails.Customize(context);
+        ServerErrorProblemDetails.Customize(context);
     }
 
     private static void ReadAndWriteOptionals(JsonOptions jsonOptions) =>
