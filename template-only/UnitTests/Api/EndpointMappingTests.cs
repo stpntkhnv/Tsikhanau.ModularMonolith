@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.UnitTests.Api.Scenarios.InventoryReservations;
 using Tsikhanau.Monolith.UnitTests.Api.Scenarios.Owner;
 
 namespace Tsikhanau.Monolith.UnitTests.Api;
@@ -53,6 +55,23 @@ public sealed class EndpointMappingTests
             "422 application/problem+json ProblemDetails",
             "500 application/problem+json ProblemDetails"
         ]);
+    }
+
+    [Fact]
+    public async Task A_module_maps_its_endpoints_in_a_kebab_case_group_tagged_with_its_name()
+    {
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.AddModule<InventoryReservationsModule>();
+        await using var app = builder.Build();
+        app.MapModules();
+
+        var endpoint = GetRouteEndpoints(app)
+            .Single();
+
+        endpoint.RoutePattern.RawText.ShouldBe("/inventory-reservations/{reservationId:guid}");
+        endpoint.Metadata
+            .GetRequiredMetadata<ITagsMetadata>().Tags
+            .ShouldBe(["InventoryReservations"]);
     }
 
     private static IEnumerable<RouteEndpoint> GetRouteEndpoints(IEndpointRouteBuilder endpoints) =>

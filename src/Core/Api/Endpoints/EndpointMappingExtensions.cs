@@ -19,10 +19,13 @@ public static class EndpointMappingExtensions
     ];
 
     public static RouteGroupBuilder MapEndpointsOf<TModule>(this RouteGroupBuilder group)
-        where TModule : IModule
+        where TModule : IModule =>
+        group.MapEndpointsOf(typeof(TModule));
+
+    internal static RouteGroupBuilder MapEndpointsOf(this RouteGroupBuilder group, Type moduleType)
     {
         DescribeErrorResponses(group);
-        typeof(TModule)
+        moduleType
             .CreateInstancesInItsNamespace<IEndpoint>()
             .ForEach(endpoint => endpoint.Map(group));
 

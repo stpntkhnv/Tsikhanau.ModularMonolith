@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -69,10 +68,6 @@ public sealed class ModuleSettingsTests
 
     private sealed class SampleModule : Module
     {
-        public override String Name => "Sample";
-
-        public override void MapEndpoints(IEndpointRouteBuilder endpoints) { }
-
         public IServiceCollection AddSettingsOutsideRegister(IServiceCollection services) =>
             AddSettings<SampleSettings>(services);
 

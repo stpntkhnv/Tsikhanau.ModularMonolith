@@ -8,8 +8,6 @@ namespace Acme.Modules.Peer;
 
 public sealed class PeerModule : Module
 {
-    public override String Name => "Peer";
-
     public override void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints
             .MapGroup("/peers")

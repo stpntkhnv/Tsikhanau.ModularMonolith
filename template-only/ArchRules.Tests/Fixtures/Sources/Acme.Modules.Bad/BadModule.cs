@@ -8,8 +8,6 @@ namespace Acme.Modules.Bad;
 
 public sealed class BadModule : Module
 {
-    public override String Name => "Bad";
-
     public override void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints
             .MapGroup("/crates")

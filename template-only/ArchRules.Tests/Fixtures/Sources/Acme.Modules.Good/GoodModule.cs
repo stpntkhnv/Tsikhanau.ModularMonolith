@@ -9,8 +9,6 @@ namespace Acme.Modules.Good;
 
 public sealed class GoodModule : Module
 {
-    public override String Name => "Good";
-
     public override void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints
             .MapGroup("/widgets")
