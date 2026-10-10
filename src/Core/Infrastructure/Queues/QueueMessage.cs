@@ -2,7 +2,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Queues;
 
 public abstract class QueueMessage
 {
-    private const String ErasedPayload = "{}";
+    internal const String ErasedPayload = "{}";
 
     public required Guid Id { get; init; }
 

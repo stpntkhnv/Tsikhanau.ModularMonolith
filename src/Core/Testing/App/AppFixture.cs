@@ -61,6 +61,9 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     public Task<UncommittedUpdate> ExecuteUncommittedAsync(String moduleName, String sql) =>
         UncommittedUpdate.ExecuteAsync(GetDataSource(moduleName), sql);
 
+    public Task RedeliverInboxAsync(String moduleName, Guid messageId) =>
+        InboxRedelivery.RedeliverAsync(GetDataSource(moduleName), GetModule(moduleName), messageId, Time.GetUtcNow());
+
     public AppFactory<TEntryPoint> StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
         var appFactory = CreateFactoryWithSetups(environmentName);
