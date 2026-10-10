@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,29 +21,48 @@ using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 public static class ModuleServiceCollectionExtensions
 {
-    public static IServiceCollection AddModuleInfrastructure<TModule, TQueryFacade, TFacade, TDbContext>(
+    private const String QueryFacadeProblem = "must extend exactly one query facade, like INotesQueryFacade";
+
+    public static IServiceCollection AddModuleInfrastructure<TModule, TFacade, TDbContext>(
+        this IServiceCollection services)
+        where TModule : class, IModuleFacade
+        where TFacade : class, TModule
+        where TDbContext : ModuleDbContext =>
+        services.AddModuleInfrastructure<TModule, TFacade, TDbContext>(ReadOnlyDictionary<String, Error>.Empty);
+
+    public static IServiceCollection AddModuleInfrastructure<TModule, TFacade, TDbContext>(
+        this IServiceCollection services,
+        IReadOnlyDictionary<String, Error> constraintErrors)
+        where TModule : class, IModuleFacade
+        where TFacade : class, TModule
+        where TDbContext : ModuleDbContext =>
+        services.AddModuleInfrastructure<TModule, TFacade, TDbContext>(
+            ModuleDefinition.Create<TModule, TDbContext>(constraintErrors));
+
+    internal static IServiceCollection AddModuleInfrastructure<TModule, TFacade, TDbContext>(
         this IServiceCollection services,
         ModuleDefinition definition)
-        where TModule : class, IModuleFacade, TQueryFacade
-        where TQueryFacade : class, IModuleQueryFacade
+        where TModule : class, IModuleFacade
         where TFacade : class, TModule
         where TDbContext : ModuleDbContext
     {
-        var moduleTypes = GetModuleTypes<TQueryFacade>(definition);
+        var queryFacadeType = GetQueryFacadeType<TModule>();
+        var moduleTypes = GetModuleTypes(definition, queryFacadeType);
         EnsureHandlersAreValid(definition, moduleTypes);
         EnsureInternalCommandsAreNamed(definition, moduleTypes);
         EnsureConstraintNamesFit(definition);
-        var descriptor = Describe<TModule, TQueryFacade, TDbContext>(definition);
+        var descriptor = Describe<TModule, TDbContext>(definition, queryFacadeType);
 
         return services
             .AddDescriptor(descriptor)
             .AddPersistence<TModule, TDbContext>(descriptor)
-            .AddDispatching<TModule, TQueryFacade, TFacade>()
+            .AddDispatching<TModule, TFacade>(descriptor)
             .AddOutbox<TModule>()
             .AddInbox<TModule>()
             .AddInternalCommands<TModule>(moduleTypes)
@@ -53,14 +73,29 @@ public static class ModuleServiceCollectionExtensions
             .AddIntegrationEventHandlers(moduleTypes, descriptor);
     }
 
-    private static List<Type> GetModuleTypes<TQueryFacade>(ModuleDefinition definition) =>
-        GetModuleAssemblies<TQueryFacade>(definition)
+    private static Type GetQueryFacadeType<TModule>()
+    {
+        var queryFacadeTypes = typeof(TModule)
+            .GetInterfaces()
+            .Where(IsQueryFacade)
+            .ToList();
+
+        return queryFacadeTypes is [var queryFacadeType]
+            ? queryFacadeType
+            : throw new InvalidOperationException($"Module facade {typeof(TModule).FullName} {QueryFacadeProblem}");
+    }
+
+    private static Boolean IsQueryFacade(Type type) =>
+        type != typeof(IModuleQueryFacade) && type.Implements<IModuleQueryFacade>();
+
+    private static List<Type> GetModuleTypes(ModuleDefinition definition, Type queryFacadeType) =>
+        GetModuleAssemblies(definition, queryFacadeType)
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type.IsInNamespace(definition.RootNamespace))
             .ToList();
 
-    private static IEnumerable<Assembly> GetModuleAssemblies<TQueryFacade>(ModuleDefinition definition) =>
-        new[] { definition.Assembly, typeof(TQueryFacade).Assembly }.Distinct();
+    private static IEnumerable<Assembly> GetModuleAssemblies(ModuleDefinition definition, Type queryFacadeType) =>
+        new[] { definition.Assembly, queryFacadeType.Assembly }.Distinct();
 
     private static void EnsureHandlersAreValid(ModuleDefinition definition, IReadOnlyCollection<Type> moduleTypes) =>
         EnsureNoProblems(
@@ -91,10 +126,10 @@ public static class ModuleServiceCollectionExtensions
         }
     }
 
-    private static ModuleDescriptor Describe<TModule, TQueryFacade, TDbContext>(ModuleDefinition definition) =>
+    private static ModuleDescriptor Describe<TModule, TDbContext>(ModuleDefinition definition, Type queryFacadeType) =>
         new(
             typeof(TModule),
-            typeof(TQueryFacade),
+            queryFacadeType,
             definition.Name,
             definition.Schema,
             typeof(TDbContext),
@@ -160,13 +195,14 @@ public static class ModuleServiceCollectionExtensions
             tags: null,
             timeout: ModuleDatabaseHealthCheck.CheckTimeout);
 
-    private static IServiceCollection AddDispatching<TModule, TQueryFacade, TFacade>(this IServiceCollection services)
-        where TModule : class, IModuleFacade, TQueryFacade
-        where TQueryFacade : class, IModuleQueryFacade
+    private static IServiceCollection AddDispatching<TModule, TFacade>(
+        this IServiceCollection services,
+        ModuleDescriptor descriptor)
+        where TModule : class, IModuleFacade
         where TFacade : class, TModule =>
         services
             .AddSingleton<TModule, TFacade>()
-            .AddSingleton<TQueryFacade>(serviceProvider => serviceProvider.GetRequiredService<TModule>())
+            .AddSingleton(descriptor.QueryFacadeKey, serviceProvider => serviceProvider.GetRequiredService<TModule>())
             .AddScoped<ModuleDispatcher<TModule>>();
 
     private static IServiceCollection AddOutbox<TModule>(this IServiceCollection services)

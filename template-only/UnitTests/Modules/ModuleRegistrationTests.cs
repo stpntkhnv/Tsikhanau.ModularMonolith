@@ -11,6 +11,8 @@ using Tsikhanau.Monolith.TestModules.Pongs.Contracts;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.CountPongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure;
 using Tsikhanau.Monolith.TestModules.Unhandled;
+using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.Misplaced.Infrastructure;
+using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.Nested;
 using Tsikhanau.Monolith.UnitTests.Modules.Scenarios.SharedInternalCommandName;
 using Tsikhanau.Railway;
 
@@ -19,6 +21,14 @@ namespace Tsikhanau.Monolith.UnitTests.Modules;
 public sealed class ModuleRegistrationTests
 {
     private const String Scenarios = "Tsikhanau.Monolith.UnitTests.Modules.Scenarios";
+
+    private const String NameProblem = "must be named I<Module>Module, like INotesModule";
+
+    private const String RootProblem = "must sit at the root of its module, in a namespace ending with";
+
+    private const String SchemaProblem = "must name its schema in a const String SchemaName";
+
+    private const String QueryFacadeProblem = "must extend exactly one query facade, like INotesQueryFacade";
 
     [Fact]
     public void Registers_a_module_with_one_handler_per_request() =>
@@ -55,18 +65,115 @@ public sealed class ModuleRegistrationTests
     [Fact]
     public void Handlers_are_found_in_the_assembly_of_the_query_facade()
     {
-        var services = Register<IPongsModule, IPongsQueryFacade, PongsModuleFacade>(
-            "Tsikhanau.Monolith.TestModules.Pongs");
+        var services = new ServiceCollection()
+            .AddModuleInfrastructure<IPongsModule, PongsModuleFacade, TestDbContext>();
 
         services.ShouldContain(service => service.ServiceType == typeof(IQueryHandler<CountPongsQuery, Int32>));
+    }
+
+    [Fact]
+    public void Name_schema_and_query_facade_come_from_the_facade_and_the_db_context()
+    {
+        var services = new ServiceCollection()
+            .AddModuleInfrastructure<IPongsModule, PongsModuleFacade, TestDbContext>();
+
+        var module = services
+            .GetOrAddInstance<ModuleRegistry>().Modules
+            .ShouldHaveSingleItem();
+
+        module.Key.ShouldBe(typeof(IPongsModule));
+        module.Name.ShouldBe("Pongs");
+        module.Schema.ShouldBe("test");
+        module.QueryFacadeKey.ShouldBe(typeof(IPongsQueryFacade));
+        module.DbContextType.ShouldBe(typeof(TestDbContext));
+        module.ConstraintErrors.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Constraint_errors_reach_the_module_descriptor()
+    {
+        var constraintErrors = new Dictionary<String, Error> { ["pongs_label_key"] = PongTaken };
+
+        var services = new ServiceCollection()
+            .AddModuleInfrastructure<IPongsModule, PongsModuleFacade, TestDbContext>(constraintErrors);
+
+        var module = services
+            .GetOrAddInstance<ModuleRegistry>().Modules
+            .ShouldHaveSingleItem();
+
+        module.ConstraintErrors.ShouldBe(constraintErrors);
+    }
+
+    [Fact]
+    public void Rejects_a_facade_named_against_the_convention()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            new ServiceCollection().AddModuleInfrastructure<ITestFacade, TestFacade, TestDbContext>());
+
+        exception.Message.ShouldBe($"Module facade {typeof(ITestFacade).FullName} {NameProblem}");
+    }
+
+    [Fact]
+    public void Rejects_a_facade_without_the_interface_prefix_even_when_its_module_name_starts_with_i()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            new ServiceCollection().AddModuleInfrastructure<InventoryModule, InventoryModuleFacade, TestDbContext>());
+
+        exception.Message.ShouldBe($"Module facade {typeof(InventoryModule).FullName} {NameProblem}");
+    }
+
+    [Fact]
+    public void Rejects_a_facade_nested_in_a_type_even_in_a_namespace_ending_with_its_module_name()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            new ServiceCollection()
+                .AddModuleInfrastructure<NestedFacadeHolder.INestedModule, NestedModuleFacade, TestDbContext>());
+
+        exception.Message.ShouldBe(
+            $"Module facade {typeof(NestedFacadeHolder.INestedModule).FullName} {RootProblem} .Nested");
+    }
+
+    [Fact]
+    public void Rejects_a_facade_in_a_folder_below_the_root_of_its_module()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            new ServiceCollection().AddModuleInfrastructure<IMisplacedModule, MisplacedModuleFacade, TestDbContext>());
+
+        exception.Message.ShouldBe($"Module facade {typeof(IMisplacedModule).FullName} {RootProblem} .Misplaced");
+    }
+
+    [Fact]
+    public void Rejects_a_db_context_without_a_schema_name_constant()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            new ServiceCollection().AddModuleInfrastructure<IPongsModule, PongsModuleFacade, SchemalessDbContext>());
+
+        exception.Message.ShouldBe($"Module db context {typeof(SchemalessDbContext).FullName} {SchemaProblem}");
+    }
+
+    [Fact]
+    public void Rejects_a_facade_without_a_query_facade()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            Register<IQuerylessModule, QuerylessModuleFacade>($"{Scenarios}.Valid"));
+
+        exception.Message.ShouldBe($"Module facade {typeof(IQuerylessModule).FullName} {QueryFacadeProblem}");
+    }
+
+    [Fact]
+    public void Rejects_a_facade_with_two_query_facades()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            Register<ITwoQueryFacadesModule, TwoQueryFacadesModuleFacade>($"{Scenarios}.Valid"));
+
+        exception.Message.ShouldBe($"Module facade {typeof(ITwoQueryFacadesModule).FullName} {QueryFacadeProblem}");
     }
 
     [Fact]
     public void Unhandled_query_in_the_assembly_of_the_query_facade_fails_registration()
     {
         var exception = Should.Throw<InvalidOperationException>(() =>
-            Register<IUnhandledModule, IUnhandledQueryFacade, UnhandledModuleFacade>(
-                "Tsikhanau.Monolith.TestModules.Unhandled"));
+            Register<IUnhandledModule, UnhandledModuleFacade>("Tsikhanau.Monolith.TestModules.Unhandled"));
 
         exception.Message.ShouldContain("Tsikhanau.Monolith.TestModules.Unhandled.UnhandledQuery has 0 handlers");
     }
@@ -171,18 +278,19 @@ public sealed class ModuleRegistrationTests
         exception.Message.ShouldContain($"Internal command name 'remind' is used by {commandTypeNames}");
     }
 
-    private static IServiceCollection Register(String scenario) =>
-        Register<ITestModule, ITestQueryFacade, TestModuleFacade>($"{Scenarios}.{scenario}");
+    private static Error PongTaken => Error.Conflict("Pongs.Taken", "Pong taken");
 
-    private static IServiceCollection Register<TModule, TQueryFacade, TFacade>(String rootNamespace)
-        where TModule : class, IModuleFacade, TQueryFacade
-        where TQueryFacade : class, IModuleQueryFacade
+    private static IServiceCollection Register(String scenario) =>
+        Register<ITestModule, TestModuleFacade>($"{Scenarios}.{scenario}");
+
+    private static IServiceCollection Register<TModule, TFacade>(String rootNamespace)
+        where TModule : class, IModuleFacade
         where TFacade : class, TModule =>
-        new ServiceCollection().AddModuleInfrastructure<TModule, TQueryFacade, TFacade, TestDbContext>(
+        new ServiceCollection().AddModuleInfrastructure<TModule, TFacade, TestDbContext>(
             new ModuleDefinition("Test", "test", typeof(ModuleRegistrationTests).Assembly, rootNamespace));
 
     private static IServiceCollection RegisterWithConstraint(String constraintName) =>
-        new ServiceCollection().AddModuleInfrastructure<ITestModule, ITestQueryFacade, TestModuleFacade, TestDbContext>(
+        new ServiceCollection().AddModuleInfrastructure<ITestModule, TestModuleFacade, TestDbContext>(
             new ModuleDefinition("Test", "test", typeof(ModuleRegistrationTests).Assembly, $"{Scenarios}.Valid")
             {
                 ConstraintErrors = new Dictionary<String, Error>
@@ -197,6 +305,34 @@ public sealed class ModuleRegistrationTests
 
     private sealed class TestModuleFacade(IServiceScopeFactory serviceScopeFactory)
         : ModuleFacade<ITestModule>(serviceScopeFactory), ITestModule;
+
+    private interface ITestFacade : ITestQueryFacade, IModuleFacade;
+
+    private sealed class TestFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<ITestFacade>(serviceScopeFactory), ITestFacade;
+
+    private interface InventoryModule : ITestQueryFacade, IModuleFacade;
+
+    private sealed class InventoryModuleFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<InventoryModule>(serviceScopeFactory), InventoryModule;
+
+    private sealed class NestedModuleFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<NestedFacadeHolder.INestedModule>(serviceScopeFactory), NestedFacadeHolder.INestedModule;
+
+    private sealed class MisplacedModuleFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<IMisplacedModule>(serviceScopeFactory), IMisplacedModule;
+
+    private interface IQuerylessModule : IModuleFacade;
+
+    private sealed class QuerylessModuleFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<IQuerylessModule>(serviceScopeFactory), IQuerylessModule;
+
+    private interface IOtherQueryFacade : IModuleQueryFacade;
+
+    private interface ITwoQueryFacadesModule : ITestQueryFacade, IOtherQueryFacade, IModuleFacade;
+
+    private sealed class TwoQueryFacadesModuleFacade(IServiceScopeFactory serviceScopeFactory)
+        : ModuleFacade<ITwoQueryFacadesModule>(serviceScopeFactory), ITwoQueryFacadesModule;
 
     private interface IUnhandledModule : IUnhandledQueryFacade, IModuleFacade;
 
@@ -213,6 +349,14 @@ public sealed class ModuleRegistrationTests
     private sealed class TestDbContext(DbContextOptions<TestDbContext> dbContextOptions)
         : ModuleDbContext(dbContextOptions)
     {
-        protected override String Schema => "test";
+        public const String SchemaName = "test";
+
+        protected override String Schema => SchemaName;
+    }
+
+    private sealed class SchemalessDbContext(DbContextOptions<SchemalessDbContext> dbContextOptions)
+        : ModuleDbContext(dbContextOptions)
+    {
+        protected override String Schema => "schemaless";
     }
 }

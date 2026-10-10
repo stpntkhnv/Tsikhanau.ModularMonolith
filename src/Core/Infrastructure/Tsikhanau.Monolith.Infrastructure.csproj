@@ -4,6 +4,7 @@
     <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.Testing" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.Perf" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.ArchRules" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Application\Tsikhanau.Monolith.Application.csproj" />

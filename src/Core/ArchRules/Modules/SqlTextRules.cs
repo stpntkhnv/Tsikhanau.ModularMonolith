@@ -1,4 +1,3 @@
-using System.Reflection;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Rules;
@@ -10,9 +9,6 @@ namespace Tsikhanau.Monolith.ArchRules.Modules;
 
 public static class SqlTextRules
 {
-    private const String SchemaNameField = "SchemaName";
-    private const BindingFlags ConstantFields = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-
     public static RuleEvaluation QueryHandlersOnlyRead(ArchModule module)
     {
         var literals = ReadQueryHandlerLiterals(module);
@@ -81,12 +77,5 @@ public static class SqlTextRules
     private static IEnumerable<String> ReadSchemas(ArchModule module) =>
         module.Types
             .Where(type => type.IsConcrete && type.Implements<ModuleDbContext>())
-            .Select(ReadSchema);
-
-    private static String ReadSchema(Type dbContextType)
-    {
-        var schemaField = dbContextType.GetField(SchemaNameField, ConstantFields);
-        return schemaField?.GetRawConstantValue() as String
-            ?? throw new InvalidOperationException($"{dbContextType.FullName} has no const String {SchemaNameField}");
-    }
+            .Select(ModuleSchema.Get);
 }
