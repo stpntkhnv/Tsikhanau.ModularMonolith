@@ -31,6 +31,9 @@
   <Folder Name="/src/Core/Infrastructure/">
     <Project Path="src/Core/Infrastructure/Tsikhanau.Monolith.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Core/Scaffold/">
+    <Project Path="src/Core/Scaffold/Tsikhanau.Monolith.Scaffold.csproj" />
+  </Folder>
   <Folder Name="/src/Core/Shared/">
     <Project Path="src/Core/Shared/Tsikhanau.Monolith.Shared.csproj" />
   </Folder>

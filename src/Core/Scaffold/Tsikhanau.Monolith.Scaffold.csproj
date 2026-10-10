@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.Scaffold.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Packages\Tsikhanau.Railway\Tsikhanau.Railway.csproj" />
+    <ProjectReference Include="..\Shared\Tsikhanau.Monolith.Shared.csproj" />
+  </ItemGroup>
+</Project>

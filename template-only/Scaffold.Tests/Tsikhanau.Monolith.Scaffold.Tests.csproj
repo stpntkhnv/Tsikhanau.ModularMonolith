@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Scaffold\Tsikhanau.Monolith.Scaffold.csproj" />
+  </ItemGroup>
+</Project>

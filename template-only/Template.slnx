@@ -8,6 +8,9 @@
   <Folder Name="/IntegrationTests/">
     <Project Path="IntegrationTests/Tsikhanau.Monolith.IntegrationTests.csproj" />
   </Folder>
+  <Folder Name="/Scaffold.Tests/">
+    <Project Path="Scaffold.Tests/Tsikhanau.Monolith.Scaffold.Tests.csproj" />
+  </Folder>
   <Folder Name="/Shared.Tests/">
     <Project Path="Shared.Tests/Tsikhanau.Monolith.Shared.Tests.csproj" />
   </Folder>

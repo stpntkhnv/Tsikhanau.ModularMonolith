@@ -11,6 +11,7 @@ global.json
 scripts/add-migration.sh
 scripts/core-hash.sh
 scripts/init.sh
+scripts/scaffold.sh
 scripts/update-core.sh
 src/Core/
 src/Packages/
