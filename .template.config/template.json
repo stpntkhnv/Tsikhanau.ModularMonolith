@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Stsiapan Tsikhanau",
+  "classifications": [
+    "Web",
+    "API",
+    "Aspire",
+    "Modular Monolith"
+  ],
+  "identity": "Tsikhanau.Monolith.Template",
+  "name": "Tsikhanau Monolith",
+  "shortName": "tsikhanau-monolith",
+  "description": "Modular monolith on .NET 10, PostgreSQL and Aspire with a shared core in src/Core: building blocks, analyzers, arch rules, scaffold and update-core.",
+  "sourceName": "ModularMonolith",
+  "preferNameDirectory": true,
+  "defaultName": "App",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "guids": [
+    "a0baad94-bda6-45ad-9fdc-acfcb8e24c7a"
+  ],
+  "symbols": {
+    "postgresName": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "postgresForm",
+      "replaces": "modularmonolith",
+      "description": "Lower-case name with dots and hyphens turned into underscores: database name and login prefix."
+    },
+    "fileName": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "namespaceForm",
+      "fileRename": "ModularMonolith",
+      "description": "Renames files and folders with the namespace form the engine writes into file contents."
+    },
+    "appHostHttpsPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 17000,
+        "high": 17300,
+        "fallback": 17154
+      },
+      "replaces": "17154",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "appHostHttpPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 15000,
+        "high": 15300,
+        "fallback": 15221
+      },
+      "replaces": "15221",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "dashboardOtlpHttpsPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 21000,
+        "high": 21300,
+        "fallback": 21228
+      },
+      "replaces": "21228",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "dashboardOtlpHttpPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 19000,
+        "high": 19300,
+        "fallback": 19189
+      },
+      "replaces": "19189",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "resourceServiceHttpsPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 22000,
+        "high": 22300,
+        "fallback": 22029
+      },
+      "replaces": "22029",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "resourceServiceHttpPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 20000,
+        "high": 20300,
+        "fallback": 20105
+      },
+      "replaces": "20105",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "bootstrapperHttpPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 5000,
+        "high": 5300,
+        "fallback": 5180
+      },
+      "replaces": "5180",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    },
+    "bootstrapperHttpsPort": {
+      "type": "generated",
+      "generator": "port",
+      "parameters": {
+        "low": 7000,
+        "high": 7300,
+        "fallback": 7180
+      },
+      "replaces": "7180",
+      "onlyIf": [
+        {
+          "after": "localhost:"
+        }
+      ]
+    }
+  },
+  "forms": {
+    "lowerInvariant": {
+      "identifier": "lowerCaseInvariant"
+    },
+    "dotsAndHyphensToUnderscores": {
+      "identifier": "replace",
+      "pattern": "[.-]",
+      "replacement": "_"
+    },
+    "postgresForm": {
+      "identifier": "chain",
+      "steps": [
+        "lowerInvariant",
+        "dotsAndHyphensToUnderscores"
+      ]
+    },
+    "namespaceForm": {
+      "identifier": "safe_namespace"
+    }
+  },
+  "sources": [
+    {
+      "include": [
+        ".config/**/*",
+        ".editorconfig",
+        ".gate/**/*",
+        ".gitattributes",
+        ".githooks/**/*",
+        ".github/workflows/ci.yml",
+        ".gitignore",
+        "App.Packages.props",
+        "BannedSymbols.txt",
+        "core.lock",
+        "Directory.Build.props",
+        "Directory.Build.targets",
+        "Directory.Packages.props",
+        "gate.sh",
+        "global.json",
+        "ModularMonolith.slnx",
+        "scripts/**/*",
+        "src/**/*"
+      ],
+      "exclude": [
+        "template-only/**/*",
+        ".template.config/**/*",
+        ".github/workflows/template.yml",
+        "docs/**/*",
+        ".superpowers/**/*",
+        ".worktrees/**/*",
+        ".claude/**/*",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "STYLE.md",
+        ".git/**/*",
+        "**/[Bb]in/**",
+        "**/[Oo]bj/**",
+        ".nuget/**/*"
+      ],
+      "copyOnly": [
+        ".config/dotnet-tools.json",
+        ".editorconfig",
+        ".gitattributes",
+        ".githooks/**/*",
+        "BannedSymbols.txt",
+        "Directory.Build.props",
+        "Directory.Build.targets",
+        "Directory.Packages.props",
+        "gate.sh",
+        "global.json",
+        "scripts/add-migration.sh",
+        "scripts/core-hash.sh",
+        "scripts/init.sh",
+        "scripts/scaffold.sh",
+        "scripts/update-core.sh",
+        "src/Core/**/*",
+        "src/Packages/**/*",
+        "core.lock"
+      ]
+    }
+  ]
+}

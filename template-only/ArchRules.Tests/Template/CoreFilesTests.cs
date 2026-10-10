@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Testing.Modules;
 
@@ -7,8 +6,6 @@ namespace Tsikhanau.Monolith.ArchRules.Tests.Template;
 public sealed partial class CoreFilesTests
 {
     private const String AppNamePattern = "modular.?monolith";
-
-    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [GeneratedRegex(AppNamePattern, RegexOptions.IgnoreCase)]
     private static partial Regex AppName { get; }
@@ -37,10 +34,13 @@ public sealed partial class CoreFilesTests
     }
 
     private static Task<IReadOnlyList<String>> ListCoreFilesAsync() =>
-        RunAsync("bash", ["scripts/core-hash.sh", "list"], []);
+        RepositoryCommands.RunAsync("bash", ["scripts/core-hash.sh", "list"], []);
 
     private static Task<IReadOnlyList<String>> ReadLineEndingAttributesAsync(IReadOnlyList<String> paths) =>
-        RunAsync("git", ["-c", "core.attributesFile=/dev/null", "check-attr", "--stdin", "text", "eol"], paths);
+        RepositoryCommands.RunAsync(
+            "git",
+            ["-c", "core.attributesFile=/dev/null", "check-attr", "--stdin", "text", "eol"],
+            paths);
 
     private static IEnumerable<String> FindAppName(String path)
     {
@@ -64,37 +64,4 @@ public sealed partial class CoreFilesTests
 
     private static Boolean KeepsLf(IReadOnlyList<String> attributes) =>
         attributes.Contains("text: unset") || (attributes.Contains("text: set") && attributes.Contains("eol: lf"));
-
-    private static async Task<IReadOnlyList<String>> RunAsync(
-        String fileName,
-        IReadOnlyList<String> arguments,
-        IReadOnlyList<String> input)
-    {
-        using var process = new Process { StartInfo = CreateStartInfo(fileName, arguments) };
-        process.Start();
-        var output = process.StandardOutput.ReadToEndAsync(CancellationToken);
-        var error = process.StandardError.ReadToEndAsync(CancellationToken);
-        await WriteInputAsync(process, input);
-        await process.WaitForExitAsync(CancellationToken);
-
-        process.ExitCode.ShouldBe(0, await error);
-
-        return (await output).Split('\n', StringSplitOptions.RemoveEmptyEntries);
-    }
-
-    private static ProcessStartInfo CreateStartInfo(String fileName, IReadOnlyList<String> arguments) =>
-        new(fileName, arguments)
-        {
-            WorkingDirectory = SolutionPaths.Root,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-
-    private static async Task WriteInputAsync(Process process, IReadOnlyList<String> input)
-    {
-        var text = String.Concat(input.Select(line => $"{line}\n"));
-        await using var standardInput = process.StandardInput;
-        await standardInput.WriteAsync(text.AsMemory(), CancellationToken);
-    }
 }
