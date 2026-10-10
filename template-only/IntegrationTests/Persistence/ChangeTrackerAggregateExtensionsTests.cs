@@ -88,8 +88,6 @@ public sealed class ChangeTrackerAggregateExtensionsTests
 
         private const String OrderIdProperty = "OrderId";
 
-        protected override String Schema => SchemaName;
-
         protected override void ConfigureModule(ModelBuilder modelBuilder)
         {
             modelBuilder

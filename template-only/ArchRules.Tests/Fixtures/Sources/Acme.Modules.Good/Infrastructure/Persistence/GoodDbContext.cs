@@ -10,8 +10,6 @@ internal sealed class GoodDbContext(DbContextOptions<GoodDbContext> dbContextOpt
 {
     public const String SchemaName = "good";
 
-    protected override String Schema => SchemaName;
-
     protected override IReadOnlyList<Assembly> SharedKernelAssemblies => [SharedKernelDomain.Assembly];
 
     protected override void ConfigureModule(ModelBuilder modelBuilder) =>

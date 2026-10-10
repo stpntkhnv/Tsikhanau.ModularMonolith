@@ -350,13 +350,8 @@ public sealed class ModuleRegistrationTests
         : ModuleDbContext(dbContextOptions)
     {
         public const String SchemaName = "test";
-
-        protected override String Schema => SchemaName;
     }
 
     private sealed class SchemalessDbContext(DbContextOptions<SchemalessDbContext> dbContextOptions)
-        : ModuleDbContext(dbContextOptions)
-    {
-        protected override String Schema => "schemaless";
-    }
+        : ModuleDbContext(dbContextOptions);
 }

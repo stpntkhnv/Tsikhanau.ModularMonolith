@@ -4,6 +4,9 @@ namespace Tsikhanau.Monolith.Shared.Reflection;
 
 public static class ReflectionExtensions
 {
+    private const BindingFlags InstanceConstructors =
+        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
     extension(Assembly assembly)
     {
         public IEnumerable<Type> ConcreteTypes =>
@@ -51,6 +54,9 @@ public static class ReflectionExtensions
             type.BaseType is { } baseType && (baseType.IsBuiltFrom(openGeneric) || baseType.DerivesFrom(openGeneric));
 
         public T CreateInstance<T>() => (T)Activator.CreateInstance(type, nonPublic: true)!;
+
+        public T CreateInstance<T>(Object argument) =>
+            (T)Activator.CreateInstance(type, InstanceConstructors, binder: null, [argument], culture: null)!;
 
         public IEnumerable<T> CreateInstancesInItsNamespace<T>() =>
             type.Assembly

@@ -98,6 +98,14 @@ public sealed class ReflectionExtensionsTests
         greeting.ShouldBe("hi");
     }
 
+    [Fact]
+    public void Instance_is_created_through_a_non_public_constructor_that_takes_the_argument()
+    {
+        var greeting = typeof(GreetingWithPrivateConstructor).CreateInstance<GreetingWithPrivateConstructor>("hey");
+
+        greeting.Text.ShouldBe("hey");
+    }
+
     private interface IGreeter
     {
         String Greet();
@@ -120,6 +128,13 @@ public sealed class ReflectionExtensionsTests
         private GreeterWithPrivateConstructor() { }
 
         public String Greet() => "hi";
+    }
+
+    private sealed class GreetingWithPrivateConstructor
+    {
+        private GreetingWithPrivateConstructor(String text) => Text = text;
+
+        public String Text { get; }
     }
 
     private class Box<T>;

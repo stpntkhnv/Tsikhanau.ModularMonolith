@@ -8,8 +8,6 @@ internal sealed class PongsDbContext(DbContextOptions<PongsDbContext> dbContextO
 {
     public const String SchemaName = "pongs";
 
-    protected override String Schema => SchemaName;
-
     protected override void ConfigureModule(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfiguration(new PongConfiguration());
 }

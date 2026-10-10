@@ -7,6 +7,4 @@ internal sealed class BadDbContext(DbContextOptions<BadDbContext> dbContextOptio
     : ModuleDbContext(dbContextOptions)
 {
     public const String SchemaName = "bad";
-
-    protected override String Schema => SchemaName;
 }

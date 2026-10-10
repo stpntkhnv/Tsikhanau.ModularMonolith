@@ -17,8 +17,6 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
     private const String UnownedChildEntityProblem =
         "is not owned by an aggregate; map it with OwnsOne or OwnsMany";
 
-    protected abstract String Schema { get; }
-
     protected virtual IReadOnlyList<Assembly> SharedKernelAssemblies => [];
 
     protected virtual void ConfigureModule(ModelBuilder modelBuilder) { }
@@ -51,6 +49,8 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
                 .HaveConversion(typeof(ValueObjectConverter<,>).MakeGenericType(valueObjectType, valueType));
         }
     }
+
+    private String Schema => ModuleSchema.Get(GetType());
 
     private IEnumerable<Type> MappedTypes =>
         SharedKernelAssemblies

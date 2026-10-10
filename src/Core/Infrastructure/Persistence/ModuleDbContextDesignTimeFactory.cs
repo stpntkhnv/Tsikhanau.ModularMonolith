@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace Tsikhanau.Monolith.Infrastructure.Persistence;
 
@@ -8,14 +9,12 @@ public abstract class ModuleDbContextDesignTimeFactory<TDbContext> : IDesignTime
 {
     private const String PlaceholderConnectionString = "Host=localhost;Database=placeholder;Username=placeholder";
 
-    protected abstract String Schema { get; }
+    private static String Schema => ModuleSchema.Get(typeof(TDbContext));
 
     public TDbContext CreateDbContext(String[] args)
     {
         var dbContextOptionsBuilder = new DbContextOptionsBuilder<TDbContext>();
         ModuleDbContextOptions.Configure(dbContextOptionsBuilder, PlaceholderConnectionString, Schema);
-        return Create(dbContextOptionsBuilder.Options);
+        return typeof(TDbContext).CreateInstance<TDbContext>(dbContextOptionsBuilder.Options);
     }
-
-    protected abstract TDbContext Create(DbContextOptions<TDbContext> dbContextOptions);
 }

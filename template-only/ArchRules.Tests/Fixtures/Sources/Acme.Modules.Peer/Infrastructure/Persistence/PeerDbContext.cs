@@ -7,6 +7,4 @@ internal sealed class PeerDbContext(DbContextOptions<PeerDbContext> dbContextOpt
     : ModuleDbContext(dbContextOptions)
 {
     public const String SchemaName = "peer";
-
-    protected override String Schema => SchemaName;
 }

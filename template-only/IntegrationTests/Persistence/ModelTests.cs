@@ -127,8 +127,6 @@ public sealed class ModelTests
     {
         public const String SchemaName = "baskets";
 
-        protected override String Schema => SchemaName;
-
         protected override void ConfigureModule(ModelBuilder modelBuilder)
         {
             modelBuilder

@@ -8,8 +8,6 @@ internal sealed class PingsDbContext(DbContextOptions<PingsDbContext> dbContextO
 {
     public const String SchemaName = "pings";
 
-    protected override String Schema => SchemaName;
-
     protected override void ConfigureModule(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfiguration(new PingConfiguration());
 }
