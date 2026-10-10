@@ -17,6 +17,7 @@ extra_project=$extra_folder/Tsikhanau.Monolith.Extra.csproj
 extra_type=$extra_folder/ExtraMarker.cs
 extra_assembly=Tsikhanau.Monolith.Extra.dll
 hook_mark='core-hash: the staged core matches the staged core.lock'
+rule_links=(AGENTS.md CLAUDE.md STYLE.md docs/engineering-principles.md docs/playbooks)
 
 main() {
   read_arguments "$@"
@@ -25,6 +26,7 @@ main() {
   consumer=$work/$name
   mkdir "$work/logs"
   echo "check-consumer: $name, working folder $work"
+  choose_rules
 
   step 1 "dotnet new" new_app
   step 2 "core and name" check_core_and_name
@@ -115,6 +117,28 @@ working_set() {
 
 copy_files() {
   tar -C "$template_root" --null -T "$1" -cf - | tar -C "$2" -xf -
+}
+
+template_rulebook() {
+  local agents
+  [[ -L "$template_root/AGENTS.md" ]] || return 1
+  agents=$(readlink -f "$template_root/AGENTS.md") || return 1
+  [[ -f "$(dirname "$agents")/check-markers.cs" ]] || return 1
+  dirname "$agents"
+}
+
+choose_rules() {
+  if rulebook=$(template_rulebook); then
+    init_command=(env RULEBOOK_PATH="$rulebook" bash scripts/init.sh)
+    gate_command=(./gate.sh)
+    echo "check-consumer: the app links the rules of $rulebook, the rulebook the template links"
+  else
+    rulebook=""
+    init_command=(bash scripts/init.sh --no-rules)
+    gate_command=(env CI=true ./gate.sh)
+    echo "check-consumer: the template links no rulebook that holds check-markers.cs, so the app runs init" \
+      "--no-rules and its gate with CI=true, which skips the rule marker check"
+  fi
 }
 
 new_without_scripts() {
@@ -222,37 +246,57 @@ commit_through_hook() {
 }
 
 run_gate() {
-  local log=$work/logs/$1.log warnings counts
-  logged "$1" ./gate.sh
+  local log=$work/logs/$1.log warnings counts markers
+  logged "$1" "${gate_command[@]}"
   grep -q '^gate: green' "$log" || fail "the gate did not end green; see $log"
   warnings=$(sed -n -E 's/^ +([0-9]+) Warning\(s\)$/\1/p' "$log" | paste -sd '+')
   counts=$(sed -n -E 's/^  (total|failed|succeeded|skipped): ([0-9]+)$/\1 \2/p' "$log" | paste -sd ',' | sed 's/,/, /g')
-  gate_totals="$counts, warnings ${warnings:-none}"
+  markers=$(grep -m 1 -E '^(check-markers: green|gate: rule markers: skipped)' "$log" || true)
+  [[ -n "$markers" ]] || fail "the gate printed no rule marker step; see $log"
+  gate_totals="$counts, warnings ${warnings:-none}; $markers"
+}
+
+check_rule_links() {
+  local link shown
+  if [[ -z "$rulebook" ]]; then
+    rules_summary="no rules linked (--no-rules)"
+    return
+  fi
+  for link in "${rule_links[@]}"; do
+    [[ -L "$link" ]] || fail "init did not link $link"
+    git check-ignore -q -- "$link" || fail "git check-ignore does not see the link $link"
+  done
+  shown=$(git ls-files --others --exclude-standard -- "${rule_links[@]}")
+  [[ -z "$shown" ]] || fail "git ls-files --others --exclude-standard shows the rule links: $shown"
+  rules_summary="${rule_links[*]} link into $rulebook, git check-ignore sees them and git ls-files --others"
+  rules_summary+=" --exclude-standard shows none"
 }
 
 init_commit_gate() {
   local problems
   cd "$consumer"
-  logged 3-init bash scripts/init.sh --no-rules
+  logged 3-init "${init_command[@]}"
   problems=$(init_problems)
   if [[ -n "$problems" ]]; then
     printf '%s\n' "$problems" | sed 's/^/  /' >&2
     fail "init did not set up the app"
   fi
   init_state > "$work/init-first"
-  logged 3-init-again bash scripts/init.sh --no-rules
+  logged 3-init-again "${init_command[@]}"
   init_state > "$work/init-second"
   if ! diff "$work/init-first" "$work/init-second" > "$work/init.diff"; then
     sed 's/^/  /' "$work/init.diff" >&2
     fail "a second run of init changed the app"
   fi
+  check_rule_links
 
   git add -A
   commit_through_hook 3-commit initial
   run_gate 3-gate
   restored_before=$(restored_versions)
   summary="init: $(paste -sd ';' "$work/logs/3-init.log" | sed 's/;init: /; /g; s/^init: //');"
-  summary+=" second run changed nothing; commit $committed through the pre-commit hook; gate green: $gate_totals"
+  summary+=" second run changed nothing; $rules_summary; commit $committed through the pre-commit hook;"
+  summary+=" gate green: $gate_totals"
 }
 
 add_module() {

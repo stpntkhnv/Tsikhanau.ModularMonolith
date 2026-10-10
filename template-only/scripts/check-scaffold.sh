@@ -108,6 +108,10 @@ make_app() {
   app=$consumer/$name
   [[ -n "$consumer" && -d "$app/.git" ]] || fail_with_log "$log" "check-consumer.sh named no kept app"
   cp -- "$app/.gate/skips" "$work/skips"
+  if [[ ! -L "$app/AGENTS.md" ]]; then
+    export CI=true
+    echo "check-scaffold: $name links no rules, so its gate runs with CI=true and skips the rule marker check"
+  fi
   record "app $name from dotnet new (check-consumer.sh steps 1-3)" "" "" "gate green in $(seconds_since "$begun")"
 }
 
