@@ -1,8 +1,13 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
+using Tsikhanau.Monolith.Infrastructure.Inbox;
+using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Outbox;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Testing.Modules;
 using Tsikhanau.Railway;
 
@@ -10,10 +15,10 @@ namespace ModularMonolith.IntegrationTests.Modules;
 
 public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture)
 {
-    private static readonly String[] CommonTables =
-        ["__ef_migrations_history", "inbox_messages", "internal_commands", "outbox_messages"];
+    private static readonly String[] QueueTables =
+        [InboxMessage.Table, InternalCommandMessage.Table, OutboxMessage.Table];
 
-    private static readonly Dictionary<String, String[]> OwnTables = [];
+    private static readonly String[] CommonTables = [ModuleDbContextOptions.MigrationsHistoryTable, .. QueueTables];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -84,9 +89,10 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
             return;
         }
 
-        var tableNames = await App.Database.ReadTableNamesAsync(App.GetModule(name).Schema);
+        var module = App.GetModule(name);
+        var tableNames = await App.Database.ReadTableNamesAsync(module.Schema);
 
-        String[] expectedTableNames = [.. CommonTables, .. OwnTables.GetValueOrDefault(name, [])];
+        String[] expectedTableNames = [.. CommonTables, .. GetOwnTableNames(module)];
 
         tableNames.ShouldBe(expectedTableNames, ignoreOrder: true);
     }
@@ -124,4 +130,21 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
             .OfType<Object>()
             .Select(validator => validator.GetType())
             .ToList();
+
+    private List<String> GetOwnTableNames(ModuleDescriptor module)
+    {
+        using var scope = App.Services.CreateScope();
+        var dbContext = ResolveDbContext(scope.ServiceProvider, module);
+
+        return dbContext.Model
+            .GetRelationalModel()
+            .Tables
+            .Where(table => table.Schema == module.Schema)
+            .Select(table => table.Name)
+            .Except(QueueTables)
+            .ToList();
+    }
+
+    private static DbContext ResolveDbContext(IServiceProvider serviceProvider, ModuleDescriptor module) =>
+        (DbContext)serviceProvider.GetRequiredService(module.DbContextType);
 }
