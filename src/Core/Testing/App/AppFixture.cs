@@ -3,6 +3,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Domain.Events;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.Testing.Queues;
@@ -63,6 +67,17 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public Task RedeliverInboxAsync(String moduleName, Guid messageId) =>
         InboxRedelivery.RedeliverAsync(GetDataSource(moduleName), GetModule(moduleName), messageId, Time.GetUtcNow());
+
+    public Task PublishAsync(IntegrationEvent integrationEvent) =>
+        IntegrationEventPublisher.PublishAsync(Services, integrationEvent);
+
+    public Task<Result<Unit>> DispatchAsync<TModule>(DomainEvent domainEvent)
+        where TModule : IModuleFacade =>
+        UnitOfWorkDriver.DispatchAsync<TModule>(Services, domainEvent);
+
+    public Task EnqueueAsync<TModule>(InternalCommand internalCommand)
+        where TModule : IModuleFacade =>
+        UnitOfWorkDriver.EnqueueAsync<TModule>(Services, internalCommand);
 
     public AppFactory<TEntryPoint> StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {

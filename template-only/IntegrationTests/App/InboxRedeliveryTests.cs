@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
+using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 using Tsikhanau.Monolith.TestModules.Pongs;
@@ -59,6 +59,36 @@ public sealed class InboxRedeliveryTests(TestAppFixture testAppFixture) : TestAp
     }
 
     [Fact]
+    public async Task Redelivery_delivers_only_the_named_message_again()
+    {
+        var targetEvent = CreatePingCreatedEvent("redelivery-target");
+        var bystanderEvent = CreatePingCreatedEvent("redelivery-bystander");
+        await App.PublishAsync(targetEvent);
+        await App.PublishAsync(bystanderEvent);
+        await App.ProcessQueuesAsync();
+        var processedMessages = await App.Database.ReadQueueRowsAsync(PongsSchema, InboxMessage.Table);
+        var targetMessage = processedMessages.Single(message => message.Id == targetEvent.Id);
+        var bystanderMessage = processedMessages.Single(message => message.Id == bystanderEvent.Id);
+        var redeliveredOn = App.Time.GetUtcNow();
+
+        await App.RedeliverInboxAsync(Pongs, targetEvent.Id);
+        var redeliveredMessages = await App.Database.ReadQueueRowsAsync(PongsSchema, InboxMessage.Table);
+        await App.ProcessQueuesAsync();
+        var targetHandled = CountHandled(targetEvent.PingId);
+        var bystanderHandled = CountHandled(bystanderEvent.PingId);
+
+        redeliveredMessages.ShouldBe(
+            [
+                targetMessage with { Attempts = 0, IsProcessed = false, NextAttemptOn = redeliveredOn.UtcDateTime },
+                bystanderMessage,
+            ],
+            ignoreOrder: true);
+
+        targetHandled.ShouldBe(2);
+        bystanderHandled.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Redelivery_clears_attempts_and_last_error_and_makes_the_message_due_at_the_current_time()
     {
         const String label = "retried-then-redelivered";
@@ -99,8 +129,7 @@ public sealed class InboxRedeliveryTests(TestAppFixture testAppFixture) : TestAp
     [Fact]
     public async Task Redelivery_refuses_a_message_that_is_not_processed_yet()
     {
-        await CreatePingAsync("waiting");
-        await DeliverPingsOutboxAsync();
+        await App.PublishAsync(CreatePingCreatedEvent("waiting"));
         var deliveredMessage = await ReadSingleInboxMessageAsync();
 
         var exception = await Should.ThrowAsync<InvalidOperationException>(
@@ -171,10 +200,8 @@ public sealed class InboxRedeliveryTests(TestAppFixture testAppFixture) : TestAp
         return pingId;
     }
 
-    private Task<Int32> DeliverPingsOutboxAsync() =>
-        App.Services
-            .GetRequiredService<OutboxPump<IPingsModule>>()
-            .RunOnceAsync(CancellationToken);
+    private PingCreatedIntegrationEvent CreatePingCreatedEvent(String label) =>
+        new(App.Time.GetUtcNow(), Guid.CreateVersion7(), label, Optional<String>.None());
 
     private async Task<QueueRow> ReadSingleInboxMessageAsync()
     {
