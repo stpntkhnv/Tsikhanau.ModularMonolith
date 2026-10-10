@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Tsikhanau.Monolith.Hosting;
@@ -16,6 +18,7 @@ internal static class BadRequestProblemDetails
     private const String RootPathPrefix = "$.";
     private const String InvalidValueMessage = "The value is not valid.";
     private const String UnreadableRequestMessage = "The request could not be read.";
+    private const String InvalidRouteOrQueryValueMessage = "A route or query value is not valid.";
 
     public static Int32 SelectStatusCode(Exception exception) =>
         exception is BadHttpRequestException badHttpRequestException
@@ -30,7 +33,7 @@ internal static class BadRequestProblemDetails
         if (context.ProblemDetails.Status == StatusCodes.Status400BadRequest
             && context.Exception is BadHttpRequestException exception)
         {
-            DescribeAsInvalidRequest(context.ProblemDetails, ToErrors(exception));
+            DescribeAsInvalidRequest(context.ProblemDetails, ToErrors(exception, context));
         }
     }
 
@@ -41,10 +44,24 @@ internal static class BadRequestProblemDetails
         problemDetails.Extensions[CodeKey] = Code;
     }
 
-    private static Dictionary<String, String[]> ToErrors(BadHttpRequestException exception) =>
+    private static Dictionary<String, String[]> ToErrors(
+        BadHttpRequestException exception,
+        ProblemDetailsContext context) =>
         exception.InnerException is JsonException jsonException
             ? new() { [ToField(jsonException.Path ?? RootPath)] = [InvalidValueMessage] }
-            : new() { [RootPath] = [UnreadableRequestMessage] };
+            : new() { [RootPath] = [DescribeBindingFailure(context)] };
+
+    private static String DescribeBindingFailure(ProblemDetailsContext context) =>
+        IsMissingItsBody(context) ? UnreadableRequestMessage : InvalidRouteOrQueryValueMessage;
+
+    private static Boolean IsMissingItsBody(ProblemDetailsContext context) =>
+        TakesABody(context.AdditionalMetadata) && !CarriesABody(context.HttpContext);
+
+    private static Boolean TakesABody(EndpointMetadataCollection? endpointMetadata) =>
+        endpointMetadata?.GetMetadata<IAcceptsMetadata>() is not null;
+
+    private static Boolean CarriesABody(HttpContext httpContext) =>
+        httpContext.Features.Get<IHttpRequestBodyDetectionFeature>() is { CanHaveBody: true };
 
     private static String ToField(String path) =>
         path.StartsWith(RootPathPrefix, StringComparison.Ordinal) ? path[RootPathPrefix.Length..] : path;

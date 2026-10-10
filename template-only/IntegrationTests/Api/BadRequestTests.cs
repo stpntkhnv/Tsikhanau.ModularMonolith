@@ -37,7 +37,7 @@ public sealed class BadRequestTests(PostgresFixture postgresFixture)
             "label of the wrong type 400 Request.Invalid errors[label]: The value is not valid.",
             "nickname of the wrong type 400 Request.Invalid errors[nickname]: The value is not valid.",
             "empty body 400 Request.Invalid errors[$]: The request could not be read.",
-            "unknown kind in the route 400 Request.Invalid errors[$]: The request could not be read."
+            "unknown kind in the route 400 Request.Invalid errors[$]: A route or query value is not valid."
         ]);
     }
 

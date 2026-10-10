@@ -8,10 +8,12 @@ namespace Tsikhanau.Monolith.TestModules.Pings.Features.GetPing;
 
 internal sealed class GetPingEndpoint : IEndpoint
 {
+    public const String Name = "Pings.GetPing";
+
     public void Map(IEndpointRouteBuilder endpoints) =>
         endpoints
             .MapGet("/{pingId:guid}", GetAsync)
-            .WithName("Pings.GetPing");
+            .WithName(Name);
 
     private static Task<Results<Ok<PingDto>, ValidationProblem, ProblemHttpResult>> GetAsync(
         Guid pingId,

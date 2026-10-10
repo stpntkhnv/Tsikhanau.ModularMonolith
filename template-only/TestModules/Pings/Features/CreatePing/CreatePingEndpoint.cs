@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.TestModules.Pings.Features.GetPing;
 
 namespace Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 
@@ -19,7 +20,7 @@ internal sealed class CreatePingEndpoint : IEndpoint
         CancellationToken cancellationToken) =>
         pingsModule
             .ExecuteCommandAsync(CreateCommand(request, timeProvider), cancellationToken)
-            .ToCreatedAsync("Pings.GetPing", pingId => new { pingId });
+            .ToCreatedAsync(GetPingEndpoint.Name, pingId => new { pingId });
 
     private static CreatePingCommand CreateCommand(CreatePingRequest request, TimeProvider timeProvider) =>
         new(Guid.CreateVersion7(timeProvider.GetUtcNow()), request.Label, request.Nickname);

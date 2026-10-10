@@ -19,11 +19,20 @@ internal sealed class TestCallerAuthenticationHandler(
 
     public const String CallerWithoutIdHeader = "X-Test-Caller-Without-Id";
 
+    public const String FailingSchemeHeader = "X-Test-Scheme-Fails";
+
+    public const String SchemeFailure = "The test scheme failed while reading the caller";
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync() =>
         Task.FromResult(Authenticate(Request.Headers));
 
     private static AuthenticateResult Authenticate(IHeaderDictionary headers)
     {
+        if (headers.ContainsKey(FailingSchemeHeader))
+        {
+            throw new InvalidOperationException(SchemeFailure);
+        }
+
         if (headers.ContainsKey(CallerWithoutIdHeader))
         {
             return Success([]);

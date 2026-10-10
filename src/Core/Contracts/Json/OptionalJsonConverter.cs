@@ -8,6 +8,8 @@ namespace Tsikhanau.Monolith.Contracts.Json;
 internal sealed class OptionalJsonConverter<T> : JsonConverter<Optional<T>>
     where T : notnull
 {
+    private JsonTypeInfo<T>? _valueTypeInfo;
+
     public override Optional<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
         reader.TokenType == JsonTokenType.Null
             ? Optional<T>.None()
@@ -24,7 +26,7 @@ internal sealed class OptionalJsonConverter<T> : JsonConverter<Optional<T>>
         writer.WriteNullValue();
     }
 
-    private static Optional<T> ReadValue(ref Utf8JsonReader reader, JsonSerializerOptions options)
+    private Optional<T> ReadValue(ref Utf8JsonReader reader, JsonSerializerOptions options)
     {
         try
         {
@@ -36,6 +38,6 @@ internal sealed class OptionalJsonConverter<T> : JsonConverter<Optional<T>>
         }
     }
 
-    private static JsonTypeInfo<T> GetValueTypeInfo(JsonSerializerOptions options) =>
-        (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
+    private JsonTypeInfo<T> GetValueTypeInfo(JsonSerializerOptions options) =>
+        _valueTypeInfo ??= (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
 }

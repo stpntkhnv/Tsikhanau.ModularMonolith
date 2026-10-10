@@ -137,6 +137,7 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
             "ValidationWithoutField 400 Ping.BadShape (no detail)",
             "AggregateOfTwoValidations 400 aggregate (no detail)",
             "AggregateOfFieldAndFieldlessValidations 400 aggregate (no detail)",
+            "ValidationWithContext 400 Ping.Rejected (no detail)",
             "Unauthorized 401 Ping.Unauthorized Caller is not signed in",
             "Forbidden 403 Ping.Forbidden Caller may not see this ping",
             "NotFound 404 Ping.NotFound Ping was not found",
@@ -167,7 +168,9 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
             "AggregateOfTwoValidations errors[label]: Label is too long",
             "AggregateOfTwoValidations errors[nickname]: Nickname is empty",
             "AggregateOfFieldAndFieldlessValidations errors[label]: Label is too long",
-            "AggregateOfFieldAndFieldlessValidations errors[]: Ping has a bad shape"
+            "AggregateOfFieldAndFieldlessValidations errors[]: Ping has a bad shape",
+            "ValidationWithContext errors[]: Ping was rejected",
+            "ValidationWithContext errors[label]: Label is too long"
         ]);
     }
 

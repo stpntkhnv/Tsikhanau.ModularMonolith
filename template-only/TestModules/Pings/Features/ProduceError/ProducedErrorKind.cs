@@ -6,6 +6,7 @@ internal enum ProducedErrorKind
     ValidationWithoutField,
     AggregateOfTwoValidations,
     AggregateOfFieldAndFieldlessValidations,
+    ValidationWithContext,
     Unauthorized,
     Forbidden,
     NotFound,

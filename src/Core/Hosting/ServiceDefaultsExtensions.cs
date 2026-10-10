@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 using Tsikhanau.Monolith.Contracts.Json;
@@ -31,6 +33,9 @@ public static class ServiceDefaultsExtensions
         builder.Services.AddProblemDetails(
             problemDetailsOptions => problemDetailsOptions.CustomizeProblemDetails = CustomizeProblemDetails);
 
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IProblemDetailsWriter, AnyAcceptProblemDetailsWriter>());
+
         builder.Services.Configure<RouteHandlerOptions>(
             routeHandlerOptions => routeHandlerOptions.ThrowOnBadRequest = true);
 
@@ -50,6 +55,7 @@ public static class ServiceDefaultsExtensions
             });
 
         app.UseStatusCodePages();
+        app.UseCorsWhenRegistered();
         app.UseAuthenticationAndAuthorizationWhenRegistered();
         app.MapHealth();
         if (app.Environment.IsDevelopment())
@@ -64,6 +70,14 @@ public static class ServiceDefaultsExtensions
         }
 
         return app;
+    }
+
+    private static void UseCorsWhenRegistered(this WebApplication app)
+    {
+        if (app.IsRegistered<ICorsService>())
+        {
+            app.UseCors();
+        }
     }
 
     private static void UseAuthenticationAndAuthorizationWhenRegistered(this WebApplication app)

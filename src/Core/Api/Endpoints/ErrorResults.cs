@@ -46,6 +46,14 @@ internal static class ErrorResults
         {
             ValidationError validationError => validationError.FieldErrors,
             AggregateError aggregateError => aggregateError.Errors.SelectMany(CollectFieldErrors),
-            _ => [new FieldError(String.Empty, error.Message)]
+            _ => [new FieldError(String.Empty, error.Message), .. CollectWrappedFieldErrors(error)]
+        };
+
+    private static IEnumerable<FieldError> CollectWrappedFieldErrors(Error error) =>
+        error.Inner switch
+        {
+            ValidationError validationError => validationError.FieldErrors,
+            { } innerError => CollectWrappedFieldErrors(innerError),
+            null => []
         };
 }

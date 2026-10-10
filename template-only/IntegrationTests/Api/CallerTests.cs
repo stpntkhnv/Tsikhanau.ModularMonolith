@@ -1,9 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Net.Http.Headers;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pongs.Features;
 using Tsikhanau.Railway;
@@ -15,6 +17,8 @@ public sealed class CallerTests(PostgresFixture postgresFixture)
     private const String Alice = "alice";
 
     private const String BlankId = " ";
+
+    private const String ClientOrigin = "https://client.example";
 
     private const String CountPingsSql = "SELECT count(*)::int FROM pings.pings";
 
@@ -160,6 +164,29 @@ public sealed class CallerTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Cors_preflight_answers_before_the_fallback_policy_and_the_request_still_needs_a_caller()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder => builder.Services.AddCors(AllowClientOrigin),
+            requiresAuthentication: true);
+
+        using var httpClient = testModulesHost.CreateClient();
+
+        IReadOnlyList<String> answers =
+        [
+            await DescribeCorsAnswerAsync(httpClient, "preflight of POST /pings", PreflightOfPostPing()),
+            await DescribeCorsAnswerAsync(httpClient, "POST /pings without a caller", FromClient(PostPing("cors")))
+        ];
+
+        answers.ShouldBe(
+        [
+            $"preflight of POST /pings: 204, Access-Control-Allow-Origin {ClientOrigin}",
+            $"POST /pings without a caller: 401, Access-Control-Allow-Origin {ClientOrigin}"
+        ]);
+    }
+
+    [Fact]
     public async Task Ping_created_through_the_facade_from_test_code_has_no_creator()
     {
         await using var testModulesHost = await StartAsync();
@@ -192,6 +219,40 @@ public sealed class CallerTests(PostgresFixture postgresFixture)
     {
         request.Headers.Add(TestCallerAuthenticationHandler.CallerWithoutIdHeader, "yes");
         return request;
+    }
+
+    private static void AllowClientOrigin(CorsOptions corsOptions) =>
+        corsOptions.AddDefaultPolicy(
+            corsPolicyBuilder => corsPolicyBuilder
+                .WithOrigins(ClientOrigin)
+                .AllowAnyHeader()
+                .AllowAnyMethod());
+
+    private static HttpRequestMessage PreflightOfPostPing()
+    {
+        var request = FromClient(new HttpRequestMessage(HttpMethod.Options, "/pings"));
+        request.Headers.Add(HeaderNames.AccessControlRequestMethod, HttpMethod.Post.Method);
+        return request;
+    }
+
+    private static HttpRequestMessage FromClient(HttpRequestMessage request)
+    {
+        request.Headers.Add(HeaderNames.Origin, ClientOrigin);
+        return request;
+    }
+
+    private static async Task<String> DescribeCorsAnswerAsync(
+        HttpClient httpClient,
+        String name,
+        HttpRequestMessage request)
+    {
+        using var sentRequest = request;
+        using var response = await httpClient.SendAsync(sentRequest, CancellationToken);
+        var allowedOrigin = response.Headers.TryGetValues(HeaderNames.AccessControlAllowOrigin, out var origins)
+            ? String.Join(", ", origins)
+            : "(none)";
+
+        return $"{name}: {(Int32)response.StatusCode}, Access-Control-Allow-Origin {allowedOrigin}";
     }
 
     private static async Task<Answer> SendAsync(HttpClient httpClient, String name, HttpRequestMessage request)
