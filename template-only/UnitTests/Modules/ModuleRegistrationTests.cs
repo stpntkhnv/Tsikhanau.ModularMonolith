@@ -69,8 +69,7 @@ public sealed class ModuleRegistrationTests
     [Fact]
     public void Handlers_are_found_in_the_assembly_of_the_query_facade()
     {
-        var services = new ServiceCollection()
-            .AddModuleInfrastructure<IPongsModule, PongsModuleFacade, TestDbContext>();
+        var services = Register<IPongsModule, PongsModuleFacade>("Tsikhanau.Monolith.TestModules.Pongs");
 
         services.ShouldContain(service => service.ServiceType == typeof(IQueryHandler<CountPongsQuery, Int32>));
     }

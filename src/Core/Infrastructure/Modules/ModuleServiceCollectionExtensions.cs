@@ -106,13 +106,15 @@ public static class ModuleServiceCollectionExtensions
             .Distinct();
 
     private static IEnumerable<Assembly> LoadOwnReferencedAssemblies(ModuleDefinition definition) =>
-        definition.Assembly
-            .GetReferencedAssemblies()
-            .Where(assemblyName => IsNamedUnder(assemblyName, definition.RootNamespace))
-            .Select(Assembly.Load);
+        definition.Assembly.GetName().Name is { } moduleAssemblyName
+            ? definition.Assembly
+                .GetReferencedAssemblies()
+                .Where(assemblyName => IsNamedUnder(assemblyName, moduleAssemblyName))
+                .Select(Assembly.Load)
+            : [];
 
-    private static Boolean IsNamedUnder(AssemblyName assemblyName, String rootNamespace) =>
-        assemblyName.Name is { } name && name.StartsWith($"{rootNamespace}.", StringComparison.Ordinal);
+    private static Boolean IsNamedUnder(AssemblyName assemblyName, String moduleAssemblyName) =>
+        assemblyName.Name is { } name && name.StartsWith($"{moduleAssemblyName}.", StringComparison.Ordinal);
 
     private static Assembly[] GetAssemblyOf(Optional<Type> queryFacadeType) =>
         queryFacadeType.Match<Type, Assembly[]>(type => [type.Assembly], () => []);

@@ -77,13 +77,28 @@ public sealed class ModuleContractsTests
         }
         """;
 
-    private static readonly Lazy<QuietModuleTypes> QuietTypes = new(CompileQuietModule);
+    private static readonly String[] SourceAssemblyNames =
+    [
+        "System.Private.CoreLib",
+        "System.Runtime",
+        "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "Microsoft.EntityFrameworkCore",
+        "Tsikhanau.Railway",
+        "Tsikhanau.Monolith.Contracts",
+        "Tsikhanau.Monolith.Application",
+        "Tsikhanau.Monolith.Infrastructure",
+        "Tsikhanau.Monolith.Api",
+    ];
 
-    [Fact]
-    public void Integration_events_in_the_contracts_assembly_of_a_module_without_a_query_facade_are_registered()
+    [Theory]
+    [InlineData("Acme.Modules.Quiet")]
+    [InlineData("acme-shop.Modules.Quiet")]
+    public void Integration_events_in_the_contracts_assembly_of_a_module_without_a_query_facade_are_registered(
+        String moduleProjectName)
     {
+        var quietTypes = CompileQuietModule(moduleProjectName);
         var services = new ServiceCollection();
-        var quietModule = QuietTypes.Value.ModuleClassType.CreateInstance<IModule>();
+        var quietModule = quietTypes.ModuleClassType.CreateInstance<IModule>();
 
         quietModule.Register(services, EmptySettingsSection);
 
@@ -91,7 +106,7 @@ public sealed class ModuleContractsTests
             .GetOrAddInstance<IntegrationEventRegistry>()
             .FindType(HushedEventName);
 
-        foundHushedEventType.ShouldBe(QuietTypes.Value.HushedIntegrationEventType);
+        foundHushedEventType.ShouldBe(quietTypes.HushedIntegrationEventType);
     }
 
     private static IConfigurationSection EmptySettingsSection =>
@@ -99,19 +114,20 @@ public sealed class ModuleContractsTests
             .Build()
             .GetSection("App:Modules:Quiet");
 
-    private static IEnumerable<MetadataReference> RuntimeReferences =>
+    private static IEnumerable<MetadataReference> SourceReferences =>
         ((String)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
+            .Where(path => SourceAssemblyNames.Contains(Path.GetFileNameWithoutExtension(path)))
             .Select(path => MetadataReference.CreateFromFile(path));
 
-    private static QuietModuleTypes CompileQuietModule()
+    private static QuietModuleTypes CompileQuietModule(String moduleProjectName)
     {
-        IReadOnlyList<MetadataReference> runtimeReferences = [.. RuntimeReferences];
-        var contractsImage = Compile("Acme.Modules.Quiet.Contracts", ContractsSource, runtimeReferences);
+        IReadOnlyList<MetadataReference> sourceReferences = [.. SourceReferences];
+        var contractsImage = Compile($"{moduleProjectName}.Contracts", ContractsSource, sourceReferences);
         var moduleImage = Compile(
-            "Acme.Modules.Quiet",
+            moduleProjectName,
             ModuleSource,
-            [.. runtimeReferences, MetadataReference.CreateFromImage(contractsImage)]);
+            [.. sourceReferences, MetadataReference.CreateFromImage(contractsImage)]);
 
         var contractsAssembly = LoadIntoDefaultContext(contractsImage);
         var moduleAssembly = LoadIntoDefaultContext(moduleImage);

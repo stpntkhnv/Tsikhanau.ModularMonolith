@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using ModularMonolith.Testing.App;
+using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
@@ -23,14 +24,18 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public void Every_module_folder_has_exactly_one_registered_module()
+    public void Every_module_folder_has_exactly_one_registered_module() =>
+        RegisteredModuleNames.ShouldBe(ProductionModules.Names, ignoreOrder: true);
+
+    [Fact]
+    public void Every_module_class_has_the_name_of_the_module_it_registers()
     {
-        var registeredModuleNames = App.Services
-            .GetRequiredService<ModuleRegistry>().Modules
+        var moduleClassNames = App.Services
+            .GetServices<IModule>()
             .Select(module => module.Name)
             .ToList();
 
-        registeredModuleNames.ShouldBe(ProductionModules.Names, ignoreOrder: true);
+        moduleClassNames.ShouldBe(RegisteredModuleNames, ignoreOrder: true);
     }
 
     [Theory]
@@ -114,6 +119,12 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
         healthReport.Entries.ShouldContainKey(healthCheckName);
         healthReport.Entries[healthCheckName].Status.ShouldBe(HealthStatus.Healthy);
     }
+
+    private List<String> RegisteredModuleNames =>
+        App.Services
+            .GetRequiredService<ModuleRegistry>().Modules
+            .Select(module => module.Name)
+            .ToList();
 
     private static IEnumerable<Type> GetSettingsTypes(ModuleDescriptor module) =>
         module.Key.Assembly
