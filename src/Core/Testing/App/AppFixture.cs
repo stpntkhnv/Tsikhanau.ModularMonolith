@@ -17,13 +17,15 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     public static readonly DateTimeOffset TestStartedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly ModuleTestSetups _moduleTestSetups;
     private readonly Lazy<AppFactory<TEntryPoint>> _appFactory;
     private Optional<DatabaseResetter> _databaseResetter;
 
     protected AppFixture()
     {
         Time = new FakeTimeProvider(TestStartedOn);
-        _appFactory = new Lazy<AppFactory<TEntryPoint>>(() => CreateFactory(Time, Environments.Development));
+        _moduleTestSetups = ModuleTestSetups.Create(GetType().Assembly);
+        _appFactory = new Lazy<AppFactory<TEntryPoint>>(() => CreateFactoryWithSetups(Environments.Development));
     }
 
     public FakeTimeProvider Time { get; }
@@ -61,14 +63,14 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public AppFactory<TEntryPoint> StartFactory(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
-        var appFactory = CreateFactory(Time, environmentName);
+        var appFactory = CreateFactoryWithSetups(environmentName);
         Start(appFactory, overrides);
         return appFactory;
     }
 
     public Exception CaptureStartupFailure(String environmentName, IReadOnlyDictionary<String, String> overrides)
     {
-        using var appFactory = CreateFactory(Time, environmentName);
+        using var appFactory = CreateFactoryWithSetups(environmentName);
         try
         {
             Start(appFactory, overrides);
@@ -108,6 +110,13 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     protected abstract AppFactory<TEntryPoint> CreateFactory(TimeProvider timeProvider, String environmentName);
 
+    private AppFactory<TEntryPoint> CreateFactoryWithSetups(String environmentName)
+    {
+        var appFactory = CreateFactory(Time, environmentName);
+        appFactory.ModuleTestSetups = _moduleTestSetups;
+        return appFactory;
+    }
+
     private void ResetTime()
     {
         Time.AutoAdvanceAmount = TimeSpan.Zero;
@@ -120,15 +129,9 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     private void Start(AppFactory<TEntryPoint> appFactory, IReadOnlyDictionary<String, String> overrides)
     {
-        var environmentVariables = new Dictionary<String, String>(
-            TestSettings.CreateEnvironmentVariables(ConnectionString));
+        using var environmentOverride = new EnvironmentOverride(
+            TestSettings.CreateEnvironmentVariables(ConnectionString, _moduleTestSetups.Settings, overrides));
 
-        foreach (var (name, value) in overrides)
-        {
-            environmentVariables[name] = value;
-        }
-
-        using var environmentOverride = new EnvironmentOverride(environmentVariables);
         _ = appFactory.Services;
     }
 }

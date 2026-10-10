@@ -9,4 +9,20 @@ public static class TestSettings
             ["App__Queues__RunInBackground"] = "false",
             ["App__Cleanup__RunInBackground"] = "false",
         };
+
+    internal static IReadOnlyDictionary<String, String> CreateEnvironmentVariables(
+        String connectionString,
+        IEnumerable<KeyValuePair<String, String>> moduleSettings,
+        IReadOnlyDictionary<String, String> overrides)
+    {
+        var environmentVariables = new Dictionary<String, String>(CreateEnvironmentVariables(connectionString));
+        foreach (var (key, value) in moduleSettings.Concat(overrides))
+        {
+            environmentVariables[BuildEnvironmentVariableName(key)] = value;
+        }
+
+        return environmentVariables;
+    }
+
+    private static String BuildEnvironmentVariableName(String key) => key.Replace(":", "__", StringComparison.Ordinal);
 }
