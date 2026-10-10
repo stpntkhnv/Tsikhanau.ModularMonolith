@@ -208,6 +208,36 @@ public sealed class CheckFeatureFailuresTests : IDisposable
     }
 
     [Fact]
+    public async Task Gate_without_a_build_summary_is_refused()
+    {
+        WriteGate(FailedGateWith("    0 Warning(s)\n", ""));
+
+        var check = await RunAsync(ScaffoldedTests);
+
+        ShouldBeRefused(check, "the gate printed no build summary ('N Warning(s)')");
+    }
+
+    [Fact]
+    public async Task Summary_with_two_failed_counts_is_refused()
+    {
+        WriteGate(FailedGate + FailedGate[FailedGate.IndexOf("Test run summary:", StringComparison.Ordinal)..]);
+
+        var check = await RunAsync(ScaffoldedTests);
+
+        ShouldBeRefused(check, "cannot read the failed count; the test summary must hold one 'failed: N' line");
+    }
+
+    [Fact]
+    public async Task Summary_without_a_skipped_count_is_refused()
+    {
+        WriteGate(FailedGateWith("  skipped: 0\n", ""));
+
+        var check = await RunAsync(ScaffoldedTests);
+
+        ShouldBeRefused(check, "cannot read the skipped count; the test summary must hold one 'skipped: N' line");
+    }
+
+    [Fact]
     public async Task Gate_that_stops_before_the_tests_is_refused()
     {
         WriteGate(FailedGate[..FailedGate.IndexOf("Running tests from", StringComparison.Ordinal)], 1);

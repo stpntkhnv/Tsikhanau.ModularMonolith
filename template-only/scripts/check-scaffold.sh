@@ -38,7 +38,7 @@ main() {
   scaffold feature Tags RecountTags --kind internal-command
   next_step ".gate/skips"
   check_skips_unchanged
-  record ".gate/skips after every step" "" "" "" "unchanged: $(< "$app/.gate/skips")"
+  record ".gate/skips after every step" "" "" "unchanged: $(< "$app/.gate/skips")"
 
   force_failures
   print_summary
@@ -66,6 +66,7 @@ read_arguments() {
   name=${name:-Acme.Shop}
   host=src/Bootstrapper/$name.Bootstrapper
   tags_facade=src/Modules/Tags/$name.Modules.Tags/Infrastructure/TagsModuleFacade.cs
+  tags_features=src/Modules/Tags/$name.Modules.Tags/Features
 }
 
 fail() {
@@ -107,11 +108,11 @@ make_app() {
   app=$consumer/$name
   [[ -n "$consumer" && -d "$app/.git" ]] || fail_with_log "$log" "check-consumer.sh named no kept app"
   cp -- "$app/.gate/skips" "$work/skips"
-  record "renamed app $name (check-consumer.sh steps 1-4)" "" "" "" "gate green in $(seconds_since "$begun")"
+  record "renamed app $name (check-consumer.sh steps 1-4)" "" "" "gate green in $(seconds_since "$begun")"
 }
 
 scaffold() {
-  local begun scaffold_time build_time gate_time new_test
+  local begun scaffold_time gate_time new_test
   next_step "$*"
   begun=$EPOCHREALTIME
   if ! in_app bash scripts/scaffold.sh "$@" > "$step_log-scaffold.log" 2>&1; then
@@ -124,25 +125,13 @@ scaffold() {
     expected+=("$2.$new_test")
   fi
   begun=$EPOCHREALTIME
-  build_release "$step_log-build.log"
-  build_time=$(seconds_since "$begun")
-  begun=$EPOCHREALTIME
   if ! bash "$scripts/check-feature-failures.sh" "$app" "${expected[@]}" > "$step_log-check.log" 2>&1; then
     sed 's/^/  | /' "$step_log-check.log" >&2
     fail "check-feature-failures.sh failed"
   fi
   gate_time=$(seconds_since "$begun")
   check_skips_unchanged
-  record "$*" "$scaffold_time" "$build_time" "$gate_time" "$(gate_result)"
-}
-
-build_release() {
-  local counts
-  if ! in_app dotnet build "$name.slnx" -c Release > "$1" 2>&1; then
-    fail_with_log "$1" "the Release build failed"
-  fi
-  counts=$(sed -nE 's/^ +([0-9]+) Warning\(s\)$/\1/p' "$1" | sort -u | paste -sd ' ')
-  [[ "$counts" == 0 ]] || fail_with_log "$1" "the Release build reported warnings (${counts:-no summary})"
+  record "$*" "$scaffold_time" "$gate_time" "$(gate_result)"
 }
 
 gate_result() {
@@ -176,7 +165,7 @@ public sealed record NoteCreatedIntegrationEvent(
     Optional<String> CreatorId)
     : IntegrationEvent(OccurredOn);
 EOF
-  record "by hand: NoteCreatedIntegrationEvent (Notes Contracts)" "" "" "" "written"
+  record "by hand: NoteCreatedIntegrationEvent (Notes Contracts)" "" "" "written"
 }
 
 declare_domain_event() {
@@ -237,7 +226,7 @@ internal sealed record NoteCreatedDomainEvent(
     String DisplayName)
     : DomainEvent(OccurredOn);
 EOF
-  record "by hand: NoteId, NoteTitle, NoteKind, NoteCreatedDomainEvent (Notes domain)" "" "" "" "written"
+  record "by hand: NoteId, NoteTitle, NoteKind, NoteCreatedDomainEvent (Notes domain)" "" "" "written"
 }
 
 working_set() {
@@ -251,7 +240,7 @@ snapshot() {
     cd "$app"
     git status --porcelain=v1 --untracked-files=all
     working_set | xargs -0 -r sha256sum --
-    find . \( -name .git -o -name bin -o -name obj \) -prune -o -type d -print | sort
+    find . \( -name .git -o -name bin -o -name obj \) -prune -o -printf '%p %y %m\n' | sort
   ) > "$1"
 }
 
@@ -266,49 +255,48 @@ expect_tree_unchanged() {
 expect_refusal() {
   local message=$1 ending=$2 log=$step_log-scaffold.log status=0 last
   shift 2
-  snapshot "$step_log-before.txt"
   in_app bash scripts/scaffold.sh "$@" > "$log" 2>&1 || status=$?
   last=$(tail -n 1 "$log")
   [[ $status -eq 1 ]] || fail_with_log "$log" "scaffold ended with exit code $status, not 1"
   [[ "$last" == "scaffold: $message"* && "$last" == *"$ending" ]] \
     || fail_with_log "$log" "scaffold did not fail where it was forced to: expected 'scaffold: $message...$ending'"
-  expect_tree_unchanged
+}
+
+with_read_only() {
+  local path=$app/$1 mode
+  shift
+  mode=$(stat -c %a -- "$path")
+  chmod a-w -- "$path"
+  "$@"
+  chmod "$mode" -- "$path"
 }
 
 force() {
   local begun=$EPOCHREALTIME
   next_step "forced failure: $1"
+  snapshot "$step_log-before.txt"
   "$2"
-  record "forced failure: $1" "$(seconds_since "$begun")" "" "" "tree unchanged"
+  expect_tree_unchanged
+  record "forced failure: $1" "$(seconds_since "$begun")" "" "tree unchanged"
 }
 
 force_failures() {
-  current="before the forced failures"
-  snapshot "$work/before-forced-failures.txt"
   force "module, the first folder cannot be created" fail_module_folder
   force "module, the last edit cannot be written" fail_module_edit
   force "module, the add-migration step fails" fail_module_migration
   force "module, Ctrl+C during the add-migration step" stop_module_migration
   force "feature, a new file cannot be written" fail_feature_file
   force "feature, an edit cannot be written" fail_feature_edit
-  current="after the forced failures"
-  snapshot "$work/after-forced-failures.txt"
-  if ! diff "$work/before-forced-failures.txt" "$work/after-forced-failures.txt" > "$work/forced-failures.diff"; then
-    sed 's/^/  /' "$work/forced-failures.diff" | head -n 40 >&2
-    fail "the forced failures left the app changed (< before, > after)"
-  fi
+  force "feature, a public query fails after its Contracts files are written" fail_public_query
 }
 
 fail_module_folder() {
-  chmod a-w "$app/$modules"
-  expect_refusal "cannot create the folder $modules/Zones: " "" module Zones --settings
-  chmod u+w "$app/$modules"
+  with_read_only "$modules" expect_refusal "cannot create the folder $modules/Zones: " "" module Zones --settings
 }
 
 fail_module_edit() {
-  chmod a-w "$app/$host/appsettings.json"
-  expect_refusal "cannot write $host/appsettings.json: " "$rolled_back" module Zones --settings
-  chmod u+w "$app/$host/appsettings.json"
+  with_read_only "$host/appsettings.json" \
+    expect_refusal "cannot write $host/appsettings.json: " "$rolled_back" module Zones --settings
 }
 
 fail_module_migration() {
@@ -324,7 +312,6 @@ fail_module_migration() {
 
 stop_module_migration() {
   local log=$step_log-scaffold.log obj=$app/src/Modules/Zones/$name.Modules.Zones/obj status=0 begun=$EPOCHREALTIME
-  snapshot "$step_log-before.txt"
   (cd "$app" && exec setsid env --default-signal=INT,TERM bash scripts/scaffold.sh module Zones --settings) \
     > "$log" 2>&1 &
   group=$!
@@ -339,7 +326,6 @@ stop_module_migration() {
   [[ "$(tail -n 1 "$log")" == "scaffold: bash scripts/add-migration.sh Zones Initial was stopped$rolled_back" ]] \
     || fail_with_log "$log" "scaffold did not report the stopped migration step"
   expect_no_process_left
-  expect_tree_unchanged
 }
 
 expect_no_process_left() {
@@ -356,30 +342,33 @@ expect_no_process_left() {
 }
 
 fail_feature_file() {
-  chmod a-w "$app/$tags_tests"
-  expect_refusal "cannot write $tags_tests/PinTagTests.cs: " "$rolled_back" feature Tags PinTag --kind command
-  chmod u+w "$app/$tags_tests"
+  with_read_only "$tags_tests" \
+    expect_refusal "cannot write $tags_tests/PinTagTests.cs: " "$rolled_back" feature Tags PinTag --kind command
 }
 
 fail_feature_edit() {
-  chmod a-w "$app/$tags_facade"
-  expect_refusal "cannot write $tags_facade: " "$rolled_back" feature Tags PinTag --kind command
-  chmod u+w "$app/$tags_facade"
+  with_read_only "$tags_facade" \
+    expect_refusal "cannot write $tags_facade: " "$rolled_back" feature Tags PinTag --kind command
+}
+
+fail_public_query() {
+  with_read_only "$tags_features" \
+    expect_refusal "cannot create the folder $tags_features/ListTags: " "$rolled_back" \
+    feature Tags ListTags --kind public-query
 }
 
 record() {
   local line=""
-  rows+=("$(printf '%-84s %9s %9s %9s  %s' "$1" "$2" "$3" "$4" "$5")")
+  rows+=("$(printf '%-84s %9s %9s  %s' "$1" "$2" "$3" "$4")")
   [[ -z "$2" ]] || line+=", scaffold $2"
-  [[ -z "$3" ]] || line+=", build $3"
-  [[ -z "$4" ]] || line+=", gate $4"
-  [[ -z "$5" ]] || line+=", $5"
+  [[ -z "$3" ]] || line+=", gate $3"
+  [[ -z "$4" ]] || line+=", $4"
   echo "check-scaffold: $current:${line#,}"
 }
 
 print_summary() {
   echo "check-scaffold: summary"
-  printf '  %-84s %9s %9s %9s  %s\n' step scaffold build gate result
+  printf '  %-84s %9s %9s  %s\n' step scaffold gate result
   printf '  %s\n' "${rows[@]}"
   echo "check-scaffold: $name is green ($((SECONDS - started)) s)"
 }
