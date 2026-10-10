@@ -35,7 +35,13 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
             .Select(endpoint => endpoint.RoutePattern.RawText ?? String.Empty);
 
         moduleRoutes.ShouldBe(
-            ["Pings GET /pings/{pingId:guid}", "Pongs GET /pongs/{pongId:guid}/source"],
+            [
+                "Pings GET /pings/{pingId:guid}",
+                "Pings POST /pings/{pingId:guid}/touch",
+                "Pings GET /pings/errors/{kind}",
+                "Pings POST /pings/{pingId:guid}/throw",
+                "Pongs GET /pongs/{pongId:guid}/source"
+            ],
             ignoreOrder: true);
 
         hostRoutes.ShouldAllBe(route => IsCoreHostRoute(route));
@@ -66,6 +72,22 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         var ping = await httpClient.GetFromJsonAsync<PingDto>($"/pings/{pingId}", CancellationToken);
 
         ping.ShouldBe(new PingDto(pingId, "over http", 0, 1));
+    }
+
+    [Fact]
+    public async Task Touch_endpoint_answers_no_content_and_touches_the_ping()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("touched over http");
+        using var httpClient = testModulesHost.CreateClient();
+
+        var response = await httpClient.PostAsync($"/pings/{pingId}/touch", content: null, CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(CancellationToken);
+        var ping = await testModulesHost.GetPingAsync(pingId);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        body.ShouldBeEmpty();
+        ping.ShouldBe(new PingDto(pingId, "touched over http", 1, 2));
     }
 
     [Fact]

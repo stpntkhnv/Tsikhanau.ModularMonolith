@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Shared.Collections;
@@ -7,13 +8,30 @@ namespace Tsikhanau.Monolith.Api.Endpoints;
 
 public static class EndpointMappingExtensions
 {
-    public static IEndpointRouteBuilder MapEndpointsOf<TModule>(this IEndpointRouteBuilder endpoints)
+    private static readonly Int32[] ProblemStatusCodes =
+    [
+        StatusCodes.Status401Unauthorized,
+        StatusCodes.Status403Forbidden,
+        StatusCodes.Status404NotFound,
+        StatusCodes.Status409Conflict,
+        StatusCodes.Status422UnprocessableEntity,
+        StatusCodes.Status500InternalServerError
+    ];
+
+    public static RouteGroupBuilder MapEndpointsOf<TModule>(this RouteGroupBuilder group)
         where TModule : IModule
     {
+        DescribeErrorResponses(group);
         typeof(TModule)
             .CreateInstancesInItsNamespace<IEndpoint>()
-            .ForEach(endpoint => endpoint.Map(endpoints));
+            .ForEach(endpoint => endpoint.Map(group));
 
-        return endpoints;
+        return group;
+    }
+
+    private static void DescribeErrorResponses(RouteGroupBuilder group)
+    {
+        group.ProducesValidationProblem();
+        ProblemStatusCodes.ForEach(statusCode => group.ProducesProblem(statusCode));
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Api.Endpoints;
@@ -9,7 +10,10 @@ internal sealed class OwnerModule : Module
 {
     public override String Name => "Owner";
 
-    public override void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapEndpointsOf<OwnerModule>();
+    public override void MapEndpoints(IEndpointRouteBuilder endpoints) =>
+        endpoints
+            .MapGroup(String.Empty)
+            .MapEndpointsOf<OwnerModule>();
 
     protected override void AddServices(IServiceCollection services) { }
 }

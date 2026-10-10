@@ -22,7 +22,10 @@ public static class ServiceDefaultsExtensions
     {
         builder.AddHealth();
         builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
-        builder.Services.AddProblemDetails();
+        builder.Services.AddProblemDetails(
+            problemDetailsOptions =>
+                problemDetailsOptions.CustomizeProblemDetails = ServerErrorProblemDetails.Customize);
+
         builder.Services.AddOpenApi();
 
         return builder;
