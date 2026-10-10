@@ -321,6 +321,7 @@ public sealed class ModuleTemplateTests
             using Zeta.Modules.Notes.Infrastructure.Persistence;
 
             namespace Zeta.Modules.Notes;
-            """);
+            """,
+            Case.Sensitive);
     }
 }

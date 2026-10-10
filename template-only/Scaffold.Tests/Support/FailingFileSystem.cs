@@ -12,9 +12,9 @@ internal sealed class FailingFileSystem(
 {
     private readonly PhysicalFileSystem _fileSystem = new(root);
 
-    private Int32 _writes;
+    private readonly HashSet<String> _writtenPaths = new(StringComparer.Ordinal);
 
-    private Boolean _hasFailed;
+    private Int32 _writes;
 
     public Boolean FileExists(String path) => _fileSystem.FileExists(path);
 
@@ -40,14 +40,14 @@ internal sealed class FailingFileSystem(
 
     public void WriteAllBytes(String path, Byte[] content)
     {
-        if (_hasFailed && path == failingRestore)
+        var isRestore = !_writtenPaths.Add(path);
+        if (isRestore && path == failingRestore)
         {
             throw new IOException("still read-only");
         }
 
         if (++_writes == failingWrite)
         {
-            _hasFailed = true;
             WritePartially(path, content);
             throw new IOException("disk full");
         }

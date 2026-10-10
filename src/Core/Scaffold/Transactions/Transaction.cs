@@ -21,9 +21,14 @@ internal sealed class Transaction(IFileSystem fileSystem, IProcessRunner process
         {
             outcome = await ApplyAsync(plan, cancellationToken);
         }
-        catch
+        catch (Exception exception)
         {
-            _ = _journal.RollBack(fileSystem);
+            var rollBack = _journal.RollBack(fileSystem);
+            if (rollBack.IsFailure)
+            {
+                throw new InvalidOperationException($"{RollBackUnfinished}: {rollBack.Error.Message}", exception);
+            }
+
             throw;
         }
 
@@ -31,10 +36,30 @@ internal sealed class Transaction(IFileSystem fileSystem, IProcessRunner process
     }
 
     private Task<Result<Unit>> ApplyAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
-        EnsureUntouched(plan)
+        EnsureEachFilePlannedOnce(plan)
+            .Bind(_ => EnsureUntouched(plan))
             .Bind(_ => CreateFiles(plan.NewFiles, cancellationToken))
             .Bind(_ => ChangeFiles(plan.FileEdits, cancellationToken))
             .BindAsync(_ => RunStepsAsync(plan.ExternalSteps, cancellationToken));
+
+    private static Result<Unit> EnsureEachFilePlannedOnce(ScaffoldPlan plan)
+    {
+        var problems = GetRepeatedPaths(plan)
+            .Select(path => $"{path} is planned more than once; a plan writes each file once")
+            .ToList();
+
+        return problems.Count == 0
+            ? Unit.Value
+            : Error.Failure("scaffold.plan", String.Join("; ", problems));
+    }
+
+    private static IEnumerable<String> GetRepeatedPaths(ScaffoldPlan plan) =>
+        plan.NewFiles
+            .Select(newFile => newFile.Path)
+            .Concat(plan.FileEdits.Select(edit => edit.Path))
+            .GroupBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Where(paths => paths.Count() > 1)
+            .Select(paths => paths.Key);
 
     private Result<Unit> EnsureUntouched(ScaffoldPlan plan)
     {

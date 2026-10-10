@@ -32,7 +32,7 @@ public sealed class PhysicalFileSystemTests : IDisposable
 
         var hasNeighbour = Directory.Exists(neighbour);
 
-        exception.Message.ShouldStartWith($"{path} is outside the app");
+        exception.Message.ShouldStartWith($"{path} is outside the app", Case.Sensitive);
         hasNeighbour.ShouldBeTrue();
     }
 
@@ -46,7 +46,7 @@ public sealed class PhysicalFileSystemTests : IDisposable
 
         var hasNeighbour = Directory.Exists(neighbour);
 
-        exception.Message.ShouldStartWith($"{neighbour} is outside the app");
+        exception.Message.ShouldStartWith($"{neighbour} is outside the app", Case.Sensitive);
         hasNeighbour.ShouldBeTrue();
     }
 

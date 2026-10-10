@@ -10,15 +10,11 @@ internal sealed record TextFile(String Path, Byte[] Content)
 
     private static readonly UTF8Encoding Utf8WithoutByteOrderMark = new(encoderShouldEmitUTF8Identifier: false);
 
-    public String Text =>
-        Utf8WithoutByteOrderMark.GetString(Content.AsSpan(HasByteOrderMark ? ByteOrderMark.Length : 0));
+    public String Text { get; } = Decode(Content);
 
     public String NewLine => Text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
 
-    private Boolean HasByteOrderMark =>
-        Content
-            .AsSpan()
-            .StartsWith(ByteOrderMark);
+    private Boolean HasByteOrderMark => StartsWithByteOrderMark(Content);
 
     public Result<FileEdit> PlanEdit(Func<String, Result<String>> edit) =>
         edit(Text)
@@ -28,4 +24,12 @@ internal sealed record TextFile(String Path, Byte[] Content)
         HasByteOrderMark
             ? [.. ByteOrderMark, .. Utf8WithoutByteOrderMark.GetBytes(text)]
             : Utf8WithoutByteOrderMark.GetBytes(text);
+
+    private static String Decode(Byte[] content) =>
+        Utf8WithoutByteOrderMark.GetString(content.AsSpan(StartsWithByteOrderMark(content) ? ByteOrderMark.Length : 0));
+
+    private static Boolean StartsWithByteOrderMark(Byte[] content) =>
+        content
+            .AsSpan()
+            .StartsWith(ByteOrderMark);
 }

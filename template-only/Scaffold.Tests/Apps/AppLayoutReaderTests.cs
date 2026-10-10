@@ -153,7 +153,7 @@ public sealed class AppLayoutReaderTests : IDisposable
 
         var message = ReadMessage();
 
-        message.ShouldStartWith($"cannot read {SampleApp.AppSettingsPath}: ");
+        message.ShouldStartWith($"cannot read {SampleApp.AppSettingsPath}: ", Case.Sensitive);
     }
 
     private String ReadMessage() =>

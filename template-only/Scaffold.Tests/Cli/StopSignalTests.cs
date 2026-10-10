@@ -37,6 +37,8 @@ public sealed class StopSignalTests : IDisposable
     [InlineData("INT", false)]
     [InlineData("TERM", false)]
     [InlineData("INT", true)]
+    [InlineData("HUP", false)]
+    [InlineData("HUP", true)]
     public async Task Signal_during_the_migration_stops_the_tool_and_puts_the_tree_back(
         String signal,
         Boolean reachesTheWholeGroup)
@@ -65,13 +67,13 @@ public sealed class StopSignalTests : IDisposable
 
         tool.ExitCode.ShouldBe(1, outputText);
         after.ShouldBe(before);
-        errorText.ShouldEndWith(RolledBack);
+        errorText.ShouldEndWith(RolledBack, Case.Sensitive);
         isStepRunning.ShouldBeFalse();
         isSleepRunning.ShouldBeFalse();
     }
 
     private ProcessStartInfo CreateToolStartInfo() =>
-        new("setsid", ["env", "--default-signal=INT,TERM", "dotnet", ToolAssemblyPath, "module", "Notes"])
+        new("setsid", ["env", "--default-signal=INT,TERM,HUP", "dotnet", ToolAssemblyPath, "module", "Notes"])
         {
             WorkingDirectory = _app.Root,
             RedirectStandardOutput = true,

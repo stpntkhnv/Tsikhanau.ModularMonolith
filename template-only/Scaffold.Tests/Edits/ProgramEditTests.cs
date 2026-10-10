@@ -26,7 +26,8 @@ public sealed class ProgramEditTests
             using Acme.Shop.Bootstrapper.Platform;
             using Acme.Shop.Modules.Notes;
             using Tsikhanau.Monolith.Api.Modules;
-            """);
+            """,
+            Case.Sensitive);
     }
 
     [Fact]
@@ -45,7 +46,8 @@ public sealed class ProgramEditTests
             using Tsikhanau.Monolith.Infrastructure.Modules;
             using Zeta.Modules.Notes;
 
-            """);
+            """,
+            Case.Sensitive);
     }
 
     [Fact]

@@ -34,6 +34,17 @@ public sealed class TextFileTests
     }
 
     [Fact]
+    public void Text_is_decoded_once()
+    {
+        var file = new TextFile("Program.cs", Encoding.UTF8.GetBytes("var app = 1;\n"));
+
+        var firstRead = file.Text;
+        var secondRead = file.Text;
+
+        secondRead.ShouldBeSameAs(firstRead);
+    }
+
+    [Fact]
     public void Edit_that_fails_its_anchor_check_plans_nothing()
     {
         var anchorError = Error.Failure("scaffold.anchor", "Program.cs must hold 'builder.AddPlatform();' once");

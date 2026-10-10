@@ -138,7 +138,7 @@ public sealed class ScaffoldToolTests : IDisposable
         exitCode.ShouldBe(0);
         output.ShouldBe("scaffold: done; next, run ./gate.sh and commit\n");
         error.ShouldBeEmpty();
-        program.ShouldEndWith("// Notes\n");
+        program.ShouldEndWith("// Notes\n", Case.Sensitive);
         newFile.ShouldBe("sealed class NotesModule;\n");
         _processRunner.Steps.ShouldBe(["bash scripts/add-migration.sh Notes Initial"]);
     }

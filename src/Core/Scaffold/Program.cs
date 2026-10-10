@@ -6,6 +6,7 @@ using Tsikhanau.Monolith.Scaffold.Transactions;
 using var cancellation = new CancellationTokenSource();
 using var interrupt = PosixSignalRegistration.Create(PosixSignal.SIGINT, context => Stop(context, cancellation));
 using var termination = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => Stop(context, cancellation));
+using var hangup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => Stop(context, cancellation));
 
 var root = Directory.GetCurrentDirectory();
 var tool = new ScaffoldTool(

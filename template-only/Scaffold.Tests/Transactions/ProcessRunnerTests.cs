@@ -34,7 +34,7 @@ public sealed class ProcessRunnerTests : IDisposable
 
         outcome.ShouldBe(Result.Success());
         hasRun.ShouldBeTrue();
-        output.ShouldStartWith("scaffold: running bash -c echo ran > ran.txt\n");
+        output.ShouldStartWith("scaffold: running bash -c echo ran > ran.txt\n", Case.Sensitive);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class ProcessRunnerTests : IDisposable
 
         var message = ReadMessage(outcome);
 
-        message.ShouldStartWith("cannot start scaffold-test-no-such-program: ");
+        message.ShouldStartWith("cannot start scaffold-test-no-such-program: ", Case.Sensitive);
     }
 
     [Fact]

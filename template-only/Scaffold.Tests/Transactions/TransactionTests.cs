@@ -72,8 +72,8 @@ public sealed class TransactionTests : IDisposable
 
         outcome.ShouldBe(Result.Success());
         createdFiles.ShouldBe(NewFiles.Select(newFile => newFile.Content));
-        program.ShouldContain("builder.AddPlatform();\nbuilder.AddModule<NotesModule>();\n");
-        appSettings.ShouldContain("\"LoginPrefix\": \"acme_shop\",\n      \"Notes\": true");
+        program.ShouldContain("builder.AddPlatform();\nbuilder.AddModule<NotesModule>();\n", Case.Sensitive);
+        appSettings.ShouldContain("\"LoginPrefix\": \"acme_shop\",\n      \"Notes\": true", Case.Sensitive);
         processRunner.Steps.ShouldBe(["bash scripts/add-migration.sh Notes Initial"]);
     }
 
@@ -137,7 +137,7 @@ public sealed class TransactionTests : IDisposable
         var after = _app.TakeSnapshot();
         var message = ReadMessage(outcome);
 
-        message.ShouldStartWith($"cannot create the folder {failingFolder}: read-only folder");
+        message.ShouldStartWith($"cannot create the folder {failingFolder}: read-only folder", Case.Sensitive);
         after.ShouldBe(before);
     }
 
@@ -194,6 +194,26 @@ public sealed class TransactionTests : IDisposable
 
         exception.Message.ShouldBe("bug");
         after.ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task Unexpected_exception_whose_rollback_cannot_restore_a_file_names_the_file()
+    {
+        var bug = new InvalidOperationException("bug");
+        var fileSystem = new FailingFileSystem(_app.Root, failingRestore: SampleApp.ProgramPath);
+        var processRunner = new FakeProcessRunner((_, _) => throw bug);
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() => RunAsync(fileSystem, processRunner));
+
+        var hasModuleFolder = _app.Exists(ModuleFolder);
+        var appSettings = _app.Read(SampleApp.AppSettingsPath);
+
+        exception.InnerException.ShouldBeSameAs(bug);
+        hasModuleFolder.ShouldBeFalse();
+        appSettings.ShouldBe(SampleApp.AppSettings);
+        exception.Message.ShouldBe(
+            "the rollback did not finish, restore these by hand: "
+            + $"cannot restore {SampleApp.ProgramPath}: still read-only");
     }
 
     [Fact]
@@ -269,6 +289,76 @@ public sealed class TransactionTests : IDisposable
         var message = ReadMessage(outcome);
 
         message.ShouldBe($"{ModuleClassPath} already exists");
+        after.ShouldBe(before);
+        processRunner.Steps.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Plan_that_edits_one_file_twice_is_refused_before_any_write()
+    {
+        var program = _app.ReadLayout().Program;
+        var plan = new ScaffoldPlan(
+            NewFiles,
+            [
+                PlanEdit(program, "using Acme.Shop.Bootstrapper.Platform;\n", "using Acme.Shop.Modules.Notes;\n"),
+                PlanEdit(program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n"),
+            ],
+            [MigrationStep]);
+
+        var before = _app.TakeSnapshot();
+        var processRunner = FakeProcessRunner.Succeeding();
+
+        var outcome = await new Transaction(_app.FileSystem, processRunner).RunAsync(plan, CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var message = ReadMessage(outcome);
+
+        message.ShouldBe($"{SampleApp.ProgramPath} is planned more than once; a plan writes each file once");
+        after.ShouldBe(before);
+        processRunner.Steps.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Plan_that_creates_and_edits_one_file_is_refused_before_any_write()
+    {
+        var program = _app.ReadLayout().Program;
+        var plan = new ScaffoldPlan(
+            [.. NewFiles, new NewFile(SampleApp.ProgramPath, "var app = 1;\n")],
+            [PlanEdit(program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n")],
+            [MigrationStep]);
+
+        var before = _app.TakeSnapshot();
+        var processRunner = FakeProcessRunner.Succeeding();
+
+        var outcome = await new Transaction(_app.FileSystem, processRunner).RunAsync(plan, CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var message = ReadMessage(outcome);
+
+        message.ShouldBe($"{SampleApp.ProgramPath} is planned more than once; a plan writes each file once");
+        after.ShouldBe(before);
+        processRunner.Steps.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(ModuleClassPath)]
+    [InlineData("src/Modules/Notes/Acme.Shop.Modules.Notes/notesmodule.cs")]
+    public async Task Plan_that_creates_one_file_twice_in_any_letter_case_is_refused_before_any_write(String secondPath)
+    {
+        var plan = new ScaffoldPlan(
+            [.. NewFiles, new NewFile(secondPath, "partial class NotesModule;\n")],
+            [],
+            [MigrationStep]);
+
+        var before = _app.TakeSnapshot();
+        var processRunner = FakeProcessRunner.Succeeding();
+
+        var outcome = await new Transaction(_app.FileSystem, processRunner).RunAsync(plan, CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var message = ReadMessage(outcome);
+
+        message.ShouldBe($"{ModuleClassPath} is planned more than once; a plan writes each file once");
         after.ShouldBe(before);
         processRunner.Steps.ShouldBeEmpty();
     }
