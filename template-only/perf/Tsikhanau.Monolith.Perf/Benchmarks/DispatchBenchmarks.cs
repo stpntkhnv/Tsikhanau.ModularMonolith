@@ -45,7 +45,7 @@ public class DispatchBenchmarks
         _host = PerfHost.Build(FakeConnectionString, hostSettings);
         _logger = _host.Services.GetRequiredService<ILogger<ModuleDispatcher<IPingsModule>>>();
         _handler = new CreatePingCommandHandler(new NoopPingRepository(), TimeProvider.System);
-        _command = new CreatePingCommand(Guid.CreateVersion7(), "label");
+        _command = new CreatePingCommand(Guid.CreateVersion7(), "label", Optional<String>.None());
         _npgsqlDataSource = NpgsqlDataSource.Create(FakeConnectionString);
         _plainServiceProvider = new ServiceCollection()
             .AddDbContext<PingsDbContext>(ConfigurePings)

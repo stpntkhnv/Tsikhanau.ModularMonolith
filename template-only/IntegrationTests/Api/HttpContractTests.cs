@@ -22,6 +22,8 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
 
     private static readonly String[] ModulePathPrefixes = ["/pings", "/pongs"];
 
+    private static readonly String[] MessageSuffixes = ["Command", "Query"];
+
     private static readonly String[] OperationMethods = ["get", "put", "post", "delete", "patch"];
 
     private static readonly String[] ProblemMembers = ["type", "title", "status", "code", "errors"];
@@ -61,6 +63,7 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
         operationNames.ShouldBe(
             [
                 GetPingOperation,
+                "POST /pings",
                 "POST /pings/{pingId}/touch",
                 ProduceErrorOperation,
                 ThrowAfterTouchOperation,
@@ -84,12 +87,40 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
         successResponses.ShouldBe(
             [
                 "GET /pings/{pingId} 200 application/json #/components/schemas/PingDto",
+                """POST /pings 201 application/json {"type":"string","format":"uuid"}""",
                 "POST /pings/{pingId}/touch 204 no content",
                 "GET /pings/errors/{kind} 204 no content",
                 "POST /pings/{pingId}/throw 204 no content",
                 "GET /pongs/{pongId}/source 200 application/json #/components/schemas/PongSourceDto"
             ],
             ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Create_ping_operation_takes_its_request_record_as_the_body()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var document = await ReadDocumentAsync(httpClient);
+        var requestBodies = ReadModuleOperations(document)
+            .SelectMany(DescribeRequestBody);
+
+        requestBodies.ShouldBe(["POST /pings application/json #/components/schemas/CreatePingRequest"]);
+    }
+
+    [Fact]
+    public async Task No_schema_is_named_after_a_command_a_query_or_an_optional()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var document = await ReadDocumentAsync(httpClient);
+        var schemaNames = ReadSchemaNames(document);
+        var namesOfMessagesOrOptionals = schemaNames.Where(IsNamedAfterAMessageOrAnOptional);
+
+        schemaNames.ShouldContain("CreatePingRequest");
+        namesOfMessagesOrOptionals.ShouldBeEmpty();
     }
 
     [Fact]
@@ -244,7 +275,27 @@ public sealed class HttpContractTests(PostgresFixture postgresFixture)
                 .Select(describeMediaType));
 
     private static String DescribeMediaType(JsonProperty mediaType) =>
-        $"{mediaType.Name} {ReadMember(mediaType.Value.GetProperty("schema"), "$ref")}";
+        $"{mediaType.Name} {DescribeSchema(mediaType.Value.GetProperty("schema"))}";
+
+    private static String DescribeSchema(JsonElement schema) =>
+        schema.TryGetProperty("$ref", out var reference) ? $"{reference}" : JsonSerializer.Serialize(schema);
+
+    private static IEnumerable<String> DescribeRequestBody(DocumentOperation operation) =>
+        operation.Element.TryGetProperty("requestBody", out var requestBody)
+            ? [$"{operation.Name} {DescribeContent(requestBody)}"]
+            : [];
+
+    private static IReadOnlyList<String> ReadSchemaNames(JsonElement document) =>
+        document
+            .GetProperty("components")
+            .GetProperty("schemas")
+            .EnumerateObject()
+            .Select(schema => schema.Name)
+            .ToList();
+
+    private static Boolean IsNamedAfterAMessageOrAnOptional(String schemaName) =>
+        MessageSuffixes.Any(suffix => schemaName.EndsWith(suffix, StringComparison.Ordinal))
+        || schemaName.StartsWith("OptionalOf", StringComparison.Ordinal);
 
     private static async Task<IReadOnlyList<ErrorAnswer>> ProduceEveryErrorAsync(
         TestModulesHost testModulesHost,

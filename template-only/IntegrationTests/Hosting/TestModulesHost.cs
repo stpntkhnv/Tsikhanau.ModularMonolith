@@ -1,9 +1,12 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Hosting;
@@ -25,6 +28,7 @@ using Tsikhanau.Monolith.TestModules.Pongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Features;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.CountPongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Hosting;
 
@@ -62,6 +66,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
     public PingTestHooks PingHooks => Services.GetRequiredService<PingTestHooks>();
 
     public PongTestHooks PongHooks => Services.GetRequiredService<PongTestHooks>();
+
+    public JsonSerializerOptions HttpJsonSerializerOptions =>
+        Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -123,7 +130,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
     public async Task<Guid> CreatePingAsync(String label)
     {
         var pingId = Guid.CreateVersion7();
-        var result = await Pings.ExecuteCommandAsync(new CreatePingCommand(pingId, label), CancellationToken);
+        var result = await Pings.ExecuteCommandAsync(
+            new CreatePingCommand(pingId, label, Optional<String>.None()),
+            CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.GetPongSource;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Api;
 
@@ -37,6 +39,7 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         moduleRoutes.ShouldBe(
             [
                 "Pings GET /pings/{pingId:guid}",
+                "Pings POST /pings/",
                 "Pings POST /pings/{pingId:guid}/touch",
                 "Pings GET /pings/errors/{kind}",
                 "Pings POST /pings/{pingId:guid}/throw",
@@ -69,9 +72,12 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         var pingId = await testModulesHost.CreatePingAsync("over http");
         using var httpClient = testModulesHost.CreateClient();
 
-        var ping = await httpClient.GetFromJsonAsync<PingDto>($"/pings/{pingId}", CancellationToken);
+        var ping = await httpClient.GetFromJsonAsync<PingDto>(
+            $"/pings/{pingId}",
+            testModulesHost.HttpJsonSerializerOptions,
+            CancellationToken);
 
-        ping.ShouldBe(new PingDto(pingId, "over http", 0, 1));
+        ping.ShouldBe(new PingDto(pingId, "over http", Optional<String>.None(), 0, 1));
     }
 
     [Fact]
@@ -87,7 +93,43 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         body.ShouldBeEmpty();
-        ping.ShouldBe(new PingDto(pingId, "touched over http", 1, 2));
+        ping.ShouldBe(new PingDto(pingId, "touched over http", Optional<String>.None(), 1, 2));
+    }
+
+    [Fact]
+    public async Task Create_endpoint_answers_created_with_the_address_of_the_new_ping()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var createResponse = await httpClient.PostAsync(
+            "/pings",
+            JsonBody("""{"label":"created over http","nickname":"nick"}"""),
+            CancellationToken);
+
+        var createdPingId = await createResponse.Content.ReadAsStringAsync(CancellationToken);
+        var createdPing = await ReadCreatedPingAsync(httpClient, createResponse);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        createdPing.ShouldBe(
+            $$"""{"id":{{createdPingId}},"label":"created over http","nickname":"nick","touches":0,"version":1}""");
+    }
+
+    [Theory]
+    [InlineData("""{"label":"without nickname"}""")]
+    [InlineData("""{"label":"without nickname","nickname":null}""")]
+    public async Task Create_endpoint_reads_a_missing_or_null_nickname_as_none(String body)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var createResponse = await httpClient.PostAsync("/pings", JsonBody(body), CancellationToken);
+        var createdPingId = await createResponse.Content.ReadAsStringAsync(CancellationToken);
+        var createdPing = await ReadCreatedPingAsync(httpClient, createResponse);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        createdPing.ShouldBe(
+            $$"""{"id":{{createdPingId}},"label":"without nickname","nickname":null,"touches":0,"version":1}""");
     }
 
     [Fact]
@@ -112,6 +154,14 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
                 configure: builder => builder.Configuration["App:Modules:Pongs:Limit"] = "0"));
 
         exception.Message.ShouldBe(InvalidPongsSettingMessage);
+    }
+
+    private static StringContent JsonBody(String json) => new(json, Encoding.UTF8, "application/json");
+
+    private static async Task<String> ReadCreatedPingAsync(HttpClient httpClient, HttpResponseMessage createResponse)
+    {
+        var pingResponse = await httpClient.GetAsync(createResponse.Headers.Location, CancellationToken);
+        return await pingResponse.Content.ReadAsStringAsync(CancellationToken);
     }
 
     private static IReadOnlyList<RouteEndpoint> ReadRouteEndpoints(TestModulesHost testModulesHost) =>

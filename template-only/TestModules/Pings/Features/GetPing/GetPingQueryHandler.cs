@@ -10,7 +10,7 @@ internal sealed class GetPingQueryHandler(ISqlConnectionFactory<IPingsModule> sq
     : IQueryHandler<GetPingQuery, PingDto>
 {
     private const String Sql = """
-        SELECT id AS "Id", label AS "Label", touches AS "Touches", version AS "Version"
+        SELECT id AS "Id", label AS "Label", nickname AS "Nickname", touches AS "Touches", version AS "Version"
         FROM pings.pings
         WHERE id = @PingId
         """;
@@ -18,9 +18,11 @@ internal sealed class GetPingQueryHandler(ISqlConnectionFactory<IPingsModule> sq
     public async Task<Result<PingDto>> Handle(GetPingQuery query, CancellationToken cancellationToken)
     {
         await using var connection = await sqlConnectionFactory.OpenConnectionAsync(cancellationToken);
-        Optional<PingDto> foundPing = await connection.QuerySingleOrDefaultAsync<PingDto>(
+        Optional<PingRow> foundPingRow = await connection.QuerySingleOrDefaultAsync<PingRow>(
             new CommandDefinition(Sql, new { query.PingId }, cancellationToken: cancellationToken));
 
-        return foundPing.ToResult(PingErrors.NotFound);
+        return foundPingRow
+            .Map(pingRow => pingRow.ToDto())
+            .ToResult(PingErrors.NotFound);
     }
 }

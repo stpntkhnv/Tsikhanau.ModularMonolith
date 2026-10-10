@@ -24,13 +24,13 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
         var pingId = Guid.CreateVersion7();
 
         var result = await testModulesHost.Pings.ExecuteCommandAsync(
-            new CreatePingCommand(pingId, "hello"),
+            new CreatePingCommand(pingId, "hello", Optional<String>.None()),
             CancellationToken);
 
         var ping = await testModulesHost.GetPingAsync(pingId);
 
         result.Value.ShouldBe(pingId);
-        ping.ShouldBe(new PingDto(pingId, "hello", 0, 1));
+        ping.ShouldBe(new PingDto(pingId, "hello", Optional<String>.None(), 0, 1));
     }
 
     [Fact]
@@ -39,13 +39,13 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
 
         var result = await testModulesHost.Pings.ExecuteCommandAsync(
-            new CreatePingCommand(Guid.Empty, " "),
+            new CreatePingCommand(Guid.Empty, " ", " "),
             CancellationToken);
 
         var error = result.Error.ShouldBeOfType<ValidationError>();
         error.FieldErrors
             .Select(fieldError => fieldError.Field)
-            .ShouldBe(["pingId", "label"], ignoreOrder: true);
+            .ShouldBe(["pingId", "label", "nickname"], ignoreOrder: true);
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
         await testModulesHost.CreatePingAsync("twin");
 
         var result = await testModulesHost.Pings.ExecuteCommandAsync(
-            new CreatePingCommand(Guid.CreateVersion7(), "twin"),
+            new CreatePingCommand(Guid.CreateVersion7(), "twin", Optional<String>.None()),
             CancellationToken);
 
         result.Error.ShouldBe(PingErrors.LabelTaken);

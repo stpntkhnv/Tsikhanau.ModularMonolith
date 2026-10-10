@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
+using Tsikhanau.Monolith.Contracts.Json;
 
 namespace Tsikhanau.Monolith.Hosting;
 
@@ -26,7 +29,8 @@ public static class ServiceDefaultsExtensions
             problemDetailsOptions =>
                 problemDetailsOptions.CustomizeProblemDetails = ServerErrorProblemDetails.Customize);
 
-        builder.Services.AddOpenApi();
+        builder.Services.ConfigureHttpJsonOptions(ReadAndWriteOptionals);
+        builder.Services.AddOpenApi(DescribeOptionals);
 
         return builder;
     }
@@ -55,5 +59,14 @@ public static class ServiceDefaultsExtensions
         }
 
         return app;
+    }
+
+    private static void ReadAndWriteOptionals(JsonOptions jsonOptions) =>
+        jsonOptions.SerializerOptions.Converters.Add(new OptionalJsonConverterFactory());
+
+    private static void DescribeOptionals(OpenApiOptions openApiOptions)
+    {
+        openApiOptions.CreateSchemaReferenceId = OptionalSchemaTransformer.CreateSchemaReferenceId;
+        openApiOptions.AddSchemaTransformer<OptionalSchemaTransformer>();
     }
 }
