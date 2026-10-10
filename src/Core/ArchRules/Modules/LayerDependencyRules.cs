@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using ArchUnitNET.Fluent;
+using ArchUnitNET.Fluent.Syntax.Elements.Types;
 using Tsikhanau.Monolith.Api.Endpoints;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Rules;
@@ -39,20 +40,17 @@ public static class LayerDependencyRules
         ArchModule module)
     {
         var allowedNamespaces = NamespacePatterns.Build(
-            [
-                "System",
-                $"{module.RootNamespace}.Domain",
-                "Tsikhanau.Monolith.Domain",
-                "Tsikhanau.Railway",
-                .. modules.SharedKernelNamespaces,
-            ]);
+            "System",
+            $"{module.RootNamespace}.Domain",
+            "Tsikhanau.Monolith.Domain",
+            "Tsikhanau.Monolith.Shared",
+            "Tsikhanau.Railway");
 
         var rule = Types()
             .That()
             .ResideInNamespaceMatching(module.BuildLayerPattern("Domain"))
             .Should()
-            .NotDependOnAnyTypesThat()
-            .DoNotResideInNamespaceMatching(allowedNamespaces);
+            .NotDependOnAny(GetTypesOutsideTheAllowList(modules, allowedNamespaces));
 
         return Evaluate(modules, module.GetTypesIn("Domain"), rule);
     }
@@ -150,20 +148,16 @@ public static class LayerDependencyRules
         ArchModule module)
     {
         var allowedNamespaces = NamespacePatterns.Build(
-            [
-                "System",
-                $"{module.RootNamespace}.Contracts",
-                "Tsikhanau.Monolith.Contracts",
-                "Tsikhanau.Railway",
-                .. modules.SharedKernelNamespaces,
-            ]);
+            "System",
+            $"{module.RootNamespace}.Contracts",
+            "Tsikhanau.Monolith.Contracts",
+            "Tsikhanau.Railway");
 
         var rule = Types()
             .That()
             .ResideInNamespaceMatching(module.BuildLayerPattern("Contracts"))
             .Should()
-            .NotDependOnAnyTypesThat()
-            .DoNotResideInNamespaceMatching(allowedNamespaces);
+            .NotDependOnAny(GetTypesOutsideTheAllowList(modules, allowedNamespaces));
 
         return Evaluate(modules, module.GetTypesIn("Contracts"), rule);
     }
@@ -208,6 +202,15 @@ public static class LayerDependencyRules
         IReadOnlyList<Type> types = [.. subjectTypes];
         return RuleEvaluation.Create(types, () => rule.GetViolationsIn(modules.Architecture));
     }
+
+    private static GivenTypesConjunction GetTypesOutsideTheAllowList(ArchModules modules, String allowedNamespaces) =>
+        modules.SharedKernelAssemblies.Aggregate(
+            Types(includeReferenced: true)
+                .That()
+                .DoNotResideInNamespaceMatching(allowedNamespaces),
+            (types, sharedKernelAssembly) => types
+                .And()
+                .DoNotResideInAssembly(sharedKernelAssembly));
 
     private static IReadOnlyList<String> GetViolationsReaching(
         ArchModules modules,

@@ -17,6 +17,8 @@ internal static class ModuleRuleCases
 
     private const String LoggerTypeName = "Microsoft.Extensions.Logging.ILogger";
 
+    private const String UnlistedKernelTypeName = "Acme.SharedKernel.Weight";
+
     private const String CommandHandlerTypeName = "Tsikhanau.Monolith.Application.Commands.ICommandHandler`2";
 
     private const String UnitTypeName = "Tsikhanau.Railway.Unit";
@@ -185,6 +187,8 @@ internal static class ModuleRuleCases
             [
                 $"{BadRoot}.Domain.Leaks.EventLeak does depend on \"{IntegrationEventTypeName}\"",
                 $"{BadRoot}.Domain.Journals.CrateJournal does depend on \"{LoggerTypeName}\"",
+                $"{BadRoot}.Domain.Sizes.SizeRule does depend on \"{BadRoot}.Features.SizeCrate.CrateSize\"",
+                $"{BadRoot}.Domain.Weighing.CrateScale does depend on \"{UnlistedKernelTypeName}\"",
             ],
             () => LayerDependencyRules.DomainDependsOnlyOnItselfTheDomainBuildingBlocksAndRailway(Clean, Good)),
         new(
@@ -227,7 +231,10 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway),
             () => LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway(Dirty, Bad),
-            [$"{BadRoot}.Contracts.Queries.CrateHistory.CrateHistoryDto does depend on \"{DomainEventTypeName}\""],
+            [
+                $"{BadRoot}.Contracts.Queries.CrateHistory.CrateHistoryDto does depend on \"{DomainEventTypeName}\"",
+                $"{BadRoot}.Contracts.Queries.CrateWeight.CrateWeightDto does depend on \"{UnlistedKernelTypeName}\"",
+            ],
             () => LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
@@ -311,13 +318,19 @@ internal static class ModuleRuleCases
             typeof(IntegrationEventNameRules),
             nameof(IntegrationEventNameRules.EveryIntegrationEventHasAUniqueStableName),
             () => IntegrationEventNameRules.EveryIntegrationEventHasAUniqueStableName(Dirty),
-            ["peer.peer-joined names more than one integration event"],
+            [
+                $"{BadRoot}.Contracts.IntegrationEvents.CrateEmptiedIntegrationEvent has no [IntegrationEventName]",
+                "peer.peer-joined names more than one integration event",
+            ],
             () => IntegrationEventNameRules.EveryIntegrationEventHasAUniqueStableName(Clean)),
         new(
             typeof(InternalCommandNameRules),
             nameof(InternalCommandNameRules.EveryInternalCommandHasAStableNameUniqueInItsModule),
             () => InternalCommandNameRules.EveryInternalCommandHasAStableNameUniqueInItsModule(Dirty),
-            [$"{BadRoot}.Features.SealCrate.SealCrateInternalCommand has no [InternalCommandName] with a name"],
+            [
+                $"{BadRoot}.Features.SealCrate.SealCrateInternalCommand has no [InternalCommandName] with a name",
+                "stack-crate names more than one internal command of Bad",
+            ],
             () => InternalCommandNameRules.EveryInternalCommandHasAStableNameUniqueInItsModule(Clean)),
     ];
 

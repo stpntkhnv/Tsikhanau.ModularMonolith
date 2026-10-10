@@ -19,12 +19,15 @@ internal static class FixtureAssemblies
     private static readonly IReadOnlyList<FixtureProject> Projects =
     [
         new("Acme.SharedKernel", []),
+        new("Acme.UnlistedKernel", []),
         new("Acme.Modules.Good.Contracts", ["Acme.SharedKernel"]),
         new("Acme.Modules.Peer.Contracts", []),
-        new("Acme.Modules.Bad.Contracts", []),
+        new("Acme.Modules.Bad.Contracts", ["Acme.UnlistedKernel"]),
         new("Acme.Modules.Good", ["Acme.Modules.Good.Contracts", "Acme.Modules.Peer.Contracts", "Acme.SharedKernel"]),
         new("Acme.Modules.Peer", ["Acme.Modules.Peer.Contracts"]),
-        new("Acme.Modules.Bad", ["Acme.Modules.Bad.Contracts", "Acme.Modules.Peer.Contracts", "Acme.Modules.Peer"]),
+        new(
+            "Acme.Modules.Bad",
+            ["Acme.Modules.Bad.Contracts", "Acme.Modules.Peer.Contracts", "Acme.Modules.Peer", "Acme.UnlistedKernel"]),
         new("Acme.Bootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
         new("Tsikhanau.Monolith.Shared.Fixture", ["Acme.SharedKernel"]),
     ];

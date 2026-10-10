@@ -26,13 +26,6 @@ public sealed class ArchModules
 
     internal IEnumerable<String> SharedKernelNames => SharedKernelAssemblies.Select(assembly => assembly.Name);
 
-    internal IEnumerable<String> SharedKernelNamespaces =>
-        SharedKernelAssemblies
-            .SelectMany(assembly => assembly.GetExportedTypes())
-            .Select(type => type.Namespace)
-            .OfType<String>()
-            .Distinct();
-
     internal IEnumerable<Assembly> Assemblies =>
         All
             .SelectMany(module => module.Assemblies)
@@ -50,5 +43,7 @@ public sealed class ArchModules
     private Architecture LoadArchitecture() =>
         Assemblies
             .Concat(CoreAssemblies.BuildingBlocks)
+            .Concat(SharedKernelAssemblies)
+            .Distinct()
             .LoadArchitecture();
 }

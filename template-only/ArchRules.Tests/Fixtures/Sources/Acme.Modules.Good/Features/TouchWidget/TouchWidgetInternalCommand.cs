@@ -3,5 +3,5 @@ using Tsikhanau.Railway;
 
 namespace Acme.Modules.Good.Features.TouchWidget;
 
-[InternalCommandName("touch-widget")]
+[InternalCommandName("touch")]
 internal sealed record TouchWidgetInternalCommand(Guid Id, Guid WidgetId) : InternalCommand(Id), IGoodCommand<Unit>;

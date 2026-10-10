@@ -7,6 +7,12 @@ namespace Tsikhanau.Monolith.ArchRules.Modules;
 public abstract class LayerDependencyTests<TInputs> : ArchRuleTests<TInputs>
     where TInputs : IArchRuleInputs
 {
+    private const String DomainAllowList =
+        "System, its own Domain, Tsikhanau.Monolith.Domain, Tsikhanau.Monolith.Shared, Railway";
+
+    private const String DomainAdvice =
+        $"Domain sees only {DomainAllowList} and the app's listed shared kernel assemblies";
+
     [Theory]
     [EveryModule]
     public void Domain_depends_only_on_itself_the_domain_building_blocks_and_railway(String name) =>
@@ -20,7 +26,7 @@ public abstract class LayerDependencyTests<TInputs> : ArchRuleTests<TInputs>
         Check(
             LayerDependencyRules.DomainDoesNotDependOnFrameworksOutsideSystem(Modules, GetModule(name)),
             $"{name} has no types in Domain",
-            "Domain sees only System, its own Domain, Tsikhanau.Monolith.Domain and Railway");
+            DomainAdvice);
 
     [Theory]
     [EveryModule]
