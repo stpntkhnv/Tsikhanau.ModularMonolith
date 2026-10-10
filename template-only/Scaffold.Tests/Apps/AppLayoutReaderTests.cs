@@ -19,6 +19,7 @@ public sealed class AppLayoutReaderTests : IDisposable
 
         layout.ProjectPrefix.ShouldBe("Acme.Shop");
         layout.RootNamespace.ShouldBe("Acme.Shop");
+        layout.LoginPrefix.ShouldBe("acme_shop");
         layout.Solution.Path.ShouldBe(SampleApp.SolutionPath);
         layout.Solution.Text.ShouldBe(SampleApp.Solution);
         layout.HostProject.Path.ShouldBe(SampleApp.HostProjectPath);
@@ -114,6 +115,45 @@ public sealed class AppLayoutReaderTests : IDisposable
         var message = ReadMessage();
 
         message.ShouldBe($"{SampleApp.AppSettingsPath} does not exist");
+    }
+
+    [Fact]
+    public void Login_prefix_is_read_from_app_settings_with_comments_and_trailing_commas()
+    {
+        _app.Write(
+            SampleApp.AppSettingsPath,
+            """
+            {
+              // the database
+              "App": { "Database": { "LoginPrefix": "shop", }, },
+            }
+            """);
+
+        var layout = _app.ReadLayout();
+
+        layout.LoginPrefix.ShouldBe("shop");
+    }
+
+    [Theory]
+    [InlineData("{ \"App\": { \"Database\": {} } }")]
+    [InlineData("{ \"App\": { \"Database\": { \"LoginPrefix\": 7 } } }")]
+    public void App_settings_without_a_login_prefix_are_refused(String appSettings)
+    {
+        _app.Write(SampleApp.AppSettingsPath, appSettings);
+
+        var message = ReadMessage();
+
+        message.ShouldBe($"{SampleApp.AppSettingsPath} has no App:Database:LoginPrefix");
+    }
+
+    [Fact]
+    public void App_settings_that_are_not_json_are_refused()
+    {
+        _app.Write(SampleApp.AppSettingsPath, "{ \"App\": ");
+
+        var message = ReadMessage();
+
+        message.ShouldStartWith($"cannot read {SampleApp.AppSettingsPath}: ");
     }
 
     private String ReadMessage() =>

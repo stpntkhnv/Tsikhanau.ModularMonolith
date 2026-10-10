@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Tsikhanau.Monolith.Scaffold.Tests.Support;
 using Tsikhanau.Monolith.Scaffold.Transactions;
 using Tsikhanau.Railway;
 
@@ -7,8 +7,6 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Transactions;
 public sealed class ProcessRunnerTests : IDisposable
 {
     private static readonly TimeSpan PatienceLimit = TimeSpan.FromSeconds(10);
-
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(20);
 
     private readonly DirectoryInfo _workingDirectory = Directory.CreateTempSubdirectory("scaffold-runner-");
 
@@ -68,11 +66,11 @@ public sealed class ProcessRunnerTests : IDisposable
         var step = new ExternalStep("bash", ["-c", "sleep 300 & echo $! > child.pid; wait"]);
 
         var running = Runner.RunAsync(step, cancellation.Token);
-        var childId = await ReadChildIdAsync();
-        var wasChildRunning = IsRunning(childId);
+        var childId = await ProcessProbe.ReadProcessIdAsync(Path.Combine(_workingDirectory.FullName, "child.pid"));
+        var wasChildRunning = ProcessProbe.IsRunning(childId);
         await cancellation.CancelAsync();
         var outcome = await running;
-        var isChildRunning = await WaitWhileRunningAsync(childId);
+        var isChildRunning = await ProcessProbe.WaitWhileRunningAsync(childId);
         var message = ReadMessage(outcome);
 
         wasChildRunning.ShouldBeTrue();
@@ -80,48 +78,80 @@ public sealed class ProcessRunnerTests : IDisposable
         isChildRunning.ShouldBeFalse();
     }
 
-    private async Task<Int32> ReadChildIdAsync()
+    [Fact]
+    public async Task Step_that_ends_with_a_failure_when_the_run_is_stopped_is_reported_as_stopped()
     {
-        var path = Path.Combine(_workingDirectory.FullName, "child.pid");
-        var startedAt = Stopwatch.GetTimestamp();
-        while (Stopwatch.GetElapsedTime(startedAt) < PatienceLimit)
-        {
-            var text = File.Exists(path) ? await File.ReadAllTextAsync(path, CancellationToken) : String.Empty;
-            if (text.EndsWith('\n'))
-            {
-                return Int32.Parse(text, provider: null);
-            }
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+        var heldContinuations = new HeldContinuations();
+        var step = new ExternalStep("bash", ["-c", "sleep 0.2; exit 130"]);
 
-            await Task.Delay(PollInterval, CancellationToken);
-        }
+        var running = RunHoldingContinuations(step, heldContinuations, cancellation.Token);
+        await heldContinuations.FirstHeld.WaitAsync(PatienceLimit, CancellationToken);
+        await cancellation.CancelAsync();
+        heldContinuations.Release();
+        var outcome = await running.WaitAsync(PatienceLimit, CancellationToken);
 
-        throw new TimeoutException($"the step wrote no {path} in {PatienceLimit}");
+        var message = ReadMessage(outcome);
+
+        message.ShouldBe("bash -c sleep 0.2; exit 130 was stopped");
     }
 
-    private static async Task<Boolean> WaitWhileRunningAsync(Int32 processId)
+    private Task<Result<Unit>> RunHoldingContinuations(
+        ExternalStep step,
+        HeldContinuations heldContinuations,
+        CancellationToken cancellationToken)
     {
-        var startedAt = Stopwatch.GetTimestamp();
-        while (IsRunning(processId) && Stopwatch.GetElapsedTime(startedAt) < PatienceLimit)
-        {
-            await Task.Delay(PollInterval, CancellationToken);
-        }
-
-        return IsRunning(processId);
-    }
-
-    private static Boolean IsRunning(Int32 processId)
-    {
+        var synchronizationContext = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(heldContinuations);
         try
         {
-            var status = File.ReadAllText($"/proc/{processId}/stat");
-            return status[status.LastIndexOf(')') + 2] != 'Z';
+            return Runner.RunAsync(step, cancellationToken);
         }
-        catch (IOException)
+        finally
         {
-            return false;
+            SynchronizationContext.SetSynchronizationContext(synchronizationContext);
         }
     }
 
     private static String ReadMessage(Result<Unit> outcome) =>
         outcome.Match(_ => "success", error => error.Message);
+
+    private sealed class HeldContinuations : SynchronizationContext
+    {
+        private readonly Lock _lock = new();
+
+        private readonly List<(SendOrPostCallback Callback, Object? State)> _continuations = [];
+
+        private readonly TaskCompletionSource _firstHeld = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private Boolean _isReleased;
+
+        public Task FirstHeld => _firstHeld.Task;
+
+        public override void Post(SendOrPostCallback d, Object? state)
+        {
+            lock (_lock)
+            {
+                if (!_isReleased)
+                {
+                    _continuations.Add((d, state));
+                    _firstHeld.TrySetResult();
+                    return;
+                }
+            }
+
+            ThreadPool.QueueUserWorkItem(_ => d(state));
+        }
+
+        public void Release()
+        {
+            lock (_lock)
+            {
+                _isReleased = true;
+            }
+
+            _continuations.ForEach(continuation =>
+                ThreadPool.QueueUserWorkItem(_ => continuation.Callback(continuation.State)));
+        }
+    }
 }

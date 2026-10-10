@@ -28,7 +28,7 @@ internal sealed class ScaffoldTool(
     {
         var outcome = await new AppLayoutReader(fileSystem)
             .Read()
-            .Bind(command.Plan)
+            .Bind(app => command.Plan(app, fileSystem))
             .BindAsync(plan => new Transaction(fileSystem, processRunner).RunAsync(plan, cancellationToken));
 
         return outcome.Match(_ => ReportSuccess(), error => ReportFailure(error, FailedExitCode));

@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Scaffold\Tsikhanau.Monolith.Scaffold.csproj" />
+    <ProjectReference Include="..\..\src\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

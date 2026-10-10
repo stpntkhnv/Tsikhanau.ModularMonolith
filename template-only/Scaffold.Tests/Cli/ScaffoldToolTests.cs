@@ -11,8 +11,7 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Cli;
 
 public sealed class ScaffoldToolTests : IDisposable
 {
-    private const String Usage =
-        "usage: bash scripts/scaffold.sh <command> [<arguments>]; this version has no commands yet";
+    private const String Usage = "usage: bash scripts/scaffold.sh module <Name>";
 
     private const String NewFilePath = "src/Modules/Notes/NotesModule.cs";
 
@@ -36,14 +35,31 @@ public sealed class ScaffoldToolTests : IDisposable
     [Fact]
     public async Task Unknown_command_is_refused_with_the_usage()
     {
-        var exitCode = await Tool.RunAsync(["module", "Notes"], CancellationToken);
+        var exitCode = await Tool.RunAsync(["frobnicate", "Notes"], CancellationToken);
 
         var error = _error.ToString();
         var output = _output.ToString();
 
         exitCode.ShouldBe(2);
-        error.ShouldBe($"scaffold: unknown command 'module'; {Usage}\n");
+        error.ShouldBe($"scaffold: unknown command 'frobnicate'; {Usage}\n");
         output.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("module")]
+    [InlineData("module Notes Tags")]
+    public async Task Module_command_without_exactly_one_name_is_refused_with_the_usage(String commandLine)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await Tool.RunAsync(commandLine.Split(' '), CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(2);
+        error.ShouldBe($"scaffold: module takes exactly one name; {Usage}\n");
+        after.ShouldBe(before);
     }
 
     [Fact]
@@ -149,6 +165,6 @@ public sealed class ScaffoldToolTests : IDisposable
 
     private sealed class PlannedCommand(Func<AppLayout, Result<ScaffoldPlan>> plan) : IScaffoldCommand
     {
-        public Result<ScaffoldPlan> Plan(AppLayout app) => plan(app);
+        public Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem) => plan(app);
     }
 }

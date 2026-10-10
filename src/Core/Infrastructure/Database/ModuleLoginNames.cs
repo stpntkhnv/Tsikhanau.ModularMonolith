@@ -10,6 +10,10 @@ internal sealed partial class ModuleLoginNames
 
     private const Int32 MaxIdentifierLength = 63;
 
+    private const String PostgresSchemaProblem = "every PostgreSQL database already has a schema of that name";
+
+    private static readonly String[] PostgresSchemas = ["public", "information_schema"];
+
     private readonly String _roleNamePrefix;
 
     private readonly String _applicationNamePrefix;
@@ -34,6 +38,11 @@ internal sealed partial class ModuleLoginNames
             throw new InvalidOperationException(
                 $"Module schema '{schema}' is reserved: its login would be {Group}, "
                 + "the group role of the module logins");
+        }
+
+        if (PostgresSchemas.Contains(schema))
+        {
+            throw new InvalidOperationException($"Module schema '{schema}' is reserved: {PostgresSchemaProblem}");
         }
 
         return IsIdentifier(schema) && _roleNamePrefix.Length + schema.Length <= MaxIdentifierLength

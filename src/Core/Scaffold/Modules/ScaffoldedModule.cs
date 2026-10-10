@@ -1,0 +1,38 @@
+using Tsikhanau.Monolith.Scaffold.Apps;
+
+namespace Tsikhanau.Monolith.Scaffold.Modules;
+
+internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
+{
+    public const String ModulesFolder = "src/Modules";
+
+    public String Name => ModuleName.Name;
+
+    public String Schema => ModuleName.Schema;
+
+    public String Namespace => $"{App.RootNamespace}.Modules.{Name}";
+
+    public String ProjectName => $"{App.ProjectPrefix}.Modules.{Name}";
+
+    public String ContractsProjectName => $"{ProjectName}.Contracts";
+
+    public String UnitTestsAssembly => $"{App.ProjectPrefix}.UnitTests";
+
+    public String IntegrationTestsAssembly => $"{App.ProjectPrefix}.IntegrationTests";
+
+    public String Folder => $"{ModulesFolder}/{Name}";
+
+    public String ProjectPath => InProject($"{ProjectName}.csproj");
+
+    public String ContractsProjectPath => $"{Folder}/{ContractsProjectName}/{ContractsProjectName}.csproj";
+
+    public String ModuleClass => $"{Name}Module";
+
+    public String FacadeContract => $"I{Name}Module";
+
+    public String FacadeClass => $"{Name}ModuleFacade";
+
+    public String DbContext => $"{Name}DbContext";
+
+    public String InProject(String path) => $"{Folder}/{ProjectName}/{path}";
+}

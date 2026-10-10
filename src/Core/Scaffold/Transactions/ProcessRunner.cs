@@ -60,11 +60,15 @@ internal sealed class ProcessRunner(String workingDirectory, TextWriter textWrit
         {
             process.Kill(entireProcessTree: true);
             await process.WaitForExitAsync(CancellationToken.None);
-            return Error.Failure("scaffold.step", $"{step} was stopped");
         }
 
-        return process.ExitCode == 0
+        return cancellationToken.IsCancellationRequested
+            ? Error.Failure("scaffold.step", $"{step} was stopped")
+            : ReadExitCode(process, step);
+    }
+
+    private static Result<Unit> ReadExitCode(Process process, ExternalStep step) =>
+        process.ExitCode == 0
             ? Unit.Value
             : Error.Failure("scaffold.step", $"{step} failed with exit code {process.ExitCode}");
-    }
 }

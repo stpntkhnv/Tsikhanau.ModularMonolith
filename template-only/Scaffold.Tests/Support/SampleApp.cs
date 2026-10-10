@@ -7,6 +7,10 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Support;
 
 internal sealed class SampleApp : IDisposable
 {
+    public const String Name = "Acme.Shop";
+
+    public const String LoginPrefix = "acme_shop";
+
     public const String SolutionPath = "Acme.Shop.slnx";
 
     public const String HostProjectPath = "src/Bootstrapper/Acme.Shop.Bootstrapper/Acme.Shop.Bootstrapper.csproj";
@@ -15,50 +19,24 @@ internal sealed class SampleApp : IDisposable
 
     public const String AppSettingsPath = "src/Bootstrapper/Acme.Shop.Bootstrapper/appsettings.json";
 
-    public const String Solution = """
-        <Solution>
-          <Folder Name="/src/" />
-          <Folder Name="/src/Bootstrapper/">
-            <Project Path="src/Bootstrapper/Acme.Shop.Bootstrapper/Acme.Shop.Bootstrapper.csproj" />
-          </Folder>
-          <Folder Name="/src/Modules/" />
-        </Solution>
+    private const String TemplateName = "ModularMonolith";
 
-        """;
+    private const String TemplateLoginPrefix = "modularmonolith";
 
-    public const String HostProject = """
-        <Project Sdk="Microsoft.NET.Sdk.Web">
-          <ItemGroup>
-            <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
-          </ItemGroup>
-        </Project>
+    private const String TemplateHostFolder = $"src/Bootstrapper/{TemplateName}.Bootstrapper";
 
-        """;
-
-    public const String Program = """
-        using Acme.Shop.Bootstrapper.Platform;
-        using Tsikhanau.Monolith.Api.Modules;
-
-        var builder = WebApplication.CreateBuilder(args);
-        builder.AddPlatform();
-        builder
-            .Build()
-            .Run();
-
-        """;
-
-    public const String AppSettings = """
-        {
-          "App": {
-            "Database": {
-              "LoginPrefix": "acme_shop"
-            }
-          }
-        }
-
-        """;
+    private const String NoTemplateRoot = "no folder above the test output holds global.json";
 
     private SampleApp(String root) => Root = root;
+
+    public static String Solution { get; } = ReadTemplateFile($"{TemplateName}.slnx");
+
+    public static String HostProject { get; } =
+        ReadTemplateFile($"{TemplateHostFolder}/{TemplateName}.Bootstrapper.csproj");
+
+    public static String Program { get; } = ReadTemplateFile($"{TemplateHostFolder}/Program.cs");
+
+    public static String AppSettings { get; } = ReadTemplateFile($"{TemplateHostFolder}/appsettings.json");
 
     public String Root { get; }
 
@@ -74,8 +52,7 @@ internal sealed class SampleApp : IDisposable
         app.Write("src/Modules/.gitkeep", String.Empty);
         app.Write(".gitignore", "bin/\nobj/\n");
         app.RunGit("init", "-q", "-b", "main");
-        app.RunGit("add", "-A");
-        app.RunGit("commit", "-q", "-m", "app");
+        app.Commit();
         return app;
     }
 
@@ -92,6 +69,12 @@ internal sealed class SampleApp : IDisposable
 
     public void Delete(String relativePath) => File.Delete(ToFullPath(relativePath));
 
+    public void Commit()
+    {
+        RunGit("add", "-A");
+        RunGit("commit", "-q", "--allow-empty", "-m", "app");
+    }
+
     public AppLayout ReadLayout() =>
         new AppLayoutReader(FileSystem)
             .Read()
@@ -103,6 +86,17 @@ internal sealed class SampleApp : IDisposable
     public void Dispose() => Directory.Delete(Root, recursive: true);
 
     private String ToFullPath(String relativePath) => Path.Combine(Root, relativePath);
+
+    private static String ReadTemplateFile(String relativePath) =>
+        File
+            .ReadAllText(Path.Combine(FindTemplateRoot(new DirectoryInfo(AppContext.BaseDirectory)), relativePath))
+            .Replace(TemplateName, Name, StringComparison.Ordinal)
+            .Replace(TemplateLoginPrefix, LoginPrefix, StringComparison.Ordinal);
+
+    private static String FindTemplateRoot(DirectoryInfo folder) =>
+        File.Exists(Path.Combine(folder.FullName, "global.json"))
+            ? folder.FullName
+            : FindTemplateRoot(folder.Parent ?? throw new InvalidOperationException(NoTemplateRoot));
 
     private String HashFiles() =>
         String.Join(

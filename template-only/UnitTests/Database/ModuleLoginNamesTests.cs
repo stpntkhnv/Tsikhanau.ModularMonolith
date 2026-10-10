@@ -43,6 +43,17 @@ public sealed class ModuleLoginNamesTests
     }
 
     [Theory]
+    [InlineData("public")]
+    [InlineData("information_schema")]
+    public void Schema_every_postgres_database_has_is_refused(String schema)
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => LoginNames.BuildLoginName(schema));
+
+        exception.Message.ShouldBe(
+            $"Module schema '{schema}' is reserved: every PostgreSQL database already has a schema of that name");
+    }
+
+    [Theory]
     [InlineData("pg_x")]
     [InlineData("pg")]
     public void Schema_that_postgres_reserves_is_refused(String schema)
