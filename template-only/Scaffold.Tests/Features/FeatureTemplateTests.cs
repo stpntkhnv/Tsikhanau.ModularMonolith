@@ -10,6 +10,10 @@ public sealed class FeatureTemplateTests
 
     private const String NotesTests = "src/Tests/IntegrationTests/Modules/Notes";
 
+    private const String TagsFeatures = "src/Modules/Tags/Acme.Shop.Modules.Tags/Features";
+
+    private const String TagsQueries = "src/Modules/Tags/Acme.Shop.Modules.Tags.Contracts/Queries";
+
     private const String LongModule = "InventoryReservationAdjustments";
 
     private const String LongFeature = "RecalculateReservationAdjustmentTotals";
@@ -19,6 +23,8 @@ public sealed class FeatureTemplateTests
     private const String MaxModuleFeature = "RecalculateAdjustmentTotals";
 
     private const String LongNotesFeature = "RecalculateEveryReservationAdjustmentTotalForTheWholeQuarter";
+
+    private const String LongerNotesFeature = $"{LongNotesFeature}AndTheYear";
 
     private const String ArchiveNoteCommand =
         """
@@ -431,8 +437,423 @@ public sealed class FeatureTemplateTests
         longLines.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Query_without_an_endpoint_is_its_query_its_result_record_and_its_handler_that_is_not_implemented()
+    {
+        var feature = CreateFeature("Notes", "CountNotes", FeatureKind.Query, EndpointMethod.None);
+
+        var files = new FeatureTemplate(feature).CreateFiles();
+
+        files.ShouldBe(
+        [
+            new NewFile(
+                $"{NotesFeatures}/CountNotes/CountNotesQuery.cs",
+                """
+                using Acme.Shop.Modules.Notes.Contracts;
+
+                namespace Acme.Shop.Modules.Notes.Features.CountNotes;
+
+                internal sealed record CountNotesQuery : INotesQuery<CountNotesDto>;
+
+                """),
+            new NewFile(
+                $"{NotesFeatures}/CountNotes/CountNotesDto.cs",
+                """
+                namespace Acme.Shop.Modules.Notes.Features.CountNotes;
+
+                internal sealed record CountNotesDto;
+
+                """),
+            new NewFile(
+                $"{NotesFeatures}/CountNotes/CountNotesQueryHandler.cs",
+                """
+                using Tsikhanau.Monolith.Application.Queries;
+                using Tsikhanau.Railway;
+
+                namespace Acme.Shop.Modules.Notes.Features.CountNotes;
+
+                internal sealed class CountNotesQueryHandler : IQueryHandler<CountNotesQuery, CountNotesDto>
+                {
+                    private static readonly Error NotImplemented =
+                        Error.Failure("CountNotes.NotImplemented", "CountNotes in Notes is not implemented");
+
+                    public Task<Result<CountNotesDto>> Handle(CountNotesQuery query, CancellationToken cancellationToken) =>
+                        Task.FromResult(Result.Failure<CountNotesDto>(NotImplemented));
+                }
+
+                """),
+        ]);
+    }
+
+    [Fact]
+    public void Get_query_answers_its_result_record_through_an_endpoint_without_the_leading_get()
+    {
+        var feature = CreateFeature("Notes", "GetNoteSummary", FeatureKind.Query, EndpointMethod.Get);
+
+        var files = new FeatureTemplate(feature).CreateFiles();
+
+        var paths = files.Select(newFile => newFile.Path);
+        var endpoint = ReadFile(files, "GetNoteSummaryEndpoint.cs");
+
+        paths.ShouldBe(
+        [
+            $"{NotesFeatures}/GetNoteSummary/GetNoteSummaryQuery.cs",
+            $"{NotesFeatures}/GetNoteSummary/NoteSummaryDto.cs",
+            $"{NotesFeatures}/GetNoteSummary/GetNoteSummaryQueryHandler.cs",
+            $"{NotesFeatures}/GetNoteSummary/GetNoteSummaryEndpoint.cs",
+        ]);
+
+        endpoint.ShouldBe(
+            """
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.AspNetCore.Http.HttpResults;
+            using Microsoft.AspNetCore.Routing;
+            using Tsikhanau.Monolith.Api.Endpoints;
+
+            namespace Acme.Shop.Modules.Notes.Features.GetNoteSummary;
+
+            internal sealed class GetNoteSummaryEndpoint : IEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints) =>
+                    endpoints
+                        .MapGet("/note-summary", GetNoteSummaryAsync)
+                        .WithName("Notes.GetNoteSummary");
+
+                private static Task<Results<Ok<NoteSummaryDto>, ValidationProblem, ProblemHttpResult>> GetNoteSummaryAsync(
+                    INotesModule notesModule,
+                    CancellationToken cancellationToken) =>
+                    notesModule
+                        .ExecuteQueryAsync(new GetNoteSummaryQuery(), cancellationToken)
+                        .ToOkAsync();
+            }
+
+            """);
+    }
+
+    [Fact]
+    public void Public_query_puts_the_query_and_its_result_record_into_the_contracts_and_its_handler_into_the_module()
+    {
+        var feature = CreateFeature("Tags", "GetTag", FeatureKind.PublicQuery, EndpointMethod.None);
+
+        var files = new FeatureTemplate(feature).CreateFiles();
+
+        files.ShouldBe(
+        [
+            new NewFile(
+                $"{TagsQueries}/GetTag/GetTagQuery.cs",
+                """
+                namespace Acme.Shop.Modules.Tags.Contracts.Queries.GetTag;
+
+                public sealed record GetTagQuery : ITagsQuery<TagDto>;
+
+                """),
+            new NewFile(
+                $"{TagsQueries}/GetTag/TagDto.cs",
+                """
+                namespace Acme.Shop.Modules.Tags.Contracts.Queries.GetTag;
+
+                public sealed record TagDto;
+
+                """),
+            new NewFile(
+                $"{TagsFeatures}/GetTag/GetTagQueryHandler.cs",
+                """
+                using Acme.Shop.Modules.Tags.Contracts.Queries.GetTag;
+                using Tsikhanau.Monolith.Application.Queries;
+                using Tsikhanau.Railway;
+
+                namespace Acme.Shop.Modules.Tags.Features.GetTag;
+
+                internal sealed class GetTagQueryHandler : IQueryHandler<GetTagQuery, TagDto>
+                {
+                    private static readonly Error NotImplemented =
+                        Error.Failure("GetTag.NotImplemented", "GetTag in Tags is not implemented");
+
+                    public Task<Result<TagDto>> Handle(GetTagQuery query, CancellationToken cancellationToken) =>
+                        Task.FromResult(Result.Failure<TagDto>(NotImplemented));
+                }
+
+                """),
+        ]);
+    }
+
+    [Theory]
+    [InlineData(
+        "Query",
+        "Get",
+        "GetNoteSummary",
+        "NoteSummaryDto.cs",
+        ".MapGet(\"/note-summary\", GetNoteSummaryAsync)")]
+    [InlineData("Query", "Get", "CountNotes", "CountNotesDto.cs", ".MapGet(\"/count-notes\", CountNotesAsync)")]
+    [InlineData("Query", "Get", "Getaway", "GetawayDto.cs", ".MapGet(\"/getaway\", GetawayAsync)")]
+    [InlineData("Query", "Get", "Get", "GetDto.cs", ".MapGet(\"/get\", GetAsync)")]
+    [InlineData("Query", "Get", "GetHTTPLogs", "HTTPLogsDto.cs", ".MapGet(\"/http-logs\", GetHTTPLogsAsync)")]
+    [InlineData("Command", "Post", "GetBackup", "GetBackupRequest.cs", ".MapPost(\"/get-backup\", GetBackupAsync)")]
+    public void Query_drops_a_leading_get_from_its_result_record_and_its_route_and_a_command_keeps_it(
+        String kind,
+        String method,
+        String name,
+        String recordFile,
+        String mapCall)
+    {
+        var feature = CreateFeature("Notes", name, Enum.Parse<FeatureKind>(kind), Enum.Parse<EndpointMethod>(method));
+
+        var files = new FeatureTemplate(feature).CreateFiles();
+
+        var fileNames = files.Select(newFile => Path.GetFileName(newFile.Path));
+        var endpointLines = ReadFile(files, $"{name}Endpoint.cs")
+            .Split('\n')
+            .Select(line => line.Trim());
+
+        fileNames.ShouldContain(recordFile);
+        endpointLines.ShouldContain(mapCall);
+    }
+
+    [Fact]
+    public void Test_of_a_query_without_an_endpoint_compares_the_result_with_an_empty_result_record()
+    {
+        var feature = CreateFeature("Notes", "CountNotes", FeatureKind.Query, EndpointMethod.None);
+
+        var test = new FeatureTestTemplate(feature).CreateFile();
+
+        test.ShouldBe(
+            new NewFile(
+                $"{NotesTests}/CountNotesTests.cs",
+                """
+                using Acme.Shop.Modules.Notes;
+                using Acme.Shop.Modules.Notes.Features.CountNotes;
+                using Acme.Shop.Testing.App;
+                using Microsoft.Extensions.DependencyInjection;
+                using Tsikhanau.Railway;
+
+                namespace Acme.Shop.IntegrationTests.Modules.Notes;
+
+                public sealed class CountNotesTests(AppFixture appFixture) : AppTest(appFixture)
+                {
+                    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+                    [Fact]
+                    public async Task Count_notes_succeeds_through_the_facade()
+                    {
+                        var notesModule = App.Services.GetRequiredService<INotesModule>();
+
+                        var result = await notesModule.ExecuteQueryAsync(new CountNotesQuery(), CancellationToken);
+
+                        result.ShouldBe(Result.Success(new CountNotesDto()));
+                    }
+                }
+
+                """));
+    }
+
+    [Fact]
+    public void Test_of_a_get_query_calls_the_route_and_checks_ok_with_the_body_as_the_message()
+    {
+        var feature = CreateFeature("Notes", "GetNoteSummary", FeatureKind.Query, EndpointMethod.Get);
+
+        var test = new FeatureTestTemplate(feature).CreateFile();
+
+        test.ShouldBe(
+            new NewFile(
+                $"{NotesTests}/GetNoteSummaryTests.cs",
+                """
+                using System.Net;
+                using Acme.Shop.Testing.App;
+
+                namespace Acme.Shop.IntegrationTests.Modules.Notes;
+
+                public sealed class GetNoteSummaryTests(AppFixture appFixture) : AppTest(appFixture)
+                {
+                    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+                    [Fact]
+                    public async Task Get_note_summary_answers_ok()
+                    {
+                        using var httpClient = App.CreateClient();
+
+                        var response = await httpClient.GetAsync("/notes/note-summary", CancellationToken);
+                        var body = await response.Content.ReadAsStringAsync(CancellationToken);
+
+                        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+                    }
+                }
+
+                """));
+    }
+
+    [Fact]
+    public void Test_of_a_public_query_goes_through_the_query_facade_a_neighbour_sees()
+    {
+        var feature = CreateFeature("Tags", "GetTag", FeatureKind.PublicQuery, EndpointMethod.None);
+
+        var test = new FeatureTestTemplate(feature).CreateFile();
+
+        test.ShouldBe(
+            new NewFile(
+                "src/Tests/IntegrationTests/Modules/Tags/GetTagTests.cs",
+                """
+                using Acme.Shop.Modules.Tags.Contracts;
+                using Acme.Shop.Modules.Tags.Contracts.Queries.GetTag;
+                using Acme.Shop.Testing.App;
+                using Microsoft.Extensions.DependencyInjection;
+                using Tsikhanau.Railway;
+
+                namespace Acme.Shop.IntegrationTests.Modules.Tags;
+
+                public sealed class GetTagTests(AppFixture appFixture) : AppTest(appFixture)
+                {
+                    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+                    [Fact]
+                    public async Task Get_tag_succeeds_through_the_query_facade()
+                    {
+                        var tagsQueryFacade = App.Services.GetRequiredService<ITagsQueryFacade>();
+
+                        var result = await tagsQueryFacade.ExecuteQueryAsync(new GetTagQuery(), CancellationToken);
+
+                        result.ShouldBe(Result.Success(new TagDto()));
+                    }
+                }
+
+                """));
+    }
+
+    [Fact]
+    public void Query_facade_variable_of_a_module_with_an_acronym_is_camel_case()
+    {
+        var feature = CreateFeature("HTTPLogs", "GetLog", FeatureKind.PublicQuery, EndpointMethod.None);
+
+        var test = new FeatureTestTemplate(feature)
+            .CreateFile()
+            .Content;
+
+        test.ShouldContain(
+            """
+                    var httpLogsQueryFacade = App.Services.GetRequiredService<IHTTPLogsQueryFacade>();
+
+                    var result = await httpLogsQueryFacade.ExecuteQueryAsync(new GetLogQuery(), CancellationToken);
+            """,
+            Case.Sensitive);
+    }
+
+    [Fact]
+    public void Long_names_wrap_the_query_handler_the_get_endpoint_and_the_query_test()
+    {
+        var getFeature = CreateFeature(LongModule, $"Get{LongFeature}", FeatureKind.Query, EndpointMethod.Get);
+        var facadeFeature = CreateFeature("Notes", LongNotesFeature, FeatureKind.Query, EndpointMethod.None);
+        var getFiles = new FeatureTemplate(getFeature).CreateFiles();
+
+        var handler = ReadFile(getFiles, $"Get{LongFeature}QueryHandler.cs");
+        var endpoint = ReadFile(getFiles, $"Get{LongFeature}Endpoint.cs");
+        var facadeHandler = ReadFile(
+            new FeatureTemplate(facadeFeature).CreateFiles(),
+            $"{LongNotesFeature}QueryHandler.cs");
+
+        var facadeTest = new FeatureTestTemplate(facadeFeature)
+            .CreateFile()
+            .Content;
+
+        handler.ShouldEndWith(
+            """
+            internal sealed class GetRecalculateReservationAdjustmentTotalsQueryHandler
+                : IQueryHandler<GetRecalculateReservationAdjustmentTotalsQuery, RecalculateReservationAdjustmentTotalsDto>
+            {
+                private static readonly Error NotImplemented =
+                    Error.Failure(
+                        "GetRecalculateReservationAdjustmentTotals.NotImplemented",
+                        "GetRecalculateReservationAdjustmentTotals in InventoryReservationAdjustments is not implemented");
+
+                public Task<Result<RecalculateReservationAdjustmentTotalsDto>> Handle(
+                    GetRecalculateReservationAdjustmentTotalsQuery query,
+                    CancellationToken cancellationToken) =>
+                    Task.FromResult(Result.Failure<RecalculateReservationAdjustmentTotalsDto>(NotImplemented));
+            }
+
+            """,
+            Case.Sensitive);
+
+        endpoint.ShouldEndWith(
+            """
+                public void Map(IEndpointRouteBuilder endpoints) =>
+                    endpoints
+                        .MapGet("/recalculate-reservation-adjustment-totals", GetRecalculateReservationAdjustmentTotalsAsync)
+                        .WithName("InventoryReservationAdjustments.GetRecalculateReservationAdjustmentTotals");
+
+                private static Task<Results<
+                    Ok<RecalculateReservationAdjustmentTotalsDto>,
+                    ValidationProblem,
+                    ProblemHttpResult>> GetRecalculateReservationAdjustmentTotalsAsync(
+                    IInventoryReservationAdjustmentsModule inventoryReservationAdjustmentsModule,
+                    CancellationToken cancellationToken) =>
+                    inventoryReservationAdjustmentsModule
+                        .ExecuteQueryAsync(new GetRecalculateReservationAdjustmentTotalsQuery(), cancellationToken)
+                        .ToOkAsync();
+            }
+
+            """,
+            Case.Sensitive);
+
+        facadeHandler.ShouldEndWith(
+            """
+                    Task.FromResult(
+                        Result.Failure<RecalculateEveryReservationAdjustmentTotalForTheWholeQuarterDto>(NotImplemented));
+            }
+
+            """,
+            Case.Sensitive);
+
+        facadeTest.ShouldContain(
+            """
+                    var result = await notesModule.ExecuteQueryAsync(
+                        new RecalculateEveryReservationAdjustmentTotalForTheWholeQuarterQuery(),
+                        CancellationToken);
+
+                    result.ShouldBe(Result.Success(new RecalculateEveryReservationAdjustmentTotalForTheWholeQuarterDto()));
+            """,
+            Case.Sensitive);
+    }
+
+    [Theory]
+    [InlineData("Notes", "CountNotes", "Query", "None")]
+    [InlineData("Notes", "GetNoteSummary", "Query", "Get")]
+    [InlineData("Tags", "GetTag", "PublicQuery", "None")]
+    [InlineData(LongModule, LongFeature, "Query", "None")]
+    [InlineData(LongModule, LongFeature, "Query", "Get")]
+    [InlineData(LongModule, LongFeature, "PublicQuery", "None")]
+    [InlineData(MaxModule, MaxModuleFeature, "Query", "None")]
+    [InlineData("Notes", LongNotesFeature, "Query", "None")]
+    [InlineData("Notes", LongNotesFeature, "Query", "Get")]
+    [InlineData("Notes", LongerNotesFeature, "Query", "Get")]
+    public void Every_generated_line_of_a_query_fits_in_120_characters(
+        String moduleName,
+        String name,
+        String kind,
+        String method)
+    {
+        var feature = CreateFeature(
+            moduleName,
+            name,
+            Enum.Parse<FeatureKind>(kind),
+            Enum.Parse<EndpointMethod>(method));
+
+        var longLines = new FeatureTemplate(feature)
+            .CreateFiles()
+            .Append(new FeatureTestTemplate(feature).CreateFile())
+            .SelectMany(newFile => newFile.Content.Split('\n'))
+            .Where(line => line.Length > 120);
+
+        longLines.ShouldBeEmpty();
+    }
+
     private static ScaffoldedFeature CreateFeature(String moduleName, String name, EndpointMethod method) =>
-        new(SampleModules.Create(moduleName), new FeatureRequest(moduleName, name, FeatureKind.Command, method));
+        CreateFeature(moduleName, name, FeatureKind.Command, method);
+
+    private static ScaffoldedFeature CreateFeature(
+        String moduleName,
+        String name,
+        FeatureKind kind,
+        EndpointMethod method) =>
+        new(SampleModules.Create(moduleName), new FeatureRequest(moduleName, name, kind, method));
 
     private static String ReadFile(IEnumerable<NewFile> files, String fileName) =>
         files

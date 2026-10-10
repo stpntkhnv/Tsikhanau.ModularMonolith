@@ -14,6 +14,8 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
 
     public String Namespace => $"{App.RootNamespace}.Modules.{Name}";
 
+    public String ContractsNamespace => $"{Namespace}.Contracts";
+
     public String ProjectName => $"{App.ProjectPrefix}.Modules.{Name}";
 
     public String ContractsProjectName => $"{ProjectName}.Contracts";
@@ -26,7 +28,11 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
 
     public String ProjectPath => InProject($"{ProjectName}.csproj");
 
-    public String ContractsProjectPath => $"{Folder}/{ContractsProjectName}/{ContractsProjectName}.csproj";
+    public String ContractsFolder => $"{Folder}/{ContractsProjectName}";
+
+    public String ContractsProjectPath => InContracts($"{ContractsProjectName}.csproj");
+
+    public IReadOnlyList<String> ProjectPaths => [ProjectPath, ContractsProjectPath];
 
     public String ModuleClass => $"{Name}Module";
 
@@ -36,7 +42,13 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
 
     public String CommandMarker => $"I{Name}Command";
 
+    public String QueryMarker => $"I{Name}Query";
+
+    public String QueryFacade => $"I{Name}QueryFacade";
+
     public String DbContext => $"{Name}DbContext";
 
     public String InProject(String path) => $"{Folder}/{ProjectName}/{path}";
+
+    public String InContracts(String path) => $"{ContractsFolder}/{path}";
 }

@@ -9,13 +9,21 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
     private const String ExecuteCommandAsync = "Task<Result<TResult>> ExecuteCommandAsync<TResult>";
 
+    private const String ExecuteQueryAsync = "Task<Result<TResult>> ExecuteQueryAsync<TResult>";
+
     private const String SendCommand = " =>\n        SendAsync(command, cancellationToken);";
+
+    private const String SendQuery = " =>\n        QueryAsync(query, cancellationToken);";
 
     public String FacadeContractPath => module.InProject($"{module.FacadeContract}.cs");
 
     public String FacadeClassPath => module.InProject($"Infrastructure/{module.FacadeClass}.cs");
 
     public String CommandMarkerPath => module.InProject($"{module.CommandMarker}.cs");
+
+    public String QueryMarkerPath => module.InContracts($"{module.QueryMarker}.cs");
+
+    public String QueryFacadePath => module.InContracts($"{module.QueryFacade}.cs");
 
     public NewFile FacadeContractFile => new(FacadeContractPath, RenderFacadeContract(FacadeShape.Fresh));
 
@@ -34,12 +42,47 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
             """);
 
+    public NewFile QueryMarkerFile =>
+        new(
+            QueryMarkerPath,
+            $$"""
+            {{Usings("Tsikhanau.Monolith.Contracts.Queries")}}
+
+            namespace {{module.ContractsNamespace}};
+
+            public interface {{module.QueryMarker}}<TResult> : IQuery<TResult>
+                where TResult : notnull;
+
+            """);
+
+    public NewFile QueryFacadeFile =>
+        new(
+            QueryFacadePath,
+            $$"""
+            {{Usings("Tsikhanau.Monolith.Contracts.Modules", RailwayNamespace)}}
+
+            namespace {{module.ContractsNamespace}};
+
+            public interface {{module.QueryFacade}} : IModuleQueryFacade
+            {
+            {{ExecuteQueryDeclaration}}
+            }
+
+            """);
+
     private String CommandParameter => $"{module.CommandMarker}<TResult> command";
+
+    private String QueryParameter => $"{module.QueryMarker}<TResult> query";
 
     private String ExecuteCommandDeclaration => GenericMethod(ExecuteCommandAsync, CommandParameter, ";");
 
+    private String ExecuteQueryDeclaration => GenericMethod(ExecuteQueryAsync, QueryParameter, ";");
+
     private String ExecuteCommandImplementation =>
         GenericMethod($"public {ExecuteCommandAsync}", CommandParameter, SendCommand);
+
+    private String ExecuteQueryImplementation =>
+        GenericMethod($"public {ExecuteQueryAsync}", QueryParameter, SendQuery);
 
     public String RenderFacadeContract(FacadeShape shape) =>
         $$"""
@@ -47,7 +90,7 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
         namespace {{module.Namespace}};
 
-        {{FacadeContractDeclaration(shape)}}
+        {{Declare(end => FacadeContractHead(shape, end), FacadeContractMembers(shape))}}
 
         """;
 
@@ -57,39 +100,45 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
         namespace {{module.Namespace}}.Infrastructure;
 
-        {{FacadeClassDeclaration(shape)}}
+        {{Declare(FacadeClassHead, FacadeClassMembers(shape))}}
 
         """;
 
-    private static IEnumerable<String> FacadeContractUsings(FacadeShape shape) =>
-        ["Tsikhanau.Monolith.Application.Modules", .. CommandUsings(shape)];
+    private IEnumerable<String> FacadeContractUsings(FacadeShape shape) =>
+    [
+        "Tsikhanau.Monolith.Application.Modules",
+        .. IncludeIf(shape.HasQueries, module.ContractsNamespace),
+        .. IncludeIf(shape.HasCommands, RailwayNamespace),
+    ];
 
-    private static IEnumerable<String> FacadeClassUsings(FacadeShape shape) =>
+    private IEnumerable<String> FacadeClassUsings(FacadeShape shape) =>
     [
         "Microsoft.Extensions.DependencyInjection",
         "Tsikhanau.Monolith.Infrastructure.Dispatching",
-        .. CommandUsings(shape),
+        .. IncludeIf(shape.HasQueries, module.ContractsNamespace),
+        .. IncludeIf(shape.HasCommands || shape.HasQueries, RailwayNamespace),
     ];
 
-    private static IEnumerable<String> CommandUsings(FacadeShape shape) => shape.HasCommands ? [RailwayNamespace] : [];
+    private IReadOnlyList<String> FacadeContractMembers(FacadeShape shape) =>
+        [.. IncludeIf(shape.HasCommands, ExecuteCommandDeclaration)];
 
-    private String FacadeContractDeclaration(FacadeShape shape) =>
-        shape.HasCommands
-            ? WithBody(FacadeContractHead(String.Empty), ExecuteCommandDeclaration)
-            : FacadeContractHead(";");
+    private IReadOnlyList<String> FacadeClassMembers(FacadeShape shape) =>
+    [
+        .. IncludeIf(shape.HasCommands, ExecuteCommandImplementation),
+        .. IncludeIf(shape.HasQueries, ExecuteQueryImplementation),
+    ];
 
-    private String FacadeContractHead(String end) =>
-        FirstThatFits(
-            $"internal interface {module.FacadeContract} : IModuleFacade{end}",
+    private String FacadeContractHead(FacadeShape shape, String end)
+    {
+        var baseTypes = shape.HasQueries ? $"{module.QueryFacade}, IModuleFacade" : "IModuleFacade";
+
+        return FirstThatFits(
+            $"internal interface {module.FacadeContract} : {baseTypes}{end}",
             $"""
              internal interface {module.FacadeContract}
-                 : IModuleFacade{end}
+                 : {baseTypes}{end}
              """);
-
-    private String FacadeClassDeclaration(FacadeShape shape) =>
-        shape.HasCommands
-            ? WithBody(FacadeClassHead(String.Empty), ExecuteCommandImplementation)
-            : FacadeClassHead(";");
+    }
 
     private String FacadeClassHead(String end) =>
         FirstThatFits(
@@ -109,7 +158,10 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
                      {module.FacadeContract}{end}
              """);
 
-    private static String WithBody(String head, String member) => $"{head}\n{{\n{member}\n}}";
+    private static String Declare(Func<String, String> head, IReadOnlyList<String> members) =>
+        members.Count == 0 ? head(";") : $"{head(String.Empty)}\n{{\n{String.Join("\n\n", members)}\n}}";
+
+    private static IEnumerable<String> IncludeIf(Boolean condition, String text) => condition ? [text] : [];
 
     private static String GenericMethod(String head, String firstParameter, String tail) =>
         FirstThatFits(

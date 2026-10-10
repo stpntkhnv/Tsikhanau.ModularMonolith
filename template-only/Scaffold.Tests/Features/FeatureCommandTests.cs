@@ -12,7 +12,13 @@ public sealed class FeatureCommandTests : IAsyncLifetime
 
     private const String TagsProject = "src/Modules/Tags/Acme.Shop.Modules.Tags";
 
+    private const String NotesContracts = "src/Modules/Notes/Acme.Shop.Modules.Notes.Contracts";
+
+    private const String TagsContracts = "src/Modules/Tags/Acme.Shop.Modules.Tags.Contracts";
+
     private const String NotesTests = "src/Tests/IntegrationTests/Modules/Notes";
+
+    private const String TagsTests = "src/Tests/IntegrationTests/Modules/Tags";
 
     private const String NotesFacadeContract = $"{NotesProject}/INotesModule.cs";
 
@@ -20,11 +26,26 @@ public sealed class FeatureCommandTests : IAsyncLifetime
 
     private const String NotesCommandMarker = $"{NotesProject}/INotesCommand.cs";
 
+    private const String NotesQueryMarker = $"{NotesContracts}/INotesQuery.cs";
+
+    private const String NotesQueryFacade = $"{NotesContracts}/INotesQueryFacade.cs";
+
+    private const String TagsFacadeContract = $"{TagsProject}/ITagsModule.cs";
+
+    private const String TagsFacadeClass = $"{TagsProject}/Infrastructure/TagsModuleFacade.cs";
+
+    private const String GetNoteSummaryFolder = $"{NotesProject}/Features/GetNoteSummary";
+
     private const String CreateNoteFolder = $"{NotesProject}/Features/CreateNote";
 
     private const String HandChangedFacade =
         " is not the file scaffold writes for this module, so scaffold cannot add ExecuteCommandAsync over "
         + "INotesCommand to it; restore it, or add INotesCommand and ExecuteCommandAsync by hand "
+        + "and run scaffold again";
+
+    private const String HandChangedFacadeForQueries =
+        " is not the file scaffold writes for this module, so scaffold cannot add ExecuteQueryAsync over "
+        + "INotesQuery to it; restore it, or add INotesQuery, INotesQueryFacade and ExecuteQueryAsync by hand "
         + "and run scaffold again";
 
     private const String FacadeContractWithCommands =
@@ -60,6 +81,51 @@ public sealed class FeatureCommandTests : IAsyncLifetime
                 CancellationToken cancellationToken)
                 where TResult : notnull =>
                 SendAsync(command, cancellationToken);
+        }
+
+        """;
+
+    private const String FacadeContractWithCommandsAndQueries =
+        """
+        using Acme.Shop.Modules.Notes.Contracts;
+        using Tsikhanau.Monolith.Application.Modules;
+        using Tsikhanau.Railway;
+
+        namespace Acme.Shop.Modules.Notes;
+
+        internal interface INotesModule : INotesQueryFacade, IModuleFacade
+        {
+            Task<Result<TResult>> ExecuteCommandAsync<TResult>(
+                INotesCommand<TResult> command,
+                CancellationToken cancellationToken)
+                where TResult : notnull;
+        }
+
+        """;
+
+    private const String FacadeClassWithCommandsAndQueries =
+        """
+        using Acme.Shop.Modules.Notes.Contracts;
+        using Microsoft.Extensions.DependencyInjection;
+        using Tsikhanau.Monolith.Infrastructure.Dispatching;
+        using Tsikhanau.Railway;
+
+        namespace Acme.Shop.Modules.Notes.Infrastructure;
+
+        internal sealed class NotesModuleFacade(IServiceScopeFactory serviceScopeFactory)
+            : ModuleFacade<INotesModule>(serviceScopeFactory), INotesModule
+        {
+            public Task<Result<TResult>> ExecuteCommandAsync<TResult>(
+                INotesCommand<TResult> command,
+                CancellationToken cancellationToken)
+                where TResult : notnull =>
+                SendAsync(command, cancellationToken);
+
+            public Task<Result<TResult>> ExecuteQueryAsync<TResult>(
+                INotesQuery<TResult> query,
+                CancellationToken cancellationToken)
+                where TResult : notnull =>
+                QueryAsync(query, cancellationToken);
         }
 
         """;
@@ -234,8 +300,17 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         "feature name 'ArchiveNoteCommand' must not end in Command: scaffold adds the suffix of each type itself")]
     [InlineData(
         "feature Notes ShowNote --kind command --endpoint get",
-        "a command answers POST, PUT or DELETE, not GET: a GET only reads")]
-    public async Task Unknown_module_bad_name_or_get_command_is_refused_before_anything_is_written(
+        "a command answers POST, PUT or DELETE, not GET: a GET only reads, "
+        + "so give it a query (--kind query --endpoint get)")]
+    [InlineData(
+        "feature Notes CountNotes --kind query --endpoint post",
+        "a query answers only GET, not POST: a change of state is a command "
+        + "(--kind command --endpoint post, put or delete)")]
+    [InlineData(
+        "feature Tags GetTag --kind public-query --endpoint get",
+        "a public query has no endpoint: neighbours ask ITagsQueryFacade for it; "
+        + "for HTTP add a query of the module (--kind query --endpoint get)")]
+    public async Task Unknown_module_bad_name_or_method_that_does_not_fit_the_kind_is_refused_before_any_write(
         String commandLine,
         String message)
     {
@@ -291,6 +366,7 @@ public sealed class FeatureCommandTests : IAsyncLifetime
     [Theory]
     [InlineData($"{NotesProject}/Features/archiveNote/readme.md", $"{NotesProject}/Features/archiveNote")]
     [InlineData($"{NotesTests}/ArchiveNoteTests.cs", $"{NotesTests}/ArchiveNoteTests.cs")]
+    [InlineData($"{NotesContracts}/Queries/archiveNote/readme.md", $"{NotesContracts}/Queries/archiveNote")]
     public async Task Feature_folder_in_another_letter_case_or_a_test_left_from_an_old_feature_is_refused(
         String leftOver,
         String reported)
@@ -385,6 +461,294 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Fact]
+    public async Task First_query_of_a_module_with_commands_adds_the_query_markers_and_the_query_facade_to_the_facade()
+    {
+        await RunAndCommitAsync("feature Notes ArchiveNote --kind command");
+
+        var exitCode = await RunAsync("feature Notes CountNotes --kind query");
+
+        var status = ReadStatus();
+        var output = _output.ToString();
+        var facadeContract = _app.Read(NotesFacadeContract);
+        var facadeClass = _app.Read(NotesFacadeClass);
+        var queryMarker = _app.Read(NotesQueryMarker);
+        var queryFacade = _app.Read(NotesQueryFacade);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        output.ShouldBe(
+            "scaffold: done; the new test CountNotesTests.Count_notes_succeeds_through_the_facade fails with "
+            + "\"CountNotes in Notes is not implemented\" until the handler does its work; next, run ./gate.sh\n");
+
+        status.ShouldBe(
+            [
+                $" M {NotesFacadeContract}",
+                $" M {NotesFacadeClass}",
+                $"?? {NotesQueryMarker}",
+                $"?? {NotesQueryFacade}",
+                $"?? {NotesProject}/Features/CountNotes/CountNotesQuery.cs",
+                $"?? {NotesProject}/Features/CountNotes/CountNotesDto.cs",
+                $"?? {NotesProject}/Features/CountNotes/CountNotesQueryHandler.cs",
+                $"?? {NotesTests}/CountNotesTests.cs",
+            ],
+            ignoreOrder: true);
+
+        facadeContract.ShouldBe(FacadeContractWithCommandsAndQueries);
+        facadeClass.ShouldBe(FacadeClassWithCommandsAndQueries);
+        queryMarker.ShouldBe(
+            """
+            using Tsikhanau.Monolith.Contracts.Queries;
+
+            namespace Acme.Shop.Modules.Notes.Contracts;
+
+            public interface INotesQuery<TResult> : IQuery<TResult>
+                where TResult : notnull;
+
+            """);
+
+        queryFacade.ShouldBe(
+            """
+            using Tsikhanau.Monolith.Contracts.Modules;
+            using Tsikhanau.Railway;
+
+            namespace Acme.Shop.Modules.Notes.Contracts;
+
+            public interface INotesQueryFacade : IModuleQueryFacade
+            {
+                Task<Result<TResult>> ExecuteQueryAsync<TResult>(INotesQuery<TResult> query, CancellationToken cancellationToken)
+                    where TResult : notnull;
+            }
+
+            """);
+    }
+
+    [Fact]
+    public async Task First_public_query_of_a_module_without_commands_gives_the_facade_only_the_query_method()
+    {
+        var exitCode = await RunAsync("feature Tags GetTag --kind public-query");
+
+        var status = ReadStatus();
+        var output = _output.ToString();
+        var facadeContract = _app.Read(TagsFacadeContract);
+        var facadeClass = _app.Read(TagsFacadeClass);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        output.ShouldBe(
+            "scaffold: done; the new test GetTagTests.Get_tag_succeeds_through_the_query_facade fails with "
+            + "\"GetTag in Tags is not implemented\" until the handler does its work; next, run ./gate.sh\n");
+
+        status.ShouldBe(
+            [
+                $" M {TagsFacadeContract}",
+                $" M {TagsFacadeClass}",
+                $"?? {TagsContracts}/ITagsQuery.cs",
+                $"?? {TagsContracts}/ITagsQueryFacade.cs",
+                $"?? {TagsContracts}/Queries/GetTag/GetTagQuery.cs",
+                $"?? {TagsContracts}/Queries/GetTag/TagDto.cs",
+                $"?? {TagsProject}/Features/GetTag/GetTagQueryHandler.cs",
+                $"?? {TagsTests}/GetTagTests.cs",
+            ],
+            ignoreOrder: true);
+
+        facadeContract.ShouldBe(
+            """
+            using Acme.Shop.Modules.Tags.Contracts;
+            using Tsikhanau.Monolith.Application.Modules;
+
+            namespace Acme.Shop.Modules.Tags;
+
+            internal interface ITagsModule : ITagsQueryFacade, IModuleFacade;
+
+            """);
+
+        facadeClass.ShouldBe(
+            """
+            using Acme.Shop.Modules.Tags.Contracts;
+            using Microsoft.Extensions.DependencyInjection;
+            using Tsikhanau.Monolith.Infrastructure.Dispatching;
+            using Tsikhanau.Railway;
+
+            namespace Acme.Shop.Modules.Tags.Infrastructure;
+
+            internal sealed class TagsModuleFacade(IServiceScopeFactory serviceScopeFactory)
+                : ModuleFacade<ITagsModule>(serviceScopeFactory), ITagsModule
+            {
+                public Task<Result<TResult>> ExecuteQueryAsync<TResult>(
+                    ITagsQuery<TResult> query,
+                    CancellationToken cancellationToken)
+                    where TResult : notnull =>
+                    QueryAsync(query, cancellationToken);
+            }
+
+            """);
+    }
+
+    [Fact]
+    public async Task First_command_of_a_module_with_queries_adds_the_command_method_next_to_the_query_method()
+    {
+        await RunAndCommitAsync("feature Tags GetTag --kind public-query");
+
+        var exitCode = await RunAsync("feature Tags ArchiveTag --kind command");
+
+        var facadeContract = _app.Read(TagsFacadeContract);
+        var facadeClass = _app.Read(TagsFacadeClass);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        facadeContract.ShouldBe(RenameModule(FacadeContractWithCommandsAndQueries, "Tags"));
+        facadeClass.ShouldBe(RenameModule(FacadeClassWithCommandsAndQueries, "Tags"));
+    }
+
+    [Fact]
+    public async Task Second_query_writes_only_its_own_files()
+    {
+        await RunAndCommitAsync("feature Notes CountNotes --kind query");
+
+        var exitCode = await RunAsync("feature Notes GetNoteSummary --kind query --endpoint get");
+
+        var status = ReadStatus();
+
+        exitCode.ShouldBe(0, _error.ToString());
+        status.ShouldBe(
+            [
+                $"?? {GetNoteSummaryFolder}/GetNoteSummaryQuery.cs",
+                $"?? {GetNoteSummaryFolder}/NoteSummaryDto.cs",
+                $"?? {GetNoteSummaryFolder}/GetNoteSummaryQueryHandler.cs",
+                $"?? {GetNoteSummaryFolder}/GetNoteSummaryEndpoint.cs",
+                $"?? {NotesTests}/GetNoteSummaryTests.cs",
+            ],
+            ignoreOrder: true);
+    }
+
+    [Theory]
+    [InlineData("feature Notes CountNotes --kind query", NotesQueryMarker)]
+    [InlineData("feature Notes CountNotes --kind query", NotesQueryFacade)]
+    [InlineData("feature Notes ArchiveNote --kind command", NotesQueryMarker)]
+    public async Task Query_marker_without_the_query_facade_or_the_other_way_round_is_refused(
+        String commandLine,
+        String loneFile)
+    {
+        _app.Write(loneFile, "namespace Acme.Shop.Modules.Notes.Contracts;\n");
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(commandLine);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: {NotesContracts} must hold both INotesQuery.cs and INotesQueryFacade.cs or neither of them\n");
+
+        after.ShouldBe(before);
+    }
+
+    [Theory]
+    [InlineData(NotesFacadeContract)]
+    [InlineData(NotesFacadeClass)]
+    public async Task Facade_changed_by_hand_is_refused_before_a_first_query_writes_anything(String path)
+    {
+        _app.Write(path, _app.Read(path) + "\n");
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Notes CountNotes --kind query");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe($"scaffold: {path}{HandChangedFacadeForQueries}\n");
+        after.ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task Public_query_that_exists_is_refused_with_both_its_folders_and_its_files()
+    {
+        await RunAndCommitAsync("feature Tags GetTag --kind public-query");
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Tags GetTag --kind public-query");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: feature GetTag of Tags already exists: {TagsProject}/Features/GetTag, "
+            + $"{TagsContracts}/Queries/GetTag, "
+            + $"{TagsContracts}/Queries/GetTag/GetTagQuery.cs, "
+            + $"{TagsContracts}/Queries/GetTag/TagDto.cs, "
+            + $"{TagsProject}/Features/GetTag/GetTagQueryHandler.cs, "
+            + $"{TagsTests}/GetTagTests.cs\n");
+
+        after.ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task Module_folder_without_its_contracts_project_is_refused()
+    {
+        _app.Delete($"{NotesContracts}/Acme.Shop.Modules.Notes.Contracts.csproj");
+        _app.Commit();
+
+        var exitCode = await RunAsync("feature Notes CountNotes --kind query");
+
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            "scaffold: src/Modules/Notes holds no project "
+            + $"{NotesContracts}/Acme.Shop.Modules.Notes.Contracts.csproj\n");
+    }
+
+    [Theory]
+    [InlineData(1, NotesQueryMarker)]
+    [InlineData(2, NotesQueryFacade)]
+    [InlineData(3, $"{GetNoteSummaryFolder}/GetNoteSummaryQuery.cs")]
+    [InlineData(4, $"{GetNoteSummaryFolder}/NoteSummaryDto.cs")]
+    [InlineData(5, $"{GetNoteSummaryFolder}/GetNoteSummaryQueryHandler.cs")]
+    [InlineData(6, $"{GetNoteSummaryFolder}/GetNoteSummaryEndpoint.cs")]
+    [InlineData(7, $"{NotesTests}/GetNoteSummaryTests.cs")]
+    [InlineData(8, NotesFacadeContract)]
+    [InlineData(9, NotesFacadeClass)]
+    public async Task Failed_write_of_a_first_query_leaves_the_tree_as_it_was(Int32 failingWrite, String failingPath)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(
+            new FailingFileSystem(_app.Root, failingWrite: failingWrite),
+            "feature Notes GetNoteSummary --kind query --endpoint get");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe($"scaffold: cannot write {failingPath}: disk full; {RolledBack}\n");
+        after.ShouldBe(before);
+    }
+
+    [Theory]
+    [InlineData(3, $"{TagsContracts}/Queries/GetTag/GetTagQuery.cs")]
+    [InlineData(5, $"{TagsProject}/Features/GetTag/GetTagQueryHandler.cs")]
+    [InlineData(8, TagsFacadeClass)]
+    public async Task Failed_write_of_a_first_public_query_leaves_the_tree_as_it_was(
+        Int32 failingWrite,
+        String failingPath)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(
+            new FailingFileSystem(_app.Root, failingWrite: failingWrite),
+            "feature Tags GetTag --kind public-query");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe($"scaffold: cannot write {failingPath}: disk full; {RolledBack}\n");
+        after.ShouldBe(before);
+    }
+
     private async Task AddModuleAsync(String name)
     {
         var exitCode = await new ScaffoldTool(
@@ -422,4 +786,7 @@ public sealed class FeatureCommandTests : IAsyncLifetime
             .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
     private static String ToWindowsLineEndings(String text) => text.Replace("\n", "\r\n", StringComparison.Ordinal);
+
+    private static String RenameModule(String text, String moduleName) =>
+        text.Replace("Notes", moduleName, StringComparison.Ordinal);
 }

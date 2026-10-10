@@ -48,7 +48,7 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
 
         return Result
             .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
-            .And(new FacadeUpdate(feature.Module, fileSystem).Plan(shape => shape.WithCommands()))
+            .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
             .Bind((_, facadeChange) => CombinePlan(feature, facadeChange, featureFiles, nextStep));
     }
 
@@ -80,8 +80,8 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
     }
 
     private static IEnumerable<String> FindFeatureFolders(ScaffoldedFeature feature, IFileSystem fileSystem) =>
-        fileSystem
-            .GetDirectories(feature.FeaturesFolder, "*")
+        new[] { feature.FeaturesFolder, feature.PublicQueriesFolder }
+            .SelectMany(parentFolder => fileSystem.GetDirectories(parentFolder, "*"))
             .Where(folder => Path
                 .GetFileName(folder)
                 .Equals(feature.Name, StringComparison.OrdinalIgnoreCase));

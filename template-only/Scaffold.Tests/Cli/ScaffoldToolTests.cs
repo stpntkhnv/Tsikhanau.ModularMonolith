@@ -14,7 +14,8 @@ public sealed class ScaffoldToolTests : IDisposable
     private const String ModuleSynopsis = "bash scripts/scaffold.sh module <Name> [--settings]";
 
     private const String FeatureSynopsis =
-        "bash scripts/scaffold.sh feature <Module> <Name> --kind command [--endpoint none|post|put|delete]";
+        "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query "
+        + "[--endpoint none|get|post|put|delete]";
 
     private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureSynopsis}";
 
@@ -83,8 +84,10 @@ public sealed class ScaffoldToolTests : IDisposable
     [InlineData("feature Notes Pin --kind command --endpoint put --endpoint post", "--endpoint is given twice")]
     [InlineData("feature Notes Pin --kind command --force yes", "feature does not know '--force'")]
     [InlineData("feature Notes Pin --kind command post", "feature does not know 'post'")]
-    [InlineData("feature Notes Pin --kind query", "--kind 'query' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind patch", "--kind 'patch' is not a feature kind")]
     [InlineData("feature Notes Pin --kind Command", "--kind 'Command' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind Query", "--kind 'Query' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind public_query", "--kind 'public_query' is not a feature kind")]
     [InlineData("feature Notes Pin --kind command --endpoint patch", "--endpoint 'patch' is not an endpoint method")]
     public async Task Feature_command_line_scaffold_cannot_read_is_refused_with_the_usage(
         String commandLine,

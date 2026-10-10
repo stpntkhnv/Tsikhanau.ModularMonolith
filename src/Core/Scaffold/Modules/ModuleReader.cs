@@ -14,7 +14,7 @@ internal sealed class ModuleReader(IFileSystem fileSystem)
             ? ModuleName
                 .Parse(name, app.LoginPrefix)
                 .Map(moduleName => new ScaffoldedModule(app, moduleName))
-                .Ensure(HasProject, BuildMissingProjectError)
+                .Bind(EnsureProjects)
             : Error.Failure(
                 "scaffold.module",
                 $"{ScaffoldedModule.ModulesFolder} has no module {name} (modules: {BuildNameList(moduleNames)})");
@@ -27,10 +27,14 @@ internal sealed class ModuleReader(IFileSystem fileSystem)
                 .Select(folder => Path.GetFileName(folder)),
         ];
 
-    private Boolean HasProject(ScaffoldedModule module) => fileSystem.FileExists(module.ProjectPath);
+    private Result<ScaffoldedModule> EnsureProjects(ScaffoldedModule module) =>
+        FindMissingProject(module)
+            .Match(
+                projectPath => Error.Failure("scaffold.module", $"{module.Folder} holds no project {projectPath}"),
+                () => Result.Success(module));
 
-    private static Error BuildMissingProjectError(ScaffoldedModule module) =>
-        Error.Failure("scaffold.module", $"{module.Folder} holds no project {module.ProjectPath}");
+    private Optional<String> FindMissingProject(ScaffoldedModule module) =>
+        module.ProjectPaths.FirstOrDefault(projectPath => !fileSystem.FileExists(projectPath));
 
     private static String BuildNameList(IReadOnlyList<String> names) =>
         names.Count == 0 ? "none" : String.Join(", ", names);

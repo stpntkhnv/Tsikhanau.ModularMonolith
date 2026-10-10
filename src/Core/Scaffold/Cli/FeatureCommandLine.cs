@@ -7,7 +7,11 @@ namespace Tsikhanau.Monolith.Scaffold.Cli;
 internal static class FeatureCommandLine
 {
     public const String Synopsis =
-        "bash scripts/scaffold.sh feature <Module> <Name> --kind command [--endpoint none|post|put|delete]";
+        $"bash scripts/scaffold.sh feature <Module> <Name> --kind {KindNames} [--endpoint {MethodNames}]";
+
+    private const String KindNames = "command|query|public-query";
+
+    private const String MethodNames = "none|get|post|put|delete";
 
     private const String KindOption = "--kind";
 
@@ -18,6 +22,8 @@ internal static class FeatureCommandLine
     private static readonly Dictionary<String, FeatureKind> Kinds = new(StringComparer.Ordinal)
     {
         ["command"] = FeatureKind.Command,
+        ["query"] = FeatureKind.Query,
+        ["public-query"] = FeatureKind.PublicQuery,
     };
 
     private static readonly Dictionary<String, EndpointMethod> Methods = new(StringComparer.OrdinalIgnoreCase)

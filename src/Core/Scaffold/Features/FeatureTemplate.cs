@@ -7,18 +7,17 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 {
     private const String RailwayNamespace = "Tsikhanau.Railway";
 
-    private const String Unit = "Unit";
-
     private const String NotImplementedDeclaration = "    private static readonly Error NotImplemented =";
 
-    private const String NotImplementedFailure = "Task.FromResult(Result.Failure(NotImplemented))";
+    public IReadOnlyList<NewFile> CreateFiles() =>
+        feature.Kind switch
+        {
+            FeatureKind.Query => [QueryFile, DtoFile, HandlerFile, .. QueryEndpointFiles],
+            FeatureKind.PublicQuery => [PublicQueryFile, PublicDtoFile, HandlerFile],
+            _ => [CommandFile, HandlerFile, .. CommandEndpointFiles],
+        };
 
-    private static readonly IReadOnlyList<String> EndpointResults =
-        ["NoContent", "ValidationProblem", "ProblemHttpResult"];
-
-    public IReadOnlyList<NewFile> CreateFiles() => [CommandFile, CommandHandlerFile, .. EndpointFiles];
-
-    private IEnumerable<NewFile> EndpointFiles =>
+    private IEnumerable<NewFile> CommandEndpointFiles =>
         feature.Method switch
         {
             EndpointMethod.Post or EndpointMethod.Put => [RequestFile, EndpointFile],
@@ -26,34 +25,78 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
             _ => [],
         };
 
+    private IEnumerable<NewFile> QueryEndpointFiles => feature.Method == EndpointMethod.Get ? [EndpointFile] : [];
+
     private NewFile CommandFile =>
         new(
             feature.InFeature($"{feature.Command}.cs"),
             CodeFile(
+                feature.Namespace,
                 [RailwayNamespace],
-                RecordDeclaration(feature.Command, $"{feature.Module.CommandMarker}<{Unit}>")));
+                RecordDeclaration("internal", feature.Command, $"{feature.Module.CommandMarker}<Unit>")));
 
-    private NewFile CommandHandlerFile =>
+    private NewFile QueryFile =>
         new(
-            feature.InFeature($"{feature.CommandHandler}.cs"),
+            feature.InFeature($"{feature.Query}.cs"),
             CodeFile(
-                ["Tsikhanau.Monolith.Application.Commands", RailwayNamespace],
+                feature.Namespace,
+                [feature.Module.ContractsNamespace],
+                RecordDeclaration("internal", feature.Query, QueryBaseType)));
+
+    private NewFile DtoFile =>
+        new(
+            feature.InFeature($"{feature.Dto}.cs"),
+            CodeFile(feature.Namespace, [], RecordDeclaration("internal", feature.Dto)));
+
+    private NewFile PublicQueryFile =>
+        new(
+            feature.InPublicQuery($"{feature.Query}.cs"),
+            CodeFile(feature.PublicQueryNamespace, [], RecordDeclaration("public", feature.Query, QueryBaseType)));
+
+    private NewFile PublicDtoFile =>
+        new(
+            feature.InPublicQuery($"{feature.Dto}.cs"),
+            CodeFile(feature.PublicQueryNamespace, [], RecordDeclaration("public", feature.Dto)));
+
+    private String QueryBaseType => $"{feature.Module.QueryMarker}<{feature.Dto}>";
+
+    private NewFile HandlerFile =>
+        new(
+            feature.InFeature($"{feature.Handler}.cs"),
+            CodeFile(
+                feature.Namespace,
+                [.. HandlerUsings, RailwayNamespace],
                 $$"""
-                {{HandlerDeclaration(feature.CommandHandler, "ICommandHandler", [feature.Command, Unit])}}
+                {{HandlerDeclaration}}
                 {
                 {{NotImplementedField}}
 
-                {{HandleMethod(feature.Command, "command", Unit)}}
+                {{HandleMethod}}
                 }
                 """));
 
+    private IEnumerable<String> HandlerUsings =>
+        feature.Kind switch
+        {
+            FeatureKind.Query => ["Tsikhanau.Monolith.Application.Queries"],
+            FeatureKind.PublicQuery => ["Tsikhanau.Monolith.Application.Queries", feature.PublicQueryNamespace],
+            _ => ["Tsikhanau.Monolith.Application.Commands"],
+        };
+
+    private String HandlerInterface => feature.IsQuery ? "IQueryHandler" : "ICommandHandler";
+
+    private String HandledParameter => feature.IsQuery ? "query" : "command";
+
     private NewFile RequestFile =>
-        new(feature.InFeature($"{feature.RequestRecord}.cs"), CodeFile([], RecordDeclaration(feature.RequestRecord)));
+        new(
+            feature.InFeature($"{feature.RequestRecord}.cs"),
+            CodeFile(feature.Namespace, [], RecordDeclaration("internal", feature.RequestRecord)));
 
     private NewFile EndpointFile =>
         new(
             feature.InFeature($"{feature.Endpoint}.cs"),
             CodeFile(
+                feature.Namespace,
                 [
                     "Microsoft.AspNetCore.Builder",
                     "Microsoft.AspNetCore.Http.HttpResults",
@@ -71,9 +114,14 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
                 {{EndpointSignature}}
                         {{feature.FacadeParameter}}
                 {{FacadeCall}}
-                            .ToNoContentAsync();
+                            .{{EndpointAnswer}}();
                 }
                 """));
+
+    private IReadOnlyList<String> EndpointResults =>
+        [feature.IsQuery ? $"Ok<{feature.Dto}>" : "NoContent", "ValidationProblem", "ProblemHttpResult"];
+
+    private String EndpointAnswer => feature.IsQuery ? "ToOkAsync" : "ToNoContentAsync";
 
     private String NotImplementedField =>
         FirstThatFits(
@@ -91,6 +139,9 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 
     private String NotImplementedError =>
         $"Error.Failure(\"{feature.NotImplementedCode}\", \"{feature.NotImplementedMessage}\")";
+
+    private String NotImplementedFailure =>
+        feature.IsQuery ? $"Result.Failure<{feature.Dto}>(NotImplemented)" : "Result.Failure(NotImplemented)";
 
     private String MapCall =>
         FirstThatFits(
@@ -128,63 +179,75 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 
     private String FacadeCall =>
         FirstThatFits(
-            $"""            .ExecuteCommandAsync(new {feature.Command}(), cancellationToken)""",
+            $"""            .{feature.FacadeMethod}(new {feature.HandledRequest}(), cancellationToken)""",
             $"""
-                         .ExecuteCommandAsync(
-                             new {feature.Command}(),
+                         .{feature.FacadeMethod}(
+                             new {feature.HandledRequest}(),
                              cancellationToken)
              """);
 
-    private static String HandlerDeclaration(
-        String handler,
-        String handlerInterface,
-        IReadOnlyList<String> typeArguments)
+    private String HandlerDeclaration
     {
-        var baseType = $"{handlerInterface}<{String.Join(", ", typeArguments)}>";
+        get
+        {
+            var typeArguments = new[] { feature.HandledRequest, feature.HandlerResult };
+            var baseType = $"{HandlerInterface}<{String.Join(", ", typeArguments)}>";
 
-        return FirstThatFits(
-            $"internal sealed class {handler} : {baseType}",
-            $"""
-             internal sealed class {handler}
-                 : {baseType}
-             """,
-            $"""
-             internal sealed class {handler}
-                 : {handlerInterface}<
-                     {String.Join(",\n        ", typeArguments)}>
-             """);
+            return FirstThatFits(
+                $"internal sealed class {feature.Handler} : {baseType}",
+                $"""
+                 internal sealed class {feature.Handler}
+                     : {baseType}
+                 """,
+                $"""
+                 internal sealed class {feature.Handler}
+                     : {HandlerInterface}<
+                         {String.Join(",\n        ", typeArguments)}>
+                 """);
+        }
     }
 
-    private static String HandleMethod(String request, String requestParameter, String result)
+    private String HandleMethod
     {
-        var head = $"public Task<Result<{result}>> Handle";
-        var parameter = $"{request} {requestParameter}";
+        get
+        {
+            var head = $"public Task<Result<{feature.HandlerResult}>> Handle";
+            var parameter = $"{feature.HandledRequest} {HandledParameter}";
 
-        return FirstThatFits(
-            $"""
-                 {head}({parameter}, CancellationToken cancellationToken) =>
-                     {NotImplementedFailure};
-             """,
-            $"""
-                 {head}(
-                     {parameter},
-                     CancellationToken cancellationToken) =>
-                     {NotImplementedFailure};
-             """);
+            return FirstThatFits(
+                $"""
+                     {head}({parameter}, CancellationToken cancellationToken) =>
+                 {HandleBody}
+                 """,
+                $"""
+                     {head}(
+                         {parameter},
+                         CancellationToken cancellationToken) =>
+                 {HandleBody}
+                 """);
+        }
     }
 
-    private static String RecordDeclaration(String name) => $"internal sealed record {name};";
-
-    private static String RecordDeclaration(String name, String baseType) =>
+    private String HandleBody =>
         FirstThatFits(
-            $"internal sealed record {name} : {baseType};",
+            $"        Task.FromResult({NotImplementedFailure});",
             $"""
-             internal sealed record {name}
+                     Task.FromResult(
+                         {NotImplementedFailure});
+             """);
+
+    private static String RecordDeclaration(String visibility, String name) => $"{visibility} sealed record {name};";
+
+    private static String RecordDeclaration(String visibility, String name, String baseType) =>
+        FirstThatFits(
+            $"{visibility} sealed record {name} : {baseType};",
+            $"""
+             {visibility} sealed record {name}
                  : {baseType};
              """);
 
-    private String CodeFile(IReadOnlyList<String> usings, String body) =>
-        $"{UsingBlock(usings)}namespace {feature.Namespace};\n\n{body}\n";
+    private static String CodeFile(String codeNamespace, IReadOnlyList<String> usings, String body) =>
+        $"{UsingBlock(usings)}namespace {codeNamespace};\n\n{body}\n";
 
     private static String UsingBlock(IReadOnlyList<String> usings) =>
         usings.Count == 0 ? String.Empty : $"{Usings(usings)}\n\n";

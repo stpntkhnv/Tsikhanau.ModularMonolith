@@ -7,6 +7,17 @@ public sealed class FeatureRequestTests
 {
     private const String PascalCaseRule = "must be PascalCase: an ASCII capital letter, then letters and digits";
 
+    private const String CommandAnsweringGet =
+        "a command answers POST, PUT or DELETE, not GET: a GET only reads, "
+        + "so give it a query (--kind query --endpoint get)";
+
+    private const String ChangeIsCommand =
+        "a change of state is a command (--kind command --endpoint post, put or delete)";
+
+    private const String PublicQueryWithEndpoint =
+        "a public query has no endpoint: neighbours ask INotesQueryFacade for it; "
+        + "for HTTP add a query of the module (--kind query --endpoint get)";
+
     [Theory]
     [InlineData("ArchiveNote", "None")]
     [InlineData("CreateNote", "Post")]
@@ -48,16 +59,46 @@ public sealed class FeatureRequestTests
         message.ShouldBe($"feature name '{name}' {rule}");
     }
 
-    [Fact]
-    public void Command_that_answers_get_is_refused()
+    [Theory]
+    [InlineData("CountNotes", "Query", "None")]
+    [InlineData("GetNoteSummary", "Query", "Get")]
+    [InlineData("GetTag", "PublicQuery", "None")]
+    public void Query_answers_get_or_nothing_and_a_public_query_answers_nothing(
+        String name,
+        String kind,
+        String method)
     {
-        var request = CreateCommand("ShowNote", EndpointMethod.Get);
+        var request = new FeatureRequest(
+            "Notes",
+            name,
+            Enum.Parse<FeatureKind>(kind),
+            Enum.Parse<EndpointMethod>(method));
+
+        var validated = request.Validate();
+
+        validated.ShouldBe(Result.Success(request));
+    }
+
+    [Theory]
+    [InlineData("Command", "Get", CommandAnsweringGet)]
+    [InlineData("Query", "Post", $"a query answers only GET, not POST: {ChangeIsCommand}")]
+    [InlineData("Query", "Put", $"a query answers only GET, not PUT: {ChangeIsCommand}")]
+    [InlineData("Query", "Delete", $"a query answers only GET, not DELETE: {ChangeIsCommand}")]
+    [InlineData("PublicQuery", "Get", PublicQueryWithEndpoint)]
+    [InlineData("PublicQuery", "Post", PublicQueryWithEndpoint)]
+    public void Endpoint_method_that_does_not_fit_the_kind_is_refused(String kind, String method, String problem)
+    {
+        var request = new FeatureRequest(
+            "Notes",
+            "ShowNote",
+            Enum.Parse<FeatureKind>(kind),
+            Enum.Parse<EndpointMethod>(method));
 
         var validated = request.Validate();
 
         var message = validated.Match(_ => "valid", error => error.Message);
 
-        message.ShouldBe("a command answers POST, PUT or DELETE, not GET: a GET only reads");
+        message.ShouldBe(problem);
     }
 
     private static FeatureRequest CreateCommand(String name, EndpointMethod method) =>
