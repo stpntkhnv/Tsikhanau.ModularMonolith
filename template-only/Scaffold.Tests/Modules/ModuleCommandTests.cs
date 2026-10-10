@@ -110,52 +110,32 @@ public sealed class ModuleCommandTests : IDisposable
                 BuildCall("Notes")));
     }
 
-    [Fact]
-    public async Task Second_module_that_sorts_before_the_first_goes_before_it_everywhere()
+    [Theory]
+    [InlineData("Notes", "Billing")]
+    [InlineData("HTTPLogs", "Hello")]
+    public async Task Second_module_that_sorts_before_the_first_goes_before_it_everywhere(String first, String second)
     {
-        await RunAsync("Notes");
+        await RunAsync(first, "--settings");
         _app.Commit();
 
-        var exitCode = await RunAsync("Billing");
-
-        var solution = _app.Read(SampleApp.SolutionPath);
-        var hostProject = _app.Read(SampleApp.HostProjectPath);
-        var program = _app.Read(SampleApp.ProgramPath);
+        var exitCode = await RunAsync(second, "--settings");
 
         exitCode.ShouldBe(0, _error.ToString());
-        solution.ShouldBe(Insert(SampleApp.Solution, ModulesFolder, BuildFolder("Billing") + BuildFolder("Notes")));
-        hostProject.ShouldBe(
-            Insert(SampleApp.HostProject, CoreReference, BuildReference("Billing") + BuildReference("Notes")));
-
-        program.ShouldBe(
-            Insert(
-                Insert(SampleApp.Program, PlatformUsing, BuildUsing("Billing") + BuildUsing("Notes")),
-                PlatformCall,
-                BuildCall("Billing") + BuildCall("Notes")));
+        ShouldListModulesInOrder(second, first);
     }
 
-    [Fact]
-    public async Task Second_module_that_sorts_after_the_first_goes_after_it_everywhere()
+    [Theory]
+    [InlineData("Notes", "Tags")]
+    [InlineData("Notes", "Notes2")]
+    public async Task Second_module_that_sorts_after_the_first_goes_after_it_everywhere(String first, String second)
     {
-        await RunAsync("Notes");
+        await RunAsync(first, "--settings");
         _app.Commit();
 
-        var exitCode = await RunAsync("Tags");
-
-        var solution = _app.Read(SampleApp.SolutionPath);
-        var hostProject = _app.Read(SampleApp.HostProjectPath);
-        var program = _app.Read(SampleApp.ProgramPath);
+        var exitCode = await RunAsync(second, "--settings");
 
         exitCode.ShouldBe(0, _error.ToString());
-        solution.ShouldBe(Insert(SampleApp.Solution, ModulesFolder, BuildFolder("Notes") + BuildFolder("Tags")));
-        hostProject.ShouldBe(
-            Insert(SampleApp.HostProject, CoreReference, BuildReference("Notes") + BuildReference("Tags")));
-
-        program.ShouldBe(
-            Insert(
-                Insert(SampleApp.Program, PlatformUsing, BuildUsing("Notes") + BuildUsing("Tags")),
-                PlatformCall,
-                BuildCall("Notes") + BuildCall("Tags")));
+        ShouldListModulesInOrder(first, second);
     }
 
     [Theory]
@@ -383,6 +363,27 @@ public sealed class ModuleCommandTests : IDisposable
             QueuesEnd,
             $"      \"ClaimBatchSize\": 16\n    }},\n{modules}\n",
             StringComparison.Ordinal);
+
+    private void ShouldListModulesInOrder(String earlier, String later)
+    {
+        var solution = _app.Read(SampleApp.SolutionPath);
+        var hostProject = _app.Read(SampleApp.HostProjectPath);
+        var program = _app.Read(SampleApp.ProgramPath);
+        var appSettings = _app.Read(SampleApp.AppSettingsPath);
+
+        _app.ShouldSatisfyAllConditions(
+            () => solution.ShouldBe(
+                Insert(SampleApp.Solution, ModulesFolder, BuildFolder(earlier) + BuildFolder(later))),
+            () => hostProject.ShouldBe(
+                Insert(SampleApp.HostProject, CoreReference, BuildReference(earlier) + BuildReference(later))),
+            () => program.ShouldBe(
+                Insert(
+                    Insert(SampleApp.Program, PlatformUsing, BuildUsing(earlier) + BuildUsing(later)),
+                    PlatformCall,
+                    BuildCall(earlier) + BuildCall(later))),
+            () => appSettings.ShouldBe(
+                WithModules($"    \"Modules\": {{\n      \"{earlier}\": {{}},\n      \"{later}\": {{}}\n    }}")));
+    }
 
     private static String Insert(String text, String anchor, String addition) =>
         text.Replace(anchor, anchor + addition, StringComparison.Ordinal);

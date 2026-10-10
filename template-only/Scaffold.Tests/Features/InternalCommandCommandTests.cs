@@ -19,20 +19,20 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
 
     private const String DigestNamesPath = $"{NotesProject}/Features/MailDigest/DigestNames.cs";
 
-    private const String ArchiveNamesPath = $"{NotesProject}/Features/Archive/ArchiveNames.cs";
-
     private const String SendDigestCommand = "feature Notes SendDigest --kind internal-command";
 
-    private const String SendDigestDone =
-        "scaffold: done; the new test SendDigestTests.Send_digest_runs_when_the_queues_run fails with "
+    private const String SendDigestTestFails =
+        "the new test SendDigestTests.Send_digest_runs_when_the_queues_run fails with "
         + "\"SendDigest in Notes is not implemented\" until the handler does its work; next, run ./gate.sh\n";
+
+    private const String SendDigestDone = $"scaffold: done; {SendDigestTestFails}";
 
     private const String NameIsStored =
         "the name is stored in the queue and must be unique in the module, so choose another feature name";
 
-    private const String ReadableForms =
-        "it reads string literals, their concatenations and interpolations, nameof and the string constants "
-        + "declared in the module, so write the name in one of these forms";
+    private const String NamesItReads =
+        "because it reads an internal command name only as a string literal or a string constant of the module; "
+        + "the gate's internal command name rule checks the module's names";
 
     private const String DigestNames =
         """
@@ -40,33 +40,16 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
 
         internal static class DigestNames
         {
-            public const String Prefix = "send";
+            public const String Send = "send-digest";
 
-            public const String Send = Prefix + "-digest";
+            public const String Alias = Send;
+
+            public const String Shared = "send-digest";
         }
-        """;
 
-    private const String ArchiveNames =
-        """
-        namespace Acme.Shop.Modules.Notes.Features.Archive;
-
-        internal static class ArchiveNames
+        internal static class MailNames
         {
-            public const String Prefix = "archive";
-
-            public const String Send = Prefix + "-digest";
-        }
-        """;
-
-    private const String LoopingNames =
-        """
-        namespace Acme.Shop.Modules.Notes.Features.MailDigest;
-
-        internal static class LoopingNames
-        {
-            public const String First = Second;
-
-            public const String Second = First;
+            public const String Shared = "mail-digest";
         }
         """;
 
@@ -143,10 +126,7 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
     [InlineData(MailDigestCommand, """[InternalCommandName(@"send-digest")]""")]
     [InlineData(MailDigestCommand, "[InternalCommandName(\"\"\"send-digest\"\"\")]")]
     [InlineData(MailDigestCommand, "[InternalCommandName(\"send\\u002Ddigest\")]")]
-    [InlineData(MailDigestCommand, """[InternalCommandName(("send-" + "dig") + "est")]""")]
-    [InlineData(MailDigestCommand, """[InternalCommandName($"{DigestNames.Prefix}-{"digest"}")]""")]
     [InlineData(MailDigestCommand, """[InternalCommandName(DigestNames.Send)]""")]
-    [InlineData(MailDigestCommand, """[InternalCommandName(Features.MailDigest.DigestNames.Send)]""")]
     [InlineData(
         "Notes/Acme.Shop.Modules.Notes.Contracts/MailDigestInternalCommand.cs",
         """[InternalCommandName("send-digest")]""")]
@@ -155,7 +135,6 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
         String attributes)
     {
         _app.Write(DigestNamesPath, DigestNames);
-        _app.Write(ArchiveNamesPath, ArchiveNames);
         _app.Write($"{ModulesFolder}/{commandPath}", BuildInternalCommand(attributes));
         _app.Commit();
         var before = _app.TakeSnapshot();
@@ -257,36 +236,59 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
 
     [Theory]
     [InlineData("""[InternalCommandName(SharedNames.Digest)]""", "[InternalCommandName(SharedNames.Digest)]")]
-    [InlineData("""[InternalCommandName(DigestNames.Archive)]""", "[InternalCommandName(DigestNames.Archive)]")]
-    [InlineData("""[InternalCommandName(Prefix)]""", "[InternalCommandName(Prefix)]")]
-    [InlineData("""[InternalCommandName(Names.Build("send"))]""", "[InternalCommandName(Names.Build(\"send\"))]")]
-    [InlineData("""[InternalCommandName(LoopingNames.First)]""", "[InternalCommandName(LoopingNames.First)]")]
-    [InlineData(
-        """[InternalCommandName($"{DigestNames.Prefix,4}-digest")]""",
-        "[InternalCommandName($\"{DigestNames.Prefix, 4}-digest\")]")]
-    public async Task Name_scaffold_cannot_read_is_refused_because_the_new_name_may_be_taken(
+    [InlineData("""[InternalCommandName("send-" + "digest")]""", "[InternalCommandName(\"send-\" + \"digest\")]")]
+    [InlineData("""[InternalCommandName(DigestNames.Alias)]""", "[InternalCommandName(DigestNames.Alias)]")]
+    [InlineData("""[InternalCommandName(DigestNames.Shared)]""", "[InternalCommandName(DigestNames.Shared)]")]
+    public async Task Name_scaffold_cannot_read_is_named_in_the_done_line_and_the_feature_is_written(
         String attributes,
-        String unreadable)
+        String unread)
     {
         _app.Write(DigestNamesPath, DigestNames);
-        _app.Write(ArchiveNamesPath, ArchiveNames);
-
-        _app.Write($"{NotesProject}/Features/MailDigest/LoopingNames.cs", LoopingNames);
         _app.Write($"{ModulesFolder}/{MailDigestCommand}", BuildInternalCommand(attributes));
         _app.Commit();
-        var before = _app.TakeSnapshot();
 
         var exitCode = await RunAsync(SendDigestCommand);
 
-        var after = _app.TakeSnapshot();
+        var status = ReadStatus();
+        var output = _output.ToString();
+
+        exitCode.ShouldBe(0, _error.ToString());
+        output.ShouldBe(
+            $"scaffold: done; it did not compare send-digest with {unread} ({ModulesFolder}/{MailDigestCommand}:5), "
+            + $"{NamesItReads}; {SendDigestTestFails}");
+
+        status.ShouldBe(
+            [
+                $"?? {NotesProject}/Features/SendDigest/SendDigestInternalCommand.cs",
+                $"?? {NotesProject}/Features/SendDigest/SendDigestInternalCommandHandler.cs",
+                $"?? {NotesTests}/SendDigestTests.cs",
+            ],
+            ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Name_held_twice_in_one_file_lists_the_file_once()
+    {
+        _app.Write(
+            $"{ModulesFolder}/{MailDigestCommand}",
+            BuildInternalCommand(
+                """
+                [InternalCommandName("send-digest")]
+                internal sealed record WeeklyDigestInternalCommand(Guid Id) : InternalCommand(Id);
+
+                [InternalCommandName("send-digest")]
+                """));
+
+        _app.Commit();
+
+        var exitCode = await RunAsync(SendDigestCommand);
+
         var error = _error.ToString();
 
         exitCode.ShouldBe(1);
         error.ShouldBe(
-            "scaffold: cannot tell whether send-digest is free in Notes: scaffold cannot read the internal command "
-            + $"name of {unreadable} ({ModulesFolder}/{MailDigestCommand}:5); {ReadableForms}\n");
-
-        after.ShouldBe(before);
+            $"scaffold: Notes already has an internal command named send-digest ({ModulesFolder}/{MailDigestCommand}); "
+            + $"{NameIsStored}\n");
     }
 
     [Theory]

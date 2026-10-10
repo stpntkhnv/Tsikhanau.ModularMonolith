@@ -241,6 +241,36 @@ public sealed class EventHandlerCommandTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Fact]
+    public async Task Nested_event_is_refused_before_any_write()
+    {
+        _app.Write(
+            $"{NotesProject}/Domain/NoteEvents.cs",
+            """
+            namespace Acme.Shop.Modules.Notes.Domain;
+
+            public static class NoteEvents
+            {
+                public sealed record NoteSealedDomainEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+            }
+            """);
+
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Notes NoteSealed --kind event-handler --event NoteSealedDomainEvent");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            "scaffold: Acme.Shop.Modules.Notes.Domain.NoteEvents.NoteSealedDomainEvent is nested in NoteEvents; "
+            + "scaffold handles only top-level types, one per file (STYLE 7)\n");
+
+        after.ShouldBe(before);
+    }
+
     [Theory]
     [InlineData("bin")]
     [InlineData("obj")]

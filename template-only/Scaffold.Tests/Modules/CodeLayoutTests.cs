@@ -11,9 +11,16 @@ public sealed class CodeLayoutTests
     private static readonly String LineOf121Characters = new('x', 121);
 
     [Fact]
-    public void Usings_put_system_first_and_the_rest_in_ordinal_order()
+    public void Usings_put_system_first_and_the_rest_in_order_ignoring_case()
     {
-        var usings = CodeLayout.Usings("Zeta.Modules", "System.Net", "Microsoft.Extensions", "System", "Acme.Shop");
+        var usings = CodeLayout.Usings(
+            "Zeta.Modules",
+            "System.Net",
+            "Tsikhanau.Railway",
+            "Microsoft.Extensions",
+            "System",
+            "trip_own.Modules.Notes",
+            "Acme.Shop");
 
         usings.ShouldBe(
             """
@@ -21,6 +28,8 @@ public sealed class CodeLayoutTests
             using System.Net;
             using Acme.Shop;
             using Microsoft.Extensions;
+            using trip_own.Modules.Notes;
+            using Tsikhanau.Railway;
             using Zeta.Modules;
             """);
     }

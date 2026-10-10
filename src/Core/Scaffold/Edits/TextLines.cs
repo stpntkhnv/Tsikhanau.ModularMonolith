@@ -11,7 +11,7 @@ internal sealed record TextLines(IReadOnlyList<String> Lines, String NewLine)
 
     public Boolean Contains(String trimmedLine) => Lines.Any(line => line.Trim() == trimmedLine);
 
-    public IReadOnlyList<Int32> FindIndexes(Func<String, Boolean> predicate) =>
+    public IReadOnlyList<Int32> GetIndexes(Func<String, Boolean> predicate) =>
         [
             .. Lines
                 .Select((line, index) => (Line: line, Index: index))

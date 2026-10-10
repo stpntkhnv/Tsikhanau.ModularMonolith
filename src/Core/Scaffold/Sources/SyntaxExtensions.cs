@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Tsikhanau.Monolith.Scaffold.Events;
+namespace Tsikhanau.Monolith.Scaffold.Sources;
 
 internal static class SyntaxExtensions
 {
@@ -33,7 +33,17 @@ internal static class SyntaxExtensions
                     .Reverse()
                     .Select(namespaceDeclaration => namespaceDeclaration.Name.ToString()));
 
-        public String FullName => $"{declaration.Namespace}.{declaration.Name}";
+        public IEnumerable<String> ContainingTypeNames =>
+            declaration
+                .Ancestors()
+                .OfType<BaseTypeDeclarationSyntax>()
+                .Reverse()
+                .Select(containingType => containingType.Name);
+
+        public String FullName =>
+            String.Join('.', [declaration.Namespace, .. declaration.ContainingTypeNames, declaration.Name]);
+
+        public Boolean IsTopLevel => declaration.Parent is BaseNamespaceDeclarationSyntax or CompilationUnitSyntax;
 
         public IEnumerable<TypeSyntax> BaseTypes =>
             declaration.BaseList is { } baseList ? baseList.Types.Select(baseType => baseType.Type) : [];

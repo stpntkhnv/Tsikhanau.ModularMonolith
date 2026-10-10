@@ -4,6 +4,7 @@ using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.InternalCommands;
 using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Sources;
 using Tsikhanau.Monolith.Scaffold.Transactions;
 using Tsikhanau.Railway;
 
@@ -26,17 +27,17 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         IFileSystem fileSystem) =>
         new ModuleReader(fileSystem)
             .Read(app, validRequest.ModuleName)
-            .Bind(module => FindEvent(app, validRequest, fileSystem)
+            .Bind(module => ReadEvent(app, validRequest, fileSystem)
                 .Map(handledEvent => new ScaffoldedFeature(module, validRequest) { Event = handledEvent }));
 
-    private static Result<Optional<EventDeclaration>> FindEvent(
+    private static Result<Optional<EventDeclaration>> ReadEvent(
         AppLayout app,
         FeatureRequest validRequest,
         IFileSystem fileSystem) =>
         validRequest.EventType.Match(
             eventType => new SourceProjectReader(fileSystem)
                 .Read(app)
-                .Bind(projects => new EventFinder(projects).Find(validRequest.ModuleName, eventType))
+                .Bind(projects => new EventReader(projects).Read(validRequest.ModuleName, eventType))
                 .Map(Optional<EventDeclaration>.Some),
             () => Result.Success(Optional<EventDeclaration>.None()));
 
@@ -53,7 +54,6 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
     private static Result<ScaffoldPlan> PlanFeature(ScaffoldedFeature feature, IFileSystem fileSystem)
     {
         var testTemplate = new FeatureTestTemplate(feature);
-        var nextStep = BuildNextStep(feature, testTemplate);
         IReadOnlyList<NewFile> featureFiles =
         [
             .. new FeatureTemplate(feature).CreateFiles(),
@@ -62,11 +62,16 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
 
         return Result
             .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
-            .And(EnsureInternalCommandNameIsFree(feature, fileSystem))
+            .And(VerifyInternalCommandName(feature, fileSystem))
             .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
             .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
-            .Bind((_, _, facadeChange, referenceEdits) =>
-                CombinePlan(feature, facadeChange, referenceEdits, featureFiles, nextStep));
+            .Bind((_, nameNote, facadeChange, referenceEdits) =>
+                CombinePlan(
+                    feature,
+                    facadeChange,
+                    referenceEdits,
+                    featureFiles,
+                    BuildNextStep(feature, testTemplate, nameNote)));
     }
 
     private static Result<ScaffoldPlan> CombinePlan(
@@ -84,7 +89,7 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         IEnumerable<NewFile> featureFiles,
         IFileSystem fileSystem)
     {
-        var existing = FindFeatureFolders(feature, fileSystem)
+        var existing = GetFeatureFolders(feature, fileSystem)
             .Concat(featureFiles
                 .Select(newFile => newFile.Path)
                 .Where(fileSystem.FileExists))
@@ -97,22 +102,32 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
                 $"feature {feature.Name} of {feature.Module.Name} already exists: {String.Join(", ", existing)}");
     }
 
-    private static Result<Unit> EnsureInternalCommandNameIsFree(ScaffoldedFeature feature, IFileSystem fileSystem) =>
+    private static Result<Optional<String>> VerifyInternalCommandName(
+        ScaffoldedFeature feature,
+        IFileSystem fileSystem) =>
         feature.InternalCommandName.Match(
             name => new SourceProjectReader(fileSystem)
                 .Read(feature.Module.App, feature.Module.Name)
                 .Bind(moduleProjects => new InternalCommandNameVerifier(feature.Module.Name, moduleProjects)
-                    .EnsureFree(name)),
-            () => Result.Success());
+                    .Verify(name)),
+            () => Result.Success(Optional<String>.None()));
 
-    private static IEnumerable<String> FindFeatureFolders(ScaffoldedFeature feature, IFileSystem fileSystem) =>
+    private static IEnumerable<String> GetFeatureFolders(ScaffoldedFeature feature, IFileSystem fileSystem) =>
         new[] { feature.FeaturesFolder, feature.PublicQueriesFolder }
             .SelectMany(parentFolder => fileSystem.GetDirectories(parentFolder, "*"))
             .Where(folder => Path
                 .GetFileName(folder)
                 .Equals(feature.Name, StringComparison.OrdinalIgnoreCase));
 
-    private static String BuildNextStep(ScaffoldedFeature feature, FeatureTestTemplate testTemplate) =>
-        $"the new test {feature.TestClass}.{testTemplate.TestMethod} fails with \"{feature.NotImplementedMessage}\" "
-        + "until the handler does its work; next, run ./gate.sh";
+    private static String BuildNextStep(
+        ScaffoldedFeature feature,
+        FeatureTestTemplate testTemplate,
+        Optional<String> nameNote)
+    {
+        var testFails =
+            $"the new test {feature.TestClass}.{testTemplate.TestMethod} fails with "
+            + $"\"{feature.NotImplementedMessage}\" until the handler does its work; next, run ./gate.sh";
+
+        return nameNote.Match(note => $"{note}; {testFails}", () => testFails);
+    }
 }

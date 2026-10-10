@@ -51,6 +51,22 @@ public sealed class ProgramEditTests
     }
 
     [Fact]
+    public void Using_of_an_app_in_lower_case_sorts_ignoring_case_among_the_core_usings()
+    {
+        var notes = SampleModules.Create("Notes", appName: "trip_own");
+
+        var edited = ReadText(ProgramEdit.AddModule(notes.App.Program, notes));
+
+        edited.ShouldStartWith(
+            """
+            using trip_own.Bootstrapper.Platform;
+            using trip_own.Modules.Notes;
+            using Tsikhanau.Monolith.Api.Modules;
+            """,
+            Case.Sensitive);
+    }
+
+    [Fact]
     public void Program_with_crlf_line_endings_keeps_them()
     {
         var notes = SampleModules.Create("Notes");

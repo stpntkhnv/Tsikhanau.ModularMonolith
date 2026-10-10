@@ -8,7 +8,11 @@ namespace Tsikhanau.Monolith.Scaffold.Edits;
 
 internal static partial class ModuleProjectEdit
 {
-    [GeneratedRegex("^\\s*<ProjectReference Include=\"(?<include>[^\"]*)\"\\s*/>\\s*$")]
+    private const String SelfClosingEnd = "/>";
+
+    private const String ClosingTag = "</ProjectReference>";
+
+    [GeneratedRegex("^\\s*<ProjectReference\\s+Include=\"(?<include>[^\"]*)\"")]
     private static partial Regex ProjectReferencePattern { get; }
 
     public static Result<FileEdit> AddNeighbourContracts(
@@ -24,38 +28,67 @@ internal static partial class ModuleProjectEdit
         ScaffoldedModule module,
         String neighbour)
     {
-        var ownContracts = $@"..\{module.ContractsProjectName}\{module.ContractsProjectName}.csproj";
+        var ownContractsInclude = $@"..\{module.ContractsProjectName}\{module.ContractsProjectName}.csproj";
         var neighbourContracts = $"{module.App.ProjectPrefix}.Modules.{neighbour}.Contracts";
         var include = $@"..\..\{neighbour}\{neighbourContracts}\{neighbourContracts}.csproj";
-        var neighbourIndexes = lines.FindIndexes(line => IsNeighbourReference(line, module));
+        var contractsReferences = ReadContractsReferences(lines, module.App.ProjectPrefix);
+        var neighbourReferences = contractsReferences
+            .Where(contractsReference => contractsReference.Module != module.Name)
+            .ToList();
 
-        return lines.FindIndexes(line => ReadInclude(line) == ownContracts) is [var ownIndex, ..]
-            ? lines
+        Optional<ContractsReference> ownContracts = contractsReferences.FirstOrDefault(
+            contractsReference => contractsReference.Module == module.Name);
+
+        return ownContracts.Match(
+            ownReference => Result.Success(lines
                 .Insert(
-                    FindInsertionIndex(lines, neighbourIndexes, include, ownIndex + 1),
-                    BuildReference(lines.Lines[ownIndex], include))
-                .Join()
-            : Error.Failure("scaffold.anchor", $"{path} must hold the reference to {ownContracts}");
+                    GetInsertionIndex(neighbourReferences, neighbour, ownReference.End + 1),
+                    BuildReference(lines.Lines[ownReference.Start], include))
+                .Join()),
+            () => Error.Failure("scaffold.anchor", $"{path} must hold the reference to {ownContractsInclude}"));
     }
 
-    private static Int32 FindInsertionIndex(
-        TextLines lines,
-        IReadOnlyList<Int32> neighbourIndexes,
-        String include,
-        Int32 afterOwnContracts) =>
-        neighbourIndexes
-            .Where(index => String.CompareOrdinal(ReadInclude(lines.Lines[index]), include) > 0)
-            .DefaultIfEmpty(neighbourIndexes.Count == 0 ? afterOwnContracts : neighbourIndexes[^1] + 1)
-            .First();
+    private static IReadOnlyList<ContractsReference> ReadContractsReferences(TextLines lines, String projectPrefix) =>
+        [
+            .. lines
+                .GetIndexes(ProjectReferencePattern.IsMatch)
+                .Select(start => (Start: start, Module: FindModuleOfContracts(lines.Lines[start], projectPrefix)))
+                .Where(reference => reference.Module.HasValue)
+                .Select(reference => new ContractsReference(
+                    reference.Module.Value,
+                    reference.Start,
+                    GetEnd(lines, reference.Start))),
+        ];
 
-    private static Boolean IsNeighbourReference(String line, ScaffoldedModule module) =>
-        ModuleGraph
-            .FindModuleOfContracts(ReadInclude(line), module.App.ProjectPrefix)
-            .Where(referencedModule => referencedModule != module.Name)
-            .HasValue;
+    private static Optional<String> FindModuleOfContracts(String line, String projectPrefix) =>
+        ModuleGraph.FindModuleOfContracts(ProjectReferencePattern.Match(line).Groups["include"].Value, projectPrefix);
+
+    private static Int32 GetEnd(TextLines lines, Int32 start) =>
+        IsSelfClosing(lines.Lines[start])
+            ? start
+            : lines
+                .GetIndexes(line => line.Contains(ClosingTag, StringComparison.Ordinal))
+                .Where(index => index >= start)
+                .DefaultIfEmpty(start)
+                .First();
+
+    private static Boolean IsSelfClosing(String line) =>
+        line
+            .TrimEnd()
+            .EndsWith(SelfClosingEnd, StringComparison.Ordinal);
+
+    private static Int32 GetInsertionIndex(
+        IReadOnlyList<ContractsReference> neighbourReferences,
+        String neighbour,
+        Int32 afterOwnContracts) =>
+        neighbourReferences
+            .Where(neighbourReference => CodeLayout.NameOrder.Compare(neighbourReference.Module, neighbour) > 0)
+            .Select(neighbourReference => neighbourReference.Start)
+            .DefaultIfEmpty(neighbourReferences is [.., var lastReference] ? lastReference.End + 1 : afterOwnContracts)
+            .First();
 
     private static String BuildReference(String ownContractsLine, String include) =>
         $"{TextLines.ReadIndentation(ownContractsLine)}<ProjectReference Include=\"{include}\" />";
 
-    private static String ReadInclude(String line) => ProjectReferencePattern.Match(line).Groups["include"].Value;
+    private sealed record ContractsReference(String Module, Int32 Start, Int32 End);
 }

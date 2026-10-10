@@ -21,6 +21,35 @@ public sealed class ModuleProjectEditTests
         @"    <ProjectReference Include=""..\..\Notes\Acme.Shop.Modules.Notes.Contracts\"
         + @"Acme.Shop.Modules.Notes.Contracts.csproj"" />";
 
+    private const String Notes2Contracts =
+        @"    <ProjectReference Include=""..\..\Notes2\Acme.Shop.Modules.Notes2.Contracts\"
+        + @"Acme.Shop.Modules.Notes2.Contracts.csproj"" />";
+
+    private const String OwnContractsWithForwardSlashes =
+        """    <ProjectReference Include="../Acme.Shop.Modules.Tags.Contracts/"""
+        + """Acme.Shop.Modules.Tags.Contracts.csproj" />""";
+
+    private const String OwnContractsWithChildren =
+        @"    <ProjectReference Include=""..\Acme.Shop.Modules.Tags.Contracts\"
+        + @"Acme.Shop.Modules.Tags.Contracts.csproj"">"
+        + "\n      <Private>true</Private>\n    </ProjectReference>";
+
+    private const String BillingContractsWithChildren =
+        @"    <ProjectReference Include=""..\..\Billing\Acme.Shop.Modules.Billing.Contracts\"
+        + @"Acme.Shop.Modules.Billing.Contracts.csproj"">"
+        + "\n      <Private>true</Private>\n    </ProjectReference>";
+
+    private const String NovaContracts =
+        @"    <ProjectReference Include=""..\..\NOVA\Acme.Shop.Modules.NOVA.Contracts\"
+        + @"Acme.Shop.Modules.NOVA.Contracts.csproj"" />";
+
+    private const String CoreDomain =
+        @"    <ProjectReference Include=""..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj"" />";
+
+    private const String CoreDomainWithChildren =
+        @"    <ProjectReference Include=""..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj"">"
+        + "\n      <Private>true</Private>\n    </ProjectReference>";
+
     private const String ZonesContracts =
         @"    <ProjectReference Include=""..\..\Zones\Acme.Shop.Modules.Zones.Contracts\"
         + @"Acme.Shop.Modules.Zones.Contracts.csproj"" />";
@@ -45,6 +74,9 @@ public sealed class ModuleProjectEditTests
     [InlineData(new[] { BillingContracts, ZonesContracts }, new[] { BillingContracts, NotesContracts, ZonesContracts })]
     [InlineData(new[] { BillingContracts }, new[] { BillingContracts, NotesContracts })]
     [InlineData(new[] { ZonesContracts }, new[] { NotesContracts, ZonesContracts })]
+    [InlineData(new[] { Notes2Contracts }, new[] { NotesContracts, Notes2Contracts })]
+    [InlineData(new[] { NovaContracts }, new[] { NotesContracts, NovaContracts })]
+    [InlineData(new[] { BillingContractsWithChildren }, new[] { BillingContractsWithChildren, NotesContracts })]
     public void Neighbour_contracts_are_sorted_among_the_other_neighbours(String[] neighbours, String[] sorted)
     {
         var project = WithReferencesAfterOwnContracts(neighbours);
@@ -53,6 +85,30 @@ public sealed class ModuleProjectEditTests
 
         ReadText(edit)
             .ShouldBe(WithReferencesAfterOwnContracts(sorted));
+    }
+
+    [Fact]
+    public void Element_with_children_after_the_contracts_of_the_module_stays_whole()
+    {
+        var project = TagsProject.Replace(CoreDomain, CoreDomainWithChildren, StringComparison.Ordinal);
+
+        var edit = AddNotesContracts(project);
+
+        ReadText(edit)
+            .ShouldBe(project.Replace(OwnContracts, $"{OwnContracts}\n{NotesContracts}", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(OwnContractsWithForwardSlashes)]
+    [InlineData(OwnContractsWithChildren)]
+    public void Contracts_of_the_module_written_another_way_are_the_anchor_too(String ownContracts)
+    {
+        var project = TagsProject.Replace(OwnContracts, ownContracts, StringComparison.Ordinal);
+
+        var edit = AddNotesContracts(project);
+
+        ReadText(edit)
+            .ShouldBe(project.Replace(ownContracts, $"{ownContracts}\n{NotesContracts}", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Tsikhanau.Monolith.Scaffold.Events;
+namespace Tsikhanau.Monolith.Scaffold.Sources;
 
 internal sealed class SourceFile(String path, String text)
 {

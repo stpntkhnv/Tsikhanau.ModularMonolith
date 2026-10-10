@@ -9,8 +9,15 @@ internal static class CodeLayout
 
     private const String LineTooLong = "more than the 120 the build allows; choose a shorter name";
 
+    public static readonly StringComparer NameOrder = StringComparer.OrdinalIgnoreCase;
+
     public static readonly IComparer<String> NamespaceOrder =
         Comparer<String>.Create(CompareNamespaces);
+
+    public static readonly IComparer<String> PathOrder =
+        Comparer<String>.Create(ComparePaths);
+
+    private static readonly Char[] PathSeparators = ['/', '\\'];
 
     public static String FirstThatFits(params IReadOnlyList<String> candidates) =>
         candidates.FirstOrDefault(Fits) ?? candidates[^1];
@@ -32,10 +39,10 @@ internal static class CodeLayout
     public static Optional<String> FindTooLongLine(IEnumerable<NewFile> newFiles) =>
         newFiles
             .Where(newFile => newFile.Path.EndsWith(".cs", StringComparison.Ordinal))
-            .SelectMany(FindTooLongLines)
+            .SelectMany(GetTooLongLines)
             .FirstOrDefault();
 
-    private static IEnumerable<String> FindTooLongLines(NewFile newFile) =>
+    private static IEnumerable<String> GetTooLongLines(NewFile newFile) =>
         newFile.Content
             .Split('\n')
             .Select((line, index) => (Length: line.Length, Number: index + 1))
@@ -44,8 +51,20 @@ internal static class CodeLayout
 
     private static Int32 CompareNamespaces(String first, String second) =>
         IsSystem(first) == IsSystem(second)
-            ? String.CompareOrdinal(first, second)
+            ? NameOrder.Compare(first, second)
             : IsSystem(first) ? -1 : 1;
+
+    private static Int32 ComparePaths(String first, String second)
+    {
+        var firstSegments = first.Split(PathSeparators);
+        var secondSegments = second.Split(PathSeparators);
+
+        return firstSegments
+            .Zip(secondSegments, NameOrder.Compare)
+            .Where(order => order != 0)
+            .DefaultIfEmpty(firstSegments.Length.CompareTo(secondSegments.Length))
+            .First();
+    }
 
     private static Boolean IsSystem(String name) =>
         name == "System" || name.StartsWith("System.", StringComparison.Ordinal);

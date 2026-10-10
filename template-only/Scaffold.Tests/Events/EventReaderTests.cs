@@ -1,9 +1,10 @@
 using Tsikhanau.Monolith.Scaffold.Events;
+using Tsikhanau.Monolith.Scaffold.Sources;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Events;
 
-public sealed class EventFinderTests
+public sealed class EventReaderTests
 {
     private const String NotesEvents = "Acme.Shop.Modules.Notes.Contracts.IntegrationEvents";
 
@@ -92,8 +93,8 @@ public sealed class EventFinderTests
     [Fact]
     public void Domain_event_of_the_module_gets_a_sample_for_every_member()
     {
-        var found = CreateFinder()
-            .Find("Notes", "NoteCreatedDomainEvent");
+        var found = CreateReader()
+            .Read("Notes", "NoteCreatedDomainEvent");
 
         var handledEvent = found.GetValueOrDefault(() => throw new InvalidOperationException(ReadMessage(found)));
 
@@ -137,8 +138,8 @@ public sealed class EventFinderTests
     [Fact]
     public void Integration_event_of_a_neighbour_is_found_in_its_contracts()
     {
-        var found = CreateFinder()
-            .Find("Tags", "NoteCreatedIntegrationEvent");
+        var found = CreateReader()
+            .Read("Tags", "NoteCreatedIntegrationEvent");
 
         var handledEvent = found.GetValueOrDefault(() => throw new InvalidOperationException(ReadMessage(found)));
 
@@ -160,11 +161,11 @@ public sealed class EventFinderTests
     [Fact]
     public void Full_name_tells_two_events_of_one_name_apart()
     {
-        var finder = CreateFinder(
+        var reader = CreateReader(
             ("Tags", true, NoteCreatedIntegrationEvent.Replace("Notes", "Tags", StringComparison.Ordinal)));
 
-        var ambiguous = finder.Find("Billing", "NoteCreatedIntegrationEvent");
-        var named = finder.Find("Billing", $"{TagsEvents}.NoteCreatedIntegrationEvent");
+        var ambiguous = reader.Read("Billing", "NoteCreatedIntegrationEvent");
+        var named = reader.Read("Billing", $"{TagsEvents}.NoteCreatedIntegrationEvent");
 
         var message = ReadMessage(ambiguous);
         var owner = named.Map(handledEvent => handledEvent.OwnerModule);
@@ -217,7 +218,7 @@ public sealed class EventFinderTests
         + "event does not belong")]
     public void Event_the_module_cannot_handle_is_refused(String moduleName, String eventType, String message)
     {
-        var finder = CreateFinder(
+        var reader = CreateReader(
             (
                 "Notes",
                 true,
@@ -236,7 +237,133 @@ public sealed class EventFinderTests
                     : IntegrationEvent(OccurredOn);
                 """));
 
-        var found = finder.Find(moduleName, eventType);
+        var found = reader.Read(moduleName, eventType);
+
+        ReadMessage(found)
+            .ShouldBe(message);
+    }
+
+    [Fact]
+    public void Event_over_a_base_record_of_its_project_is_read_through_that_base()
+    {
+        var reader = CreateReader(
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain.Notes.Events;
+
+                public abstract record NoteEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain.Notes.Events;
+
+                public sealed record NoteRetiredDomainEvent(DateTimeOffset OccurredOn) : NoteEvent(OccurredOn);
+                """));
+
+        var found = reader.Read("Notes", "NoteRetiredDomainEvent");
+
+        var kind = found.Map(handledEvent => handledEvent.Kind);
+
+        kind.ShouldBe(Result.Success(EventKind.Domain));
+    }
+
+    [Theory]
+    [InlineData(
+        "NoteBurnedDomainEvent",
+        "Acme.Shop.Modules.Notes.Domain.NoteBurnedDomainEvent in the module project of Notes is not an event scaffold "
+        + "can read: its base list names SharedDomainEvent, which scaffold cannot follow to DomainEvent or "
+        + "IntegrationEvent through the declarations of the module project of Notes")]
+    [InlineData(
+        "NoteLoopDomainEvent",
+        "Acme.Shop.Modules.Notes.Domain.NoteLoopDomainEvent in the module project of Notes is not an event scaffold "
+        + "can read: its base list names NoteLoop, which scaffold cannot follow to DomainEvent or IntegrationEvent "
+        + "through the declarations of the module project of Notes")]
+    [InlineData(
+        "NoteSealedDomainEvent",
+        "Acme.Shop.Modules.Notes.Domain.NoteEvents.NoteSealedDomainEvent is nested in NoteEvents; scaffold handles "
+        + "only top-level types, one per file (STYLE 7)")]
+    [InlineData(
+        "NoteSplitDomainEvent",
+        "Acme.Shop.Modules.Notes.Domain.NoteSplitDomainEvent is declared more than once (partial); scaffold reads "
+        + "an event from one declaration")]
+    [InlineData(
+        "NoteFiledDomainEvent",
+        "cannot build a sample of NoteFiledDomainEvent.Shelf (NoteShelfKind) for the generated test; "
+        + SupportedTypes)]
+    public void Event_scaffold_cannot_read_from_its_declaration_is_refused_with_the_reason(
+        String eventType,
+        String message)
+    {
+        var reader = CreateReader(
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public sealed record NoteBurnedDomainEvent(DateTimeOffset OccurredOn) : SharedDomainEvent(OccurredOn);
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public sealed record NoteLoopDomainEvent(DateTimeOffset OccurredOn) : NoteLoop(OccurredOn);
+
+                public record NoteLoop(DateTimeOffset OccurredOn) : NoteLoopDomainEvent(OccurredOn);
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public static class NoteEvents
+                {
+                    public sealed record NoteSealedDomainEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+                }
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public sealed partial record NoteSplitDomainEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public sealed partial record NoteSplitDomainEvent;
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain;
+
+                public sealed record NoteFiledDomainEvent(DateTimeOffset OccurredOn, NoteShelfKind Shelf)
+                    : DomainEvent(OccurredOn);
+
+                public static class NoteShelf
+                {
+                    public enum NoteShelfKind
+                    {
+                        Top,
+                        Bottom,
+                    }
+                }
+                """));
+
+        var found = reader.Read("Notes", eventType);
 
         ReadMessage(found)
             .ShouldBe(message);
@@ -245,9 +372,9 @@ public sealed class EventFinderTests
     [Fact]
     public void Module_with_no_event_to_handle_is_told_that_none_was_found()
     {
-        var finder = CreateFinder(("Billing", false, "namespace Acme.Shop.Modules.Billing;\n"));
+        var reader = CreateReader(("Billing", false, "namespace Acme.Shop.Modules.Billing;\n"));
 
-        var found = finder.Find("Billing", "InvoicePaidDomainEvent");
+        var found = reader.Read("Billing", "InvoicePaidDomainEvent");
 
         ReadMessage(found)
             .ShouldBe(
@@ -259,7 +386,7 @@ public sealed class EventFinderTests
     [Fact]
     public void Every_member_without_a_sample_is_refused_in_one_message()
     {
-        var finder = CreateFinder(
+        var reader = CreateReader(
             (
                 "Notes",
                 false,
@@ -278,7 +405,7 @@ public sealed class EventFinderTests
                     : DomainEvent(OccurredOn);
                 """));
 
-        var found = finder.Find("Notes", "NoteMovedDomainEvent");
+        var found = reader.Read("Notes", "NoteMovedDomainEvent");
 
         ReadMessage(found)
             .ShouldBe(
@@ -293,7 +420,7 @@ public sealed class EventFinderTests
     [Fact]
     public void Event_without_positional_members_is_refused()
     {
-        var finder = CreateFinder(
+        var reader = CreateReader(
             (
                 "Notes",
                 false,
@@ -306,7 +433,7 @@ public sealed class EventFinderTests
                 }
                 """));
 
-        var found = finder.Find("Notes", "NoteSealedDomainEvent");
+        var found = reader.Read("Notes", "NoteSealedDomainEvent");
 
         ReadMessage(found)
             .ShouldBe(
@@ -314,7 +441,7 @@ public sealed class EventFinderTests
                 + "scaffold builds the event in the generated test through its primary constructor");
     }
 
-    private static EventFinder CreateFinder(params (String Module, Boolean IsContracts, String Text)[] extraFiles)
+    private static EventReader CreateReader(params (String Module, Boolean IsContracts, String Text)[] extraFiles)
     {
         IEnumerable<(String Module, Boolean IsContracts, String Text)> files =
         [
@@ -325,7 +452,7 @@ public sealed class EventFinderTests
             .. extraFiles,
         ];
 
-        return new EventFinder(
+        return new EventReader(
         [
             .. files
                 .GroupBy(file => (file.Module, file.IsContracts))

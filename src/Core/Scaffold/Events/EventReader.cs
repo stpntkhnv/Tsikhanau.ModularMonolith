@@ -1,11 +1,14 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Tsikhanau.Monolith.Scaffold.Sources;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Events;
 
-internal sealed class EventFinder(IReadOnlyList<SourceProject> projects)
+internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
 {
     private const String EventMark = "Event";
+
+    private const Int32 MaxBaseDepth = 8;
 
     private static readonly Dictionary<String, EventKind> EventBases = new(StringComparer.Ordinal)
     {
@@ -13,42 +16,82 @@ internal sealed class EventFinder(IReadOnlyList<SourceProject> projects)
         ["IntegrationEvent"] = EventKind.Integration,
     };
 
-    public Result<EventDeclaration> Find(String moduleName, String eventType)
+    public Result<EventDeclaration> Read(String moduleName, String eventType)
     {
+        var name = eventType.Split('.')[^1];
         var candidates = projects
-            .SelectMany(project => FindCandidates(project, eventType.Split('.')[^1]))
-            .Where(candidate => candidate.IsNamedBy(eventType))
+            .SelectMany(project => GetCandidates(project, name))
+            .Where(candidate => IsNamedBy(candidate.FullName, eventType))
             .OrderBy(candidate => candidate.FullName, StringComparer.Ordinal)
             .ToList();
 
-        return candidates switch
+        var fullNames = candidates
+            .Select(candidate => candidate.FullName)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return (candidates, fullNames) switch
         {
-            [] => BuildNotFoundError(moduleName, eventType),
-            [var candidate] => EnsureHandledBy(candidate, moduleName)
+            ([], _) => BuildNotFoundError(moduleName, eventType, name),
+            ([var candidate], _) => EnsureHandledBy(candidate, moduleName)
                 .Bind(BuildDeclaration),
-            _ => BuildAmbiguousError(eventType, candidates),
+            (_, [var fullName]) => BuildError(
+                $"{fullName} is declared more than once (partial); scaffold reads an event from one declaration"),
+            _ => BuildAmbiguousError(eventType, candidates.DistinctBy(candidate => candidate.FullName)),
         };
     }
 
-    private static IEnumerable<EventCandidate> FindCandidates(SourceProject project, String name) =>
-        project
-            .FindDeclarations<TypeDeclarationSyntax>(name)
-            .Where(declaration => declaration.Name == name)
-            .Select(declaration => new EventCandidate(project, declaration, FindKind(declaration)));
+    private static Boolean IsNamedBy(String fullName, String eventType) =>
+        !eventType.Contains('.') || fullName == eventType;
 
-    private static Optional<EventKind> FindKind(TypeDeclarationSyntax declaration) =>
+    private static IEnumerable<EventCandidate> GetCandidates(SourceProject project, String name) =>
+        project
+            .GetDeclarations<TypeDeclarationSyntax>(name)
+            .Where(declaration => declaration.Name == name)
+            .Select(declaration => new EventCandidate(project, declaration, FindKind(project, declaration)));
+
+    private static Optional<EventKind> FindKind(SourceProject project, TypeDeclarationSyntax declaration) =>
+        FindKind(project, declaration, baseDepth: 0);
+
+    private static Optional<EventKind> FindKind(
+        SourceProject project,
+        TypeDeclarationSyntax declaration,
+        Int32 baseDepth) =>
         declaration.BaseTypes
-            .Select(baseType => baseType.SimpleName)
-            .Where(EventBases.ContainsKey)
-            .Select(baseName => Optional<EventKind>.Some(EventBases[baseName]))
-            .FirstOrDefault();
+            .Select(baseType => FindKindOfBase(project, baseType.SimpleName, baseDepth))
+            .FirstOrDefault(kind => kind.HasValue);
+
+    private static Optional<EventKind> FindKindOfBase(SourceProject project, String baseName, Int32 baseDepth) =>
+        baseName switch
+        {
+            _ when EventBases.TryGetValue(baseName, out var kind) => kind,
+            _ when baseDepth < MaxBaseDepth => project
+                .FindDeclaration<TypeDeclarationSyntax>(baseName)
+                .Bind(baseDeclaration => FindKind(project, baseDeclaration, baseDepth + 1)),
+            _ => Optional<EventKind>.None(),
+        };
 
     private static Result<EventCandidate> EnsureHandledBy(EventCandidate candidate, String moduleName) =>
         candidate.Kind.Match(
             kind => EnsureHandledBy(candidate, kind, moduleName),
-            () => BuildError(
-                $"{candidate.FullName} in {candidate.Project.Role} is not an event: it derives from neither "
-                + "DomainEvent nor IntegrationEvent"));
+            () => BuildNotAnEventError(candidate));
+
+    private static Error BuildNotAnEventError(EventCandidate candidate)
+    {
+        var role = candidate.Project.Role;
+        var baseNames = candidate.Declaration.BaseTypes
+            .Select(baseType => baseType.SimpleName)
+            .ToList();
+
+        return baseNames.Count == 0
+            ? BuildError(
+                $"{candidate.FullName} in {role} is not an event: it derives from neither DomainEvent nor "
+                + "IntegrationEvent")
+            : BuildError(
+                $"{candidate.FullName} in {role} is not an event scaffold can read: its base list names "
+                + $"{String.Join(", ", baseNames)}, which scaffold cannot follow to DomainEvent or IntegrationEvent "
+                + $"through the declarations of {role}");
+    }
 
     private static Result<EventCandidate> EnsureHandledBy(EventCandidate candidate, EventKind kind, String moduleName)
     {
@@ -98,10 +141,28 @@ internal sealed class EventFinder(IReadOnlyList<SourceProject> projects)
         };
     }
 
-    private Error BuildNotFoundError(String moduleName, String eventType)
+    private Error BuildNotFoundError(String moduleName, String eventType, String name) =>
+        FindNestedError(eventType, name)
+            .GetValueOrDefault(() => BuildNoSuchTypeError(moduleName, eventType));
+
+    private Optional<Error> FindNestedError(String eventType, String name) =>
+        projects
+            .SelectMany(project => project.GetNodes<BaseTypeDeclarationSyntax>(name))
+            .Where(declaration => declaration.Name == name && !declaration.IsTopLevel)
+            .Where(declaration => IsNamedBy(declaration.FullName, eventType))
+            .OrderBy(declaration => declaration.FullName, StringComparer.Ordinal)
+            .Select(BuildNestedError)
+            .FirstOrDefault();
+
+    private static Error BuildNestedError(BaseTypeDeclarationSyntax nestedDeclaration) =>
+        BuildError(
+            $"{nestedDeclaration.FullName} is nested in {String.Join('.', nestedDeclaration.ContainingTypeNames)}; "
+            + "scaffold handles only top-level types, one per file (STYLE 7)");
+
+    private Error BuildNoSuchTypeError(String moduleName, String eventType)
     {
         var events = projects
-            .SelectMany(FindEvents)
+            .SelectMany(GetEvents)
             .Where(candidate => candidate.CanBeHandledBy(moduleName))
             .Select(candidate => candidate.Declaration.Name)
             .Distinct(StringComparer.Ordinal)
@@ -114,10 +175,10 @@ internal sealed class EventFinder(IReadOnlyList<SourceProject> projects)
             + $"{moduleName} and for an integration event in the Contracts of the other modules (found: {found})");
     }
 
-    private static IEnumerable<EventCandidate> FindEvents(SourceProject project) =>
+    private static IEnumerable<EventCandidate> GetEvents(SourceProject project) =>
         project
-            .FindDeclarations<TypeDeclarationSyntax>(EventMark)
-            .Select(declaration => new EventCandidate(project, declaration, FindKind(declaration)))
+            .GetDeclarations<TypeDeclarationSyntax>(EventMark)
+            .Select(declaration => new EventCandidate(project, declaration, FindKind(project, declaration)))
             .Where(candidate => candidate.Kind.HasValue);
 
     private static Error BuildAmbiguousError(String eventType, IEnumerable<EventCandidate> candidates) =>
@@ -137,8 +198,6 @@ internal sealed class EventFinder(IReadOnlyList<SourceProject> projects)
         Optional<EventKind> Kind)
     {
         public String FullName => Declaration.FullName;
-
-        public Boolean IsNamedBy(String eventType) => !eventType.Contains('.') || FullName == eventType;
 
         public Boolean CanBeHandledBy(String moduleName) =>
             Kind.Value == EventKind.Domain

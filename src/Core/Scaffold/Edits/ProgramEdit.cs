@@ -13,7 +13,7 @@ internal static partial class ProgramEdit
     [GeneratedRegex(@"^using (?<namespace>[A-Za-z_][\w.]*);$")]
     private static partial Regex UsingPattern { get; }
 
-    [GeneratedRegex(@"^\s*builder\.AddModule<[\w.]+>\(\);\s*$")]
+    [GeneratedRegex(@"^\s*builder\.AddModule<(?:\w+\.)*(?<module>\w+?)(?:Module)?>\(\);\s*$")]
     private static partial Regex ModuleCallPattern { get; }
 
     public static Result<FileEdit> AddModule(TextFile program, ScaffoldedModule module) =>
@@ -23,8 +23,8 @@ internal static partial class ProgramEdit
     {
         var moduleCall = $"builder.AddModule<{module.ModuleClass}>();";
         var moduleUsing = $"using {module.Namespace};";
-        var platformIndexes = lines.FindIndexes(line => line.Trim() == PlatformCall);
-        var usingIndexes = lines.FindIndexes(UsingPattern.IsMatch);
+        var platformIndexes = lines.GetIndexes(line => line.Trim() == PlatformCall);
+        var usingIndexes = lines.GetIndexes(UsingPattern.IsMatch);
 
         return Result
             .Success(lines)
@@ -32,21 +32,21 @@ internal static partial class ProgramEdit
             .Ensure(_ => usingIndexes.Count > 0, BuildAnchorError(path, "using directives at the top"))
             .Ensure(_ => !lines.Contains(moduleCall), BuildAnchorError(path, $"no {moduleCall} yet"))
             .Ensure(_ => !lines.Contains(moduleUsing), BuildAnchorError(path, $"no {moduleUsing} yet"))
-            .Map(_ => AddModuleCall(lines, platformIndexes[0], moduleCall))
+            .Map(_ => AddModuleCall(lines, platformIndexes[0], module.Name, moduleCall))
             .Map(withCall => AddUsing(withCall, usingIndexes, module.Namespace))
             .Map(updatedLines => updatedLines.Join());
     }
 
-    private static TextLines AddModuleCall(TextLines lines, Int32 platformIndex, String moduleCall)
+    private static TextLines AddModuleCall(TextLines lines, Int32 platformIndex, String moduleName, String moduleCall)
     {
         var moduleCalls = lines.Lines
             .Skip(platformIndex + 1)
             .TakeWhile(IsModuleCall)
-            .Select((line, offset) => (Call: line.Trim(), Index: platformIndex + 1 + offset))
+            .Select((line, offset) => (ModuleName: ReadModuleName(line), Index: platformIndex + 1 + offset))
             .ToList();
 
         var insertionIndex = moduleCalls
-            .Where(existing => String.CompareOrdinal(existing.Call, moduleCall) > 0)
+            .Where(existing => CodeLayout.NameOrder.Compare(existing.ModuleName, moduleName) > 0)
             .Select(existing => existing.Index)
             .DefaultIfEmpty(platformIndex + 1 + moduleCalls.Count)
             .First();
@@ -67,6 +67,8 @@ internal static partial class ProgramEdit
     }
 
     private static Boolean IsModuleCall(String line) => ModuleCallPattern.IsMatch(line);
+
+    private static String ReadModuleName(String line) => ModuleCallPattern.Match(line).Groups["module"].Value;
 
     private static String ReadNamespace(String line) => UsingPattern.Match(line).Groups["namespace"].Value;
 

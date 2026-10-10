@@ -19,8 +19,8 @@ internal static partial class SolutionEdit
     private static Result<String> AddFolder(TextLines lines, String path, ScaffoldedModule module)
     {
         var folderName = $"/{module.Folder}/";
-        var folderIndexes = lines.FindIndexes(FolderPattern.IsMatch);
-        var solutionEnds = lines.FindIndexes(line => line.Trim() == "</Solution>");
+        var folderIndexes = lines.GetIndexes(FolderPattern.IsMatch);
+        var solutionEnds = lines.GetIndexes(line => line.Trim() == "</Solution>");
 
         return Result
             .Success(lines)
@@ -29,18 +29,18 @@ internal static partial class SolutionEdit
                 _ => !folderIndexes.Any(index => HasName(lines.Lines[index], folderName)),
                 BuildAnchorError(path, $"no folder {folderName} yet"))
             .Map(_ => lines.Insert(
-                FindInsertionIndex(lines, folderIndexes, folderName, solutionEnds[0]),
+                GetInsertionIndex(lines, folderIndexes, folderName, solutionEnds[0]),
                 BuildFolder(lines, folderIndexes, folderName, module)))
             .Map(updatedLines => updatedLines.Join());
     }
 
-    private static Int32 FindInsertionIndex(
+    private static Int32 GetInsertionIndex(
         TextLines lines,
         IReadOnlyList<Int32> folderIndexes,
         String folderName,
         Int32 solutionEnd) =>
         folderIndexes
-            .Where(index => String.CompareOrdinal(ReadName(lines.Lines[index]), folderName) > 0)
+            .Where(index => CodeLayout.NameOrder.Compare(ReadName(lines.Lines[index]), folderName) > 0)
             .DefaultIfEmpty(solutionEnd)
             .First();
 

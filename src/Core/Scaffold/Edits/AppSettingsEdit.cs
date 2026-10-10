@@ -58,7 +58,8 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
     private Boolean HasNoModuleSection(JsonObjectOutline modules) => modules.FindProperty(moduleName).IsNone;
 
     private Optional<JsonPropertyOutline> FindLaterModule(JsonObjectOutline modules) =>
-        modules.Properties.FirstOrDefault(moduleSection => String.CompareOrdinal(moduleSection.Name, moduleName) > 0);
+        modules.Properties.FirstOrDefault(
+            moduleSection => CodeLayout.NameOrder.Compare(moduleSection.Name, moduleName) > 0);
 
     private Result<String> InsertBefore(JsonPropertyOutline laterModule) =>
         json.IsFirstOnLine(laterModule.NameStart)

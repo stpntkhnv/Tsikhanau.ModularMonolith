@@ -87,11 +87,11 @@ internal sealed partial class ModuleGraph(IReadOnlyDictionary<String, IReadOnlyL
         return fileSystem.FileExists(projectPath)
             ? fileSystem
                 .ReadTextFile(projectPath)
-                .Map(moduleProject => FindNeighbours(moduleProject.Text, app.ProjectPrefix, moduleName))
+                .Map(moduleProject => GetNeighbours(moduleProject.Text, app.ProjectPrefix, moduleName))
             : Result.Success<IReadOnlyList<String>>([]);
     }
 
-    private static IReadOnlyList<String> FindNeighbours(String projectText, String projectPrefix, String moduleName) =>
+    private static IReadOnlyList<String> GetNeighbours(String projectText, String projectPrefix, String moduleName) =>
         [
             .. ProjectReferencePattern
                 .Matches(projectText)

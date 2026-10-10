@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Sources;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Events;
@@ -68,12 +69,14 @@ internal sealed class MemberSamples(SourceProject project)
         {
             _ when !IsPlain(valueType) => Optional<String[]>.None(),
             _ when Primitives.Contains(valueType.SimpleName) => Optional<String[]>.Some([]),
-            _ => FindDeclaration(valueType.SimpleName)
+            _ => project
+                .FindDeclaration<BaseTypeDeclarationSyntax>(valueType.SimpleName)
                 .Map(declaration => new[] { declaration.Namespace }),
         };
 
     private Optional<MemberSample> BuildDomainSample(String typeName, String memberName) =>
-        FindDeclaration(typeName)
+        project
+            .FindDeclaration<BaseTypeDeclarationSyntax>(typeName)
             .Bind(declaration => declaration switch
             {
                 EnumDeclarationSyntax { Members: [var firstMember, ..] } => MemberSample.Of(
@@ -108,12 +111,4 @@ internal sealed class MemberSamples(SourceProject project)
             .Where(IsValueObject)
             .Select(baseType => baseType.TypeArguments[1])
             .FirstOrDefault();
-
-    private Optional<BaseTypeDeclarationSyntax> FindDeclaration(String typeName) =>
-        project
-            .FindDeclarations<BaseTypeDeclarationSyntax>(typeName)
-            .Where(declaration => declaration.Name == typeName)
-            .ToList() is [var declaration]
-            ? declaration
-            : Optional<BaseTypeDeclarationSyntax>.None();
 }

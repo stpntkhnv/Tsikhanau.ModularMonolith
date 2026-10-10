@@ -3,7 +3,7 @@ using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Scaffold.Events;
+namespace Tsikhanau.Monolith.Scaffold.Sources;
 
 internal sealed class SourceProjectReader(IFileSystem fileSystem)
 {
@@ -36,18 +36,18 @@ internal sealed class SourceProjectReader(IFileSystem fileSystem)
     }
 
     private Result<SourceProject> ReadProject(String moduleName, String projectName, Boolean isContracts) =>
-        FindSourceFiles($"{ScaffoldedModule.ModulesFolder}/{moduleName}/{projectName}")
+        GetSourceFiles($"{ScaffoldedModule.ModulesFolder}/{moduleName}/{projectName}")
             .Select(ReadSourceFile)
             .CombineAll()
             .Map(files => new SourceProject(moduleName, isContracts, files));
 
-    private IEnumerable<String> FindSourceFiles(String folder) =>
+    private IEnumerable<String> GetSourceFiles(String folder) =>
         fileSystem
             .GetFiles(folder, SourcePattern)
             .Concat(fileSystem
                 .GetDirectories(folder, "*")
                 .Where(IsSourceFolder)
-                .SelectMany(FindSourceFiles));
+                .SelectMany(GetSourceFiles));
 
     private Result<SourceFile> ReadSourceFile(String path) =>
         fileSystem
