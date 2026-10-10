@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
@@ -239,6 +240,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
             new WebApplicationOptions { EnvironmentName = Environments.Development });
 
         builder.WebHost.UseTestServer();
+        builder.AddHttpDefaults();
         if (!writesLogs)
         {
             builder.Logging.ClearProviders();
@@ -279,6 +281,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
         configure?.Invoke(builder);
 
         var app = builder.Build();
+        app.UseServiceDefaults();
         app.UseModules();
         app.MapModules();
         return app;

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
@@ -15,6 +16,8 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         "DataAnnotation validation failed for 'PongsSettings' members: 'Limit' with the error: "
         + "'The field Limit must be between 1 and 100.'.";
 
+    private static readonly String[] CoreHostRoutePrefixes = ["/health", "/alive", "/openapi/", "/scalar/"];
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -22,9 +25,35 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
 
-        var routes = ReadRoutes(testModulesHost);
+        var routeEndpoints = ReadRouteEndpoints(testModulesHost);
+        var moduleRoutes = routeEndpoints
+            .Where(IsModuleRoute)
+            .Select(DescribeModuleRoute);
 
-        routes.ShouldBe(["Pings GET /pings/{pingId:guid}", "Pongs GET /pongs/{pongId:guid}/source"], ignoreOrder: true);
+        var hostRoutes = routeEndpoints
+            .Where(IsHostRoute)
+            .Select(endpoint => endpoint.RoutePattern.RawText ?? String.Empty);
+
+        moduleRoutes.ShouldBe(
+            ["Pings GET /pings/{pingId:guid}", "Pongs GET /pongs/{pongId:guid}/source"],
+            ignoreOrder: true);
+
+        hostRoutes.ShouldAllBe(route => IsCoreHostRoute(route));
+    }
+
+    [Fact]
+    public async Task Host_serves_health_alive_and_openapi_from_the_core_defaults()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var httpClient = testModulesHost.CreateClient();
+
+        var healthResponse = await httpClient.GetAsync("/health", CancellationToken);
+        var aliveResponse = await httpClient.GetAsync("/alive", CancellationToken);
+        var openApiResponse = await httpClient.GetAsync("/openapi/v1.json", CancellationToken);
+
+        healthResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        aliveResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        openApiResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -63,13 +92,21 @@ public sealed class ModuleHostTests(PostgresFixture postgresFixture)
         exception.Message.ShouldBe(InvalidPongsSettingMessage);
     }
 
-    private static IEnumerable<String> ReadRoutes(TestModulesHost testModulesHost) =>
+    private static IReadOnlyList<RouteEndpoint> ReadRouteEndpoints(TestModulesHost testModulesHost) =>
         testModulesHost.Services
             .GetRequiredService<EndpointDataSource>().Endpoints
             .OfType<RouteEndpoint>()
-            .Select(DescribeRoute);
+            .ToList();
 
-    private static String DescribeRoute(RouteEndpoint endpoint)
+    private static Boolean IsModuleRoute(RouteEndpoint endpoint) =>
+        endpoint.Metadata.GetMetadata<ITagsMetadata>() is not null;
+
+    private static Boolean IsHostRoute(RouteEndpoint endpoint) => !IsModuleRoute(endpoint);
+
+    private static Boolean IsCoreHostRoute(String route) =>
+        CoreHostRoutePrefixes.Any(prefix => route.StartsWith(prefix, StringComparison.Ordinal));
+
+    private static String DescribeModuleRoute(RouteEndpoint endpoint)
     {
         var module = endpoint.Metadata
             .GetRequiredMetadata<ITagsMetadata>().Tags

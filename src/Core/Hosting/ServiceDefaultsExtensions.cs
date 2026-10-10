@@ -15,6 +15,11 @@ public static class ServiceDefaultsExtensions
         params String[] activitySources)
     {
         builder.AddTelemetry(activitySources);
+        return builder.AddHttpDefaults();
+    }
+
+    public static WebApplicationBuilder AddHttpDefaults(this WebApplicationBuilder builder)
+    {
         builder.AddHealth();
         builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
         builder.Services.AddProblemDetails();
