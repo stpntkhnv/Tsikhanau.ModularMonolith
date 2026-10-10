@@ -683,6 +683,32 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Theory]
+    [InlineData("endpoints.MapGroup(\"/archived\").MapGet(\"/note-summary\", Handle)")]
+    [InlineData("archived.MapGet(\"/note-summary\", Handle)")]
+    public async Task Query_whose_path_only_a_nested_group_maps_is_written(String mapCall)
+    {
+        _app.Write(
+            $"{NotesProject}/Features/ArchivedSummary/ArchivedSummaryEndpoint.cs",
+            $$"""
+            internal sealed class ArchivedSummaryEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints)
+                {
+                    var archived = endpoints.MapGroup("/archived");
+                    {{mapCall}};
+                }
+            }
+            """);
+
+        var exitCode = await RunAsync("feature Notes GetNoteSummary --kind query --endpoint get");
+
+        var error = _error.ToString();
+
+        error.ShouldBeEmpty();
+        exitCode.ShouldBe(0);
+    }
+
     [Fact]
     public async Task Public_query_that_exists_is_refused_with_both_its_folders_and_its_files()
     {

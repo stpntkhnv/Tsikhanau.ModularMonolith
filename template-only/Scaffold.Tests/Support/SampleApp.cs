@@ -129,20 +129,27 @@ internal sealed class SampleApp : IDisposable
         return output;
     }
 
-    private ProcessStartInfo CreateGitStartInfo(IReadOnlyList<String> arguments) =>
-        new("git", arguments)
+    private ProcessStartInfo CreateGitStartInfo(IReadOnlyList<String> arguments)
+    {
+        var startInfo = new ProcessStartInfo("git", arguments)
         {
             WorkingDirectory = Root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            Environment =
-            {
-                ["GIT_CONFIG_GLOBAL"] = "/dev/null",
-                ["GIT_CONFIG_NOSYSTEM"] = "1",
-                ["GIT_AUTHOR_NAME"] = "test",
-                ["GIT_AUTHOR_EMAIL"] = "test@example.com",
-                ["GIT_COMMITTER_NAME"] = "test",
-                ["GIT_COMMITTER_EMAIL"] = "test@example.com",
-            },
         };
+
+        startInfo.Environment.Keys
+            .Where(name => name.StartsWith("GIT_", StringComparison.Ordinal))
+            .ToList()
+            .ForEach(name => startInfo.Environment.Remove(name));
+
+        startInfo.Environment["GIT_CONFIG_GLOBAL"] = "/dev/null";
+        startInfo.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        startInfo.Environment["GIT_AUTHOR_NAME"] = "test";
+        startInfo.Environment["GIT_AUTHOR_EMAIL"] = "test@example.com";
+        startInfo.Environment["GIT_COMMITTER_NAME"] = "test";
+        startInfo.Environment["GIT_COMMITTER_EMAIL"] = "test@example.com";
+
+        return startInfo;
+    }
 }

@@ -31,7 +31,17 @@ internal sealed class RouteVerifier(IReadOnlyList<SourceProject> moduleProjects)
                 ArgumentList.Arguments: [var routeArgument, ..],
             }
         && mapAccess.Name.Identifier.Text == mapMethod
+        && IsCalledOnAParameter(mapAccess)
         && IsStringLiteral(routeArgument.Expression, route);
+
+    private static Boolean IsCalledOnAParameter(MemberAccessExpressionSyntax mapAccess) =>
+        mapAccess.Expression is IdentifierNameSyntax receiver
+        && mapAccess
+            .Ancestors()
+            .OfType<BaseMethodDeclarationSyntax>()
+            .Take(1)
+            .Any(method => method.ParameterList.Parameters.Any(parameter =>
+                parameter.Identifier.Text == receiver.Identifier.Text));
 
     private static Boolean IsStringLiteral(ExpressionSyntax expression, String text) =>
         expression is LiteralExpressionSyntax literal
