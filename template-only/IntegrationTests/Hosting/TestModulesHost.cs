@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.TestHost;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Tsikhanau.Monolith.Api.Callers;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
@@ -77,13 +80,15 @@ internal sealed class TestModulesHost : IAsyncDisposable
         Boolean runInBackground = false,
         TimeSpan? handlerTimeout = null,
         Boolean writesLogs = true,
-        Action<IHostApplicationBuilder>? configure = null) =>
+        Action<IHostApplicationBuilder>? configure = null,
+        Boolean requiresAuthentication = false) =>
         StartAsync(
             postgresFixture.ConnectionString,
             runInBackground,
             handlerTimeout: handlerTimeout,
             writesLogs: writesLogs,
-            configure: configure);
+            configure: configure,
+            requiresAuthentication: requiresAuthentication);
 
     public static Task<TestModulesHost> StartAsync(
         String connectionString,
@@ -92,7 +97,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
         TimeSpan? handlerTimeout = null,
         Boolean writesLogs = true,
         Action<IHostApplicationBuilder>? configure = null,
-        String? environmentName = null) =>
+        String? environmentName = null,
+        Boolean requiresAuthentication = false) =>
         BuildAndStartAsync(
             connectionString,
             runInBackground,
@@ -100,7 +106,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             handlerTimeout ?? HandlerTimeout,
             writesLogs,
             configure,
-            environmentName ?? Environments.Development);
+            environmentName ?? Environments.Development,
+            requiresAuthentication);
 
     internal static IHost BuildUnstarted(String connectionString) =>
         BuildUnstarted(connectionString, new FakeTimeProvider(TestStartedOn));
@@ -114,7 +121,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             HandlerTimeout,
             writesLogs: true,
             configure: null,
-            Environments.Development);
+            Environments.Development,
+            requiresAuthentication: false);
 
     internal static IHost BuildUnstarted(String connectionString, Action<IHostApplicationBuilder> configure) =>
         Build(
@@ -125,7 +133,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             HandlerTimeout,
             writesLogs: true,
             configure,
-            Environments.Development);
+            Environments.Development,
+            requiresAuthentication: false);
 
     public AsyncServiceScope CreateScope() => Services.CreateAsyncScope();
 
@@ -216,7 +225,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
         TimeSpan handlerTimeout,
         Boolean writesLogs,
         Action<IHostApplicationBuilder>? configure,
-        String environmentName)
+        String environmentName,
+        Boolean requiresAuthentication)
     {
         var fakeTimeProvider = new FakeTimeProvider(TestStartedOn);
         var app = Build(
@@ -227,7 +237,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             handlerTimeout,
             writesLogs,
             configure,
-            environmentName);
+            environmentName,
+            requiresAuthentication);
 
         try
         {
@@ -250,7 +261,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
         TimeSpan handlerTimeout,
         Boolean writesLogs,
         Action<IHostApplicationBuilder>? configure,
-        String environmentName)
+        String environmentName,
+        Boolean requiresAuthentication)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
 
@@ -293,6 +305,11 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Services.AddSingleton<TimeProvider>(fakeTimeProvider);
         builder.AddModule<PingsModule>();
         builder.AddModule<PongsModule>();
+        if (requiresAuthentication)
+        {
+            RequireCallers(builder.Services);
+        }
+
         configure?.Invoke(builder);
 
         var app = builder.Build();
@@ -300,6 +317,22 @@ internal sealed class TestModulesHost : IAsyncDisposable
         app.UseModules();
         app.MapModules();
         return app;
+    }
+
+    private static void RequireCallers(IServiceCollection services)
+    {
+        services
+            .AddAuthentication(TestCallerAuthenticationHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestCallerAuthenticationHandler>(
+                TestCallerAuthenticationHandler.SchemeName,
+                configureOptions: null);
+
+        services
+            .AddAuthorizationBuilder()
+            .SetFallbackPolicy(
+                new AuthorizationPolicyBuilder()
+                    .RequireCaller()
+                    .Build());
     }
 
     private TPump ResolvePump<TPump>()

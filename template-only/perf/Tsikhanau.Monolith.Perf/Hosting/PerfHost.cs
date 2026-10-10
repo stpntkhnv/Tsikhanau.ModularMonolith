@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Tsikhanau.Monolith.Api.Callers;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
@@ -24,6 +25,7 @@ internal static class PerfHost
         ConfigureLogging(builder.Logging, settings);
         builder.EnsureConnectionString();
         builder.Services.AddPlatformServices(builder.Configuration);
+        builder.Services.AddCaller();
         builder.Services.AddPingsInfrastructure();
         builder.Services.AddPongsInfrastructure();
 

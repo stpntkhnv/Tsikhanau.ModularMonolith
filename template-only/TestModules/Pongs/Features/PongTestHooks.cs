@@ -33,6 +33,8 @@ internal sealed class PongTestHooks
 
     public ConcurrentQueue<String> ReceivedSecrets { get; } = new();
 
+    public ConcurrentQueue<PingCreatedCallers> ReceivedCallers { get; } = new();
+
     public Optional<ActivityTraceId> LastTraceId { get; private set; }
 
     public void Record(Guid pingId)

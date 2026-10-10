@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Tsikhanau.Monolith.Api.Callers;
 using Tsikhanau.Monolith.Application.Settings;
 using Tsikhanau.Monolith.Shared.Collections;
 
@@ -16,7 +17,10 @@ public static class ModuleHostExtensions
     {
         var module = new TModule();
         module.Register(builder.Services, builder.Configuration.GetSection($"{ModulesSection}:{module.Name}"));
-        builder.Services.AddSingleton<IModule>(module);
+        builder.Services
+            .AddSingleton<IModule>(module)
+            .AddCaller();
+
         return builder;
     }
 

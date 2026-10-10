@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Tsikhanau.Monolith.Application.Callers;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
@@ -9,7 +10,8 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Features.PingCreated;
 internal sealed class PingCreatedIntegrationEventHandler(
     IPongRepository pongRepository,
     PongTestHooks pongTestHooks,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ICaller caller)
     : IIntegrationEventHandler<PingCreatedIntegrationEvent>
 {
     public static readonly Error Rejected = Error.Failure("Pong.Rejected", "Pong refused this ping");
@@ -21,6 +23,9 @@ internal sealed class PingCreatedIntegrationEventHandler(
         CancellationToken cancellationToken)
     {
         pongTestHooks.Record(integrationEvent.PingId);
+        pongTestHooks.ReceivedCallers.Enqueue(
+            new PingCreatedCallers(integrationEvent.PingId, integrationEvent.CreatorId, caller.Id));
+
         await pongTestHooks.BeforeHandle();
         if (pongTestHooks.TerminateConnectionFor.Contains(integrationEvent.Label))
         {

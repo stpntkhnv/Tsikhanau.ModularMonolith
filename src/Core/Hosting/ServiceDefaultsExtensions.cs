@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
@@ -48,6 +50,7 @@ public static class ServiceDefaultsExtensions
             });
 
         app.UseStatusCodePages();
+        app.UseAuthenticationAndAuthorizationWhenRegistered();
         app.MapHealth();
         if (app.Environment.IsDevelopment())
         {
@@ -62,6 +65,24 @@ public static class ServiceDefaultsExtensions
 
         return app;
     }
+
+    private static void UseAuthenticationAndAuthorizationWhenRegistered(this WebApplication app)
+    {
+        if (app.IsRegistered<IAuthenticationSchemeProvider>())
+        {
+            app.UseAuthentication();
+        }
+
+        if (app.IsRegistered<IAuthorizationHandlerProvider>())
+        {
+            app.UseAuthorization();
+        }
+    }
+
+    private static Boolean IsRegistered<TService>(this WebApplication app) =>
+        app.Services
+            .GetRequiredService<IServiceProviderIsService>()
+            .IsService(typeof(TService));
 
     private static void CustomizeProblemDetails(ProblemDetailsContext context)
     {

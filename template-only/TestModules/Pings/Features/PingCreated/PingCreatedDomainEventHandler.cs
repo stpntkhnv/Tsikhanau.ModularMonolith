@@ -1,3 +1,4 @@
+using Tsikhanau.Monolith.Application.Callers;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings.Events;
@@ -5,7 +6,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.TestModules.Pings.Features.PingCreated;
 
-internal sealed class PingCreatedDomainEventHandler(IOutbox<IPingsModule> outbox)
+internal sealed class PingCreatedDomainEventHandler(IOutbox<IPingsModule> outbox, ICaller caller)
     : IDomainEventHandler<PingCreatedDomainEvent>
 {
     public Task<Result<Unit>> Handle(PingCreatedDomainEvent domainEvent, CancellationToken cancellationToken)
@@ -14,7 +15,8 @@ internal sealed class PingCreatedDomainEventHandler(IOutbox<IPingsModule> outbox
             new PingCreatedIntegrationEvent(
                 domainEvent.OccurredOn,
                 domainEvent.PingId.Value,
-                domainEvent.Label.Value));
+                domainEvent.Label.Value,
+                caller.Id));
 
         return Task.FromResult(Result.Success());
     }

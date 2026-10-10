@@ -1,7 +1,12 @@
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 
 [IntegrationEventName("pings.ping-created")]
-public sealed record PingCreatedIntegrationEvent(DateTimeOffset OccurredOn, Guid PingId, String Label)
+public sealed record PingCreatedIntegrationEvent(
+    DateTimeOffset OccurredOn,
+    Guid PingId,
+    String Label,
+    Optional<String> CreatorId)
     : IntegrationEvent(OccurredOn);
