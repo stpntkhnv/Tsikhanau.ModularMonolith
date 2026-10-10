@@ -5,4 +5,5 @@ internal enum FeatureKind
     Command,
     Query,
     PublicQuery,
+    EventHandler,
 }

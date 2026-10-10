@@ -6,6 +6,9 @@
     <InternalsVisibleTo Include="Tsikhanau.Monolith.Scaffold.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\Packages\Tsikhanau.Railway\Tsikhanau.Railway.csproj" />
     <ProjectReference Include="..\Shared\Tsikhanau.Monolith.Shared.csproj" />
   </ItemGroup>

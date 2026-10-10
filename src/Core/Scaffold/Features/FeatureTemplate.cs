@@ -1,3 +1,4 @@
+using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Transactions;
 using static Tsikhanau.Monolith.Scaffold.Modules.CodeLayout;
 
@@ -14,6 +15,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
         {
             FeatureKind.Query => [QueryFile, DtoFile, HandlerFile, .. QueryEndpointFiles],
             FeatureKind.PublicQuery => [PublicQueryFile, PublicDtoFile, HandlerFile],
+            FeatureKind.EventHandler => [HandlerFile],
             _ => [CommandFile, HandlerFile, .. CommandEndpointFiles],
         };
 
@@ -80,12 +82,32 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
         {
             FeatureKind.Query => ["Tsikhanau.Monolith.Application.Queries"],
             FeatureKind.PublicQuery => ["Tsikhanau.Monolith.Application.Queries", feature.PublicQueryNamespace],
+            FeatureKind.EventHandler => ["Tsikhanau.Monolith.Application.Events", HandledEvent.Namespace],
             _ => ["Tsikhanau.Monolith.Application.Commands"],
         };
 
-    private String HandlerInterface => feature.IsQuery ? "IQueryHandler" : "ICommandHandler";
+    private EventDeclaration HandledEvent => feature.Event.Value;
 
-    private String HandledParameter => feature.IsQuery ? "query" : "command";
+    private String HandlerInterface =>
+        feature.Kind switch
+        {
+            FeatureKind.Query or FeatureKind.PublicQuery => "IQueryHandler",
+            FeatureKind.EventHandler => HandledEvent.HandlerInterface,
+            _ => "ICommandHandler",
+        };
+
+    private String HandledType => feature.IsEventHandler ? HandledEvent.Name : feature.HandledRequest;
+
+    private String HandledParameter =>
+        feature.Kind switch
+        {
+            FeatureKind.Query or FeatureKind.PublicQuery => "query",
+            FeatureKind.EventHandler => HandledEvent.ParameterName,
+            _ => "command",
+        };
+
+    private IReadOnlyList<String> HandlerTypeArguments =>
+        feature.IsEventHandler ? [HandledType] : [HandledType, feature.HandlerResult];
 
     private NewFile RequestFile =>
         new(
@@ -190,8 +212,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
     {
         get
         {
-            var typeArguments = new[] { feature.HandledRequest, feature.HandlerResult };
-            var baseType = $"{HandlerInterface}<{String.Join(", ", typeArguments)}>";
+            var baseType = $"{HandlerInterface}<{String.Join(", ", HandlerTypeArguments)}>";
 
             return FirstThatFits(
                 $"internal sealed class {feature.Handler} : {baseType}",
@@ -202,7 +223,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
                 $"""
                  internal sealed class {feature.Handler}
                      : {HandlerInterface}<
-                         {String.Join(",\n        ", typeArguments)}>
+                         {String.Join(",\n        ", HandlerTypeArguments)}>
                  """);
         }
     }
@@ -212,7 +233,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
         get
         {
             var head = $"public Task<Result<{feature.HandlerResult}>> Handle";
-            var parameter = $"{feature.HandledRequest} {HandledParameter}";
+            var parameter = $"{HandledType} {HandledParameter}";
 
             return FirstThatFits(
                 $"""
@@ -247,7 +268,11 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
              """);
 
     private static String CodeFile(String codeNamespace, IReadOnlyList<String> usings, String body) =>
-        $"{UsingBlock(usings)}namespace {codeNamespace};\n\n{body}\n";
+        $"{UsingBlock([.. usings.Where(usedNamespace => !Encloses(usedNamespace, codeNamespace))])}"
+        + $"namespace {codeNamespace};\n\n{body}\n";
+
+    private static Boolean Encloses(String outerNamespace, String codeNamespace) =>
+        codeNamespace == outerNamespace || codeNamespace.StartsWith($"{outerNamespace}.", StringComparison.Ordinal);
 
     private static String UsingBlock(IReadOnlyList<String> usings) =>
         usings.Count == 0 ? String.Empty : $"{Usings(usings)}\n\n";

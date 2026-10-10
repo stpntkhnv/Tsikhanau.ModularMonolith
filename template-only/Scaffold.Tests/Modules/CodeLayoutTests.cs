@@ -26,6 +26,19 @@ public sealed class CodeLayoutTests
     }
 
     [Fact]
+    public void Usings_name_each_namespace_once()
+    {
+        var usings = CodeLayout.Usings("Tsikhanau.Railway", "Acme.Shop", "System", "Tsikhanau.Railway", "System");
+
+        usings.ShouldBe(
+            """
+            using System;
+            using Acme.Shop;
+            using Tsikhanau.Railway;
+            """);
+    }
+
+    [Fact]
     public void First_form_whose_lines_all_fit_is_taken()
     {
         var code = CodeLayout.FirstThatFits($"short\n{LineOf121Characters}", $"short\n{LineOf120Characters}", "last");

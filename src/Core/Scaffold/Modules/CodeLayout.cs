@@ -19,6 +19,7 @@ internal static class CodeLayout
         String.Join(
             '\n',
             namespaces
+                .Distinct(StringComparer.Ordinal)
                 .Order(NamespaceOrder)
                 .Select(name => $"using {name};"));
 

@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Cli;
+using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Monolith.Scaffold.Transactions;
@@ -24,7 +25,19 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         IFileSystem fileSystem) =>
         new ModuleReader(fileSystem)
             .Read(app, validRequest.ModuleName)
-            .Map(module => new ScaffoldedFeature(module, validRequest));
+            .Bind(module => FindEvent(app, validRequest, fileSystem)
+                .Map(handledEvent => new ScaffoldedFeature(module, validRequest) { Event = handledEvent }));
+
+    private static Result<Optional<EventDeclaration>> FindEvent(
+        AppLayout app,
+        FeatureRequest validRequest,
+        IFileSystem fileSystem) =>
+        validRequest.EventType.Match(
+            eventType => new SourceProjectReader(fileSystem)
+                .Read(app)
+                .Bind(projects => new EventFinder(projects).Find(validRequest.ModuleName, eventType))
+                .Map(Optional<EventDeclaration>.Some),
+            () => Result.Success(Optional<EventDeclaration>.None()));
 
     private static Result<ScaffoldedFeature> EnsureTestProject(ScaffoldedFeature feature, IFileSystem fileSystem) =>
         fileSystem
@@ -49,17 +62,20 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         return Result
             .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
             .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
-            .Bind((_, facadeChange) => CombinePlan(feature, facadeChange, featureFiles, nextStep));
+            .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
+            .Bind((_, facadeChange, referenceEdits) =>
+                CombinePlan(feature, facadeChange, referenceEdits, featureFiles, nextStep));
     }
 
     private static Result<ScaffoldPlan> CombinePlan(
         ScaffoldedFeature feature,
         FacadeChange facadeChange,
+        IReadOnlyList<FileEdit> referenceEdits,
         IReadOnlyList<NewFile> featureFiles,
         String nextStep) =>
         CodeLayout
-            .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], $"feature name '{feature.Name}'")
-            .Map(newFiles => new ScaffoldPlan(newFiles, facadeChange.FileEdits, [], nextStep));
+            .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], feature.ChosenNames)
+            .Map(newFiles => new ScaffoldPlan(newFiles, [.. facadeChange.FileEdits, .. referenceEdits], [], nextStep));
 
     private static Result<Unit> EnsureNoSuchFeature(
         ScaffoldedFeature feature,

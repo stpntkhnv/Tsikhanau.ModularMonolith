@@ -18,6 +18,16 @@ public sealed class FeatureRequestTests
         "a public query has no endpoint: neighbours ask INotesQueryFacade for it; "
         + "for HTTP add a query of the module (--kind query --endpoint get)";
 
+    private const String EventHandlerWithEndpoint =
+        "an event handler has no endpoint: the module runs it when the event arrives";
+
+    private const String EventOfAnotherKind = "--event belongs to --kind event-handler:";
+
+    private const String PublicQueryWithEvent = $"{EventOfAnotherKind} a public query handles no event";
+
+    private const String EventHandlerWithoutEvent =
+        "--kind event-handler needs --event <Type>: a domain event of Notes or an integration event of a neighbour";
+
     [Theory]
     [InlineData("ArchiveNote", "None")]
     [InlineData("CreateNote", "Post")]
@@ -100,6 +110,48 @@ public sealed class FeatureRequestTests
 
         message.ShouldBe(problem);
     }
+
+    [Fact]
+    public void Event_handler_with_an_event_and_no_endpoint_is_valid()
+    {
+        var request = CreateEventHandler(EndpointMethod.None, "NoteCreatedDomainEvent");
+
+        var validated = request.Validate();
+
+        validated.ShouldBe(Result.Success(request));
+    }
+
+    [Theory]
+    [InlineData("EventHandler", "Post", "NoteCreatedDomainEvent", EventHandlerWithEndpoint)]
+    [InlineData("EventHandler", "Get", "NoteCreatedDomainEvent", EventHandlerWithEndpoint)]
+    [InlineData("EventHandler", "None", "", EventHandlerWithoutEvent)]
+    [InlineData("Command", "None", "NoteCreatedDomainEvent", $"{EventOfAnotherKind} a command handles no event")]
+    [InlineData("Query", "Get", "NoteCreatedDomainEvent", $"{EventOfAnotherKind} a query handles no event")]
+    [InlineData("PublicQuery", "None", "NoteCreatedDomainEvent", PublicQueryWithEvent)]
+    public void Event_that_does_not_fit_the_kind_is_refused(
+        String kind,
+        String method,
+        String eventType,
+        String problem)
+    {
+        var request = new FeatureRequest(
+            "Notes",
+            "NoteCreated",
+            Enum.Parse<FeatureKind>(kind),
+            Enum.Parse<EndpointMethod>(method))
+        {
+            EventType = eventType.Length == 0 ? Optional<String>.None() : eventType,
+        };
+
+        var validated = request.Validate();
+
+        var message = validated.Match(_ => "valid", error => error.Message);
+
+        message.ShouldBe(problem);
+    }
+
+    private static FeatureRequest CreateEventHandler(EndpointMethod method, String eventType) =>
+        new("Notes", "NoteCreated", FeatureKind.EventHandler, method) { EventType = eventType };
 
     private static FeatureRequest CreateCommand(String name, EndpointMethod method) =>
         new("Notes", name, FeatureKind.Command, method);

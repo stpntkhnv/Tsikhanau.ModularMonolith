@@ -6,24 +6,26 @@ namespace Tsikhanau.Monolith.Scaffold.Cli;
 
 internal static class FeatureCommandLine
 {
-    public const String Synopsis =
-        $"bash scripts/scaffold.sh feature <Module> <Name> --kind {KindNames} [--endpoint {MethodNames}]";
+    public const String Synopsis = $"bash scripts/scaffold.sh feature <Module> <Name> {KindSynopsis} {OptionsSynopsis}";
 
-    private const String KindNames = "command|query|public-query";
+    private const String KindSynopsis = "--kind command|query|public-query|event-handler";
 
-    private const String MethodNames = "none|get|post|put|delete";
+    private const String OptionsSynopsis = $"[{EndpointOption} none|get|post|put|delete] [{EventOption} <Type>]";
 
     private const String KindOption = "--kind";
 
     private const String EndpointOption = "--endpoint";
 
-    private static readonly String[] Options = [KindOption, EndpointOption];
+    private const String EventOption = "--event";
+
+    private static readonly String[] Options = [KindOption, EndpointOption, EventOption];
 
     private static readonly Dictionary<String, FeatureKind> Kinds = new(StringComparer.Ordinal)
     {
         ["command"] = FeatureKind.Command,
         ["query"] = FeatureKind.Query,
         ["public-query"] = FeatureKind.PublicQuery,
+        ["event-handler"] = FeatureKind.EventHandler,
     };
 
     private static readonly Dictionary<String, EndpointMethod> Methods = new(StringComparer.OrdinalIgnoreCase)
@@ -71,8 +73,11 @@ internal static class FeatureCommandLine
         Result
             .Collect(ParseKind(options))
             .And(ParseMethod(options))
-            .Map(IScaffoldCommand (kind, method) =>
-                new FeatureCommand(new FeatureRequest(moduleName, featureName, kind, method)));
+            .Map(IScaffoldCommand (kind, method) => new FeatureCommand(
+                new FeatureRequest(moduleName, featureName, kind, method) { EventType = FindEvent(options) }));
+
+    private static Optional<String> FindEvent(IReadOnlyDictionary<String, String> options) =>
+        options.TryGetValue(EventOption, out var eventType) ? eventType : Optional<String>.None();
 
     private static Result<FeatureKind> ParseKind(IReadOnlyDictionary<String, String> options) =>
         options.TryGetValue(KindOption, out var kind)

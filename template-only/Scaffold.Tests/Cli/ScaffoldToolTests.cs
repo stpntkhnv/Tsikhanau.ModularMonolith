@@ -14,8 +14,8 @@ public sealed class ScaffoldToolTests : IDisposable
     private const String ModuleSynopsis = "bash scripts/scaffold.sh module <Name> [--settings]";
 
     private const String FeatureSynopsis =
-        "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query "
-        + "[--endpoint none|get|post|put|delete]";
+        "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query|event-handler "
+        + "[--endpoint none|get|post|put|delete] [--event <Type>]";
 
     private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureSynopsis}";
 
@@ -89,6 +89,11 @@ public sealed class ScaffoldToolTests : IDisposable
     [InlineData("feature Notes Pin --kind Query", "--kind 'Query' is not a feature kind")]
     [InlineData("feature Notes Pin --kind public_query", "--kind 'public_query' is not a feature kind")]
     [InlineData("feature Notes Pin --kind command --endpoint patch", "--endpoint 'patch' is not an endpoint method")]
+    [InlineData("feature Notes Pin --kind Event-handler --event E", "--kind 'Event-handler' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind event_handler --event E", "--kind 'event_handler' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind event-handler --event", "--event needs a value")]
+    [InlineData("feature Notes Pin --event --kind event-handler", "--event needs a value")]
+    [InlineData("feature Notes Pin --kind event-handler --event A --event B", "--event is given twice")]
     public async Task Feature_command_line_scaffold_cannot_read_is_refused_with_the_usage(
         String commandLine,
         String problem)
