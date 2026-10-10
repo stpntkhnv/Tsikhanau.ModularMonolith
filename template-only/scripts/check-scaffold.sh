@@ -108,7 +108,7 @@ make_app() {
   app=$consumer/$name
   [[ -n "$consumer" && -d "$app/.git" ]] || fail_with_log "$log" "check-consumer.sh named no kept app"
   cp -- "$app/.gate/skips" "$work/skips"
-  record "renamed app $name (check-consumer.sh steps 1-4)" "" "" "gate green in $(seconds_since "$begun")"
+  record "app $name from dotnet new (check-consumer.sh steps 1-3)" "" "" "gate green in $(seconds_since "$begun")"
 }
 
 scaffold() {

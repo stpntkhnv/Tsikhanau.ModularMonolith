@@ -152,12 +152,19 @@ link_rules() {
 }
 
 find_rulebook() {
-  local path=${RULEBOOK_PATH:-${HOME-}/homes/personal/main/Tsikhanau.Rulebook}
+  local path
+  path=${RULEBOOK_PATH:-$(default_rulebook)}
   if [[ ! -d "$path" ]]; then
     echo "init: no rulebook at $path; clone Tsikhanau.Rulebook there or set RULEBOOK_PATH to its folder, or run init with --no-rules to skip the rules links" >&2
     exit 1
   fi
   CDPATH='' cd -- "$path" && pwd -P
+}
+
+default_rulebook() {
+  local common
+  common=$(git rev-parse --path-format=absolute --git-common-dir)
+  printf '%s/Tsikhanau.Rulebook\n' "$(dirname -- "$(dirname -- "$common")")"
 }
 
 check_rule_sources() {

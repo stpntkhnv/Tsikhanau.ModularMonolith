@@ -7,8 +7,9 @@ export GIT_AUTHOR_NAME=consumer GIT_AUTHOR_EMAIL=consumer@example.com
 export GIT_COMMITTER_NAME=consumer GIT_COMMITTER_EMAIL=consumer@example.com
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-template_name=ModularMonolith
-template_database=modularmonolith
+template_short_name=tsikhanau-monolith
+template_app_name='modular.?monolith'
+post_action_not_run=104
 bumped_package=OpenTelemetry.Instrumentation.Runtime
 bumped_version=1.17.0
 extra_folder=src/Core/Extra
@@ -25,10 +26,12 @@ main() {
   mkdir "$work/logs"
   echo "check-consumer: $name, working folder $work"
 
-  step 1 copy copy_template
-  step 2 rename rename_app
-  step 3 "core and name" check_core_and_name
-  step 4 "init, hook, gate" init_commit_gate
+  step 1 "dotnet new" new_app
+  step 2 "core and name" check_core_and_name
+  step 3 "init, hook, gate" init_commit_gate
+  if [[ -n "$module" ]]; then
+    step 4 module add_module
+  fi
   if [[ $update -eq 1 ]]; then
     step 5 update-core update_across_template_commits
   fi
@@ -36,7 +39,7 @@ main() {
 }
 
 usage() {
-  echo "usage: template-only/scripts/check-consumer.sh [<name>] [--keep] [--no-update]" >&2
+  echo "usage: template-only/scripts/check-consumer.sh [<name>] [--keep] [--no-update] [--module <Name>]" >&2
   exit 2
 }
 
@@ -44,10 +47,16 @@ read_arguments() {
   name=""
   keep=0
   update=1
+  module=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --keep) keep=1 ;;
       --no-update) update=0 ;;
+      --module)
+        [[ $# -gt 1 ]] || usage
+        module=$2
+        shift
+        ;;
       -*) usage ;;
       *)
         [[ -z "$name" ]] || usage
@@ -61,8 +70,7 @@ read_arguments() {
     echo "check-consumer: the name may hold only letters, digits, dots, hyphens and underscores: $name" >&2
     exit 2
   fi
-  database=${name,,}
-  database=${database//[.-]/_}
+  solution=${name//-/_}.slnx
 }
 
 step() {
@@ -109,7 +117,13 @@ copy_files() {
   tar -C "$template_root" --null -T "$1" -cf - | tar -C "$2" -xf -
 }
 
-copy_template() {
+new_without_scripts() {
+  local status=0
+  dotnet new "$template_short_name" --allow-scripts no "$@" || status=$?
+  [[ $status -eq 0 || $status -eq $post_action_not_run ]]
+}
+
+new_app() {
   local report count executable
   if git -C "$work" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     fail "$work is inside a git work tree; point TMPDIR to a folder outside every repository"
@@ -119,57 +133,16 @@ copy_template() {
     fail "the core of the template does not match its core.lock; run template-only/scripts/lock-core.sh first"
   fi
 
-  working_set "$template_root" | grep -z -v '^template-only/' > "$work/consumer-files" \
-    || fail "the template has no files outside template-only/"
-  mkdir "$consumer"
-  copy_files "$work/consumer-files" "$consumer"
-  count=$(tr -cd '\0' < "$work/consumer-files" | wc -c)
+  template=$work/template
+  mkdir "$template"
+  working_set "$template_root" > "$work/template-files"
+  copy_files "$work/template-files" "$template"
+  logged 1-install dotnet new install "$template" --debug:custom-hive "$work/hive"
+  logged 1-new new_without_scripts -n "$name" -o "$consumer" --debug:custom-hive "$work/hive"
+  count=$(find "$consumer" -type f | wc -l)
   executable=$(find "$consumer" -type f -perm /111 | wc -l)
-  find "$consumer" -type f -perm /111 -exec chmod a-x -- {} +
-  summary="$count files of the template's working set without template-only/ into $consumer;"
-  summary+=" $executable executable bits dropped, as a template engine may drop them"
-}
-
-other_spellings() {
-  search -I -n -o -i -E 'modular.?monolith' \
-    | awk -F ':' -v a="$template_name" -v b="$template_database" '$NF != a && $NF != b'
-  find "$consumer" -mindepth 1 -printf '%P\n' \
-    | awk -v a="$template_name" '{ rest = $0; gsub(a, "", rest); if (tolower(rest) ~ /modular.?monolith/) print "path " $0 }'
-}
-
-rename_paths() {
-  local path base
-  renamed_paths=0
-  find "$consumer" -depth -mindepth 1 -name "*$template_name*" -print0 > "$work/renamed-paths"
-  while IFS= read -r -d '' path; do
-    base=${path##*/}
-    mv -- "$path" "${path%/*}/${base//"$template_name"/"$name"}"
-    renamed_paths=$((renamed_paths + 1))
-  done < "$work/renamed-paths"
-}
-
-rename_contents() {
-  search -I -z -l -E "$template_name|$template_database" > "$work/renamed-files"
-  (
-    cd "$consumer"
-    xargs -0 -r -a "$work/renamed-files" sed -i -e "s/$template_name/$name/g" -e "s/$template_database/$database/g"
-  )
-  renamed_files=$(tr -cd '\0' < "$work/renamed-files" | wc -c)
-}
-
-rename_app() {
-  local others names databases
-  others=$(other_spellings)
-  if [[ -n "$others" ]]; then
-    printf '%s\n' "$others" | sed 's/^/  /' >&2
-    fail "the template spells the app name in a form other than $template_name and $template_database"
-  fi
-  names=$(search -I -o -F "$template_name" | wc -l)
-  databases=$(search -I -o -F "$template_database" | wc -l)
-  rename_paths
-  rename_contents
-  summary="no other spelling of the app name; $template_name -> $name in $renamed_paths paths and $names places,"
-  summary+=" $template_database -> $database in $databases places, $renamed_files files changed"
+  summary="the template's working set installed into the temporary hive $work/hive;"
+  summary+=" dotnet new $template_short_name -n $name made $count files in $consumer, $executable of them executable"
 }
 
 probe_core() {
@@ -207,18 +180,17 @@ check_core_and_name() {
     fail "core-hash.sh check fails in the consumer"
   fi
 
-  leftovers=$(search -n -i "$template_database"; find "$consumer" -mindepth 1 -iname "*$template_database*" -printf 'path %P\n')
+  leftovers=$(search -n -i -E "$template_app_name"; find "$consumer" -mindepth 1 -printf 'path %P\n' | grep -i -E "$template_app_name" || true)
   if [[ -n "$leftovers" ]]; then
     printf '%s\n' "$leftovers" | sed 's/^/  /' >&2
     fail "the consumer still names the template app"
   fi
   solutions=("$consumer"/*.slnx)
-  if [[ ${#solutions[@]} -ne 1 || "${solutions[0]##*/}" != "$name.slnx" ]]; then
-    fail "the root must hold exactly $name.slnx, found: ${solutions[*]##*/}"
+  if [[ ${#solutions[@]} -ne 1 || "${solutions[0]##*/}" != "$solution" ]]; then
+    fail "the root must hold exactly $solution, found: ${solutions[*]##*/}"
   fi
-  solution=$name.slnx
   summary="$(wc -l < "$work/template-core") core files byte-identical to the template's, both $consumer_hash;"
-  summary+=" core-hash.sh check passes; no $template_database in any letter case; root solution $solution"
+  summary+=" core-hash.sh check passes; no $template_app_name in any letter case; root solution $solution"
 }
 
 init_problems() {
@@ -261,14 +233,14 @@ run_gate() {
 init_commit_gate() {
   local problems
   cd "$consumer"
-  logged 4-init bash scripts/init.sh --no-rules
+  logged 3-init bash scripts/init.sh --no-rules
   problems=$(init_problems)
   if [[ -n "$problems" ]]; then
     printf '%s\n' "$problems" | sed 's/^/  /' >&2
     fail "init did not set up the app"
   fi
   init_state > "$work/init-first"
-  logged 4-init-again bash scripts/init.sh --no-rules
+  logged 3-init-again bash scripts/init.sh --no-rules
   init_state > "$work/init-second"
   if ! diff "$work/init-first" "$work/init-second" > "$work/init.diff"; then
     sed 's/^/  /' "$work/init.diff" >&2
@@ -276,11 +248,19 @@ init_commit_gate() {
   fi
 
   git add -A
-  commit_through_hook 4-commit initial
-  run_gate 4-gate
+  commit_through_hook 3-commit initial
+  run_gate 3-gate
   restored_before=$(restored_versions)
-  summary="init: $(paste -sd ';' "$work/logs/4-init.log" | sed 's/;init: /; /g; s/^init: //');"
+  summary="init: $(paste -sd ';' "$work/logs/3-init.log" | sed 's/;init: /; /g; s/^init: //');"
   summary+=" second run changed nothing; commit $committed through the pre-commit hook; gate green: $gate_totals"
+}
+
+add_module() {
+  logged 4-scaffold bash scripts/scaffold.sh module "$module" --settings
+  git add -A
+  commit_through_hook 4-commit "add the $module module"
+  run_gate 4-gate
+  summary="scaffold module $module --settings; commit $committed through the pre-commit hook; gate green: $gate_totals"
 }
 
 restored_versions() {
@@ -293,10 +273,6 @@ restored_versions() {
 
 make_template_a() {
   local hash
-  template=$work/template
-  mkdir "$template"
-  working_set "$template_root" > "$work/template-files"
-  copy_files "$work/template-files" "$template"
   git -C "$template" init -q -b main
   git -C "$template" add -A
   git -C "$template" commit -q -m A

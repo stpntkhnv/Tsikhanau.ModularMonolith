@@ -203,14 +203,15 @@ case_repeat_run() {
 }
 
 case_worktree() {
-  local app worktree=$work/cases/worktree/tree
+  local app worktree=$work/cases/worktree/app/.worktrees/tree
   app=$(new_app worktree acme_shop)
   run_init "$app" --no-rules
   expect_success
   commit_all "$app"
   git -C "$app" -c core.hooksPath=/dev/null worktree add -q "$worktree" -b other
   [[ -f "$worktree/.git" ]] || fail "the worktree has no .git file"
-  run_init "$worktree"
+  ln -s "$rulebook" "$work/cases/worktree/Tsikhanau.Rulebook"
+  RULEBOOK_PATH='' run_init "$worktree"
   expect_success
   expect_rule_links "$worktree"
   expect_excluded_in "$app/.git/info/exclude"
@@ -258,7 +259,7 @@ case_missing_rulebook() {
   expect_no_rule_links "$app"
   [[ ! -s "$(dotnet_calls "$app")" ]] || fail "a missing rulebook must stop before the build"
   RULEBOOK_PATH='' run_init "$app"
-  expect_refused "no rulebook at $work/home/homes/personal/main/Tsikhanau.Rulebook;"
+  expect_refused "no rulebook at $work/cases/missing/Tsikhanau.Rulebook;"
 }
 
 case_post_checkout() {
@@ -299,11 +300,11 @@ run_case "a name whose PostgreSQL form starts with a digit is refused before any
 run_case "a name longer than the core's login prefix budget is refused, one at the budget passes" case_budget
 run_case "a fresh app gets a repository on main, the hooks path, executable bits, ignored rules links and one build; .claude is untouched" case_fresh_repository
 run_case "a second run changes nothing" case_repeat_run
-run_case "in a git worktree the links are made there and the exclude lines go to the shared exclude file" case_worktree
+run_case "in a git worktree the links are made there from the default rulebook beside the app and the exclude lines go to the shared exclude file" case_worktree
 run_case "a dangling link is made again" case_dangling_link
 run_case "a file or folder where a link belongs is refused, named and left as it is" case_file_in_place_of_a_link
 run_case "--no-rules skips the links with a message and needs no rulebook" case_no_rules
-run_case "a missing rulebook at RULEBOOK_PATH or the default path is refused with a message" case_missing_rulebook
+run_case "a missing rulebook at RULEBOOK_PATH or at the default path beside the app is refused with a message" case_missing_rulebook
 run_case "the post-checkout hook links the rules in a new worktree and does not fail the checkout without a rulebook" case_post_checkout
 
 echo "test-init: $passes passed, $failures failed"
