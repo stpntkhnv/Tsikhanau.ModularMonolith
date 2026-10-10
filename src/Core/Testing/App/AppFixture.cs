@@ -14,13 +14,15 @@ namespace Tsikhanau.Monolith.Testing.App;
 public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     where TEntryPoint : class
 {
+    public static readonly DateTimeOffset TestStartedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
+
     private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly Lazy<AppFactory<TEntryPoint>> _appFactory;
     private Optional<DatabaseResetter> _databaseResetter;
 
     protected AppFixture()
     {
-        Time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 28, 8, 0, 0, TimeSpan.Zero));
+        Time = new FakeTimeProvider(TestStartedOn);
         _appFactory = new Lazy<AppFactory<TEntryPoint>>(() => CreateFactory(Time, Environments.Development));
     }
 
@@ -40,8 +42,11 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public Task ProcessQueuesAllowingFailuresAsync() => QueueDriver.ProcessAllAllowingFailuresAsync(Services);
 
-    public Task ResetAsync() =>
-        _databaseResetter.HasValue ? _databaseResetter.Value.ResetAsync() : Task.CompletedTask;
+    public Task ResetAsync()
+    {
+        ResetTime();
+        return _databaseResetter.HasValue ? _databaseResetter.Value.ResetAsync() : Task.CompletedTask;
+    }
 
     public ModuleDescriptor GetModule(String name) =>
         Services
@@ -102,6 +107,13 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     }
 
     protected abstract AppFactory<TEntryPoint> CreateFactory(TimeProvider timeProvider, String environmentName);
+
+    private void ResetTime()
+    {
+        Time.AutoAdvanceAmount = TimeSpan.Zero;
+        Time.SetLocalTimeZone(TimeZoneInfo.Utc);
+        Time.AdjustTime(TestStartedOn);
+    }
 
     private NpgsqlDataSource GetDataSource(String moduleName) =>
         Services.GetRequiredKeyedService<NpgsqlDataSource>(GetModule(moduleName).Key);
