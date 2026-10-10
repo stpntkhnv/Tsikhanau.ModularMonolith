@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${3-}" != 1 ]]; then
+  exit 0
+fi
+
+top=$(git rev-parse --show-toplevel)
+if ! bash "$top/scripts/init.sh" --rules-only; then
+  echo "post-checkout: the rules links were not made; the checkout itself is done" >&2
+fi

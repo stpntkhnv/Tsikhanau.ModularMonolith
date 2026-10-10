@@ -235,7 +235,7 @@ init_problems() {
 }
 
 init_state() {
-  find . -printf '%m %y %s %p\n' | sort
+  find . \( -name bin -o -name obj \) -prune -o -printf '%m %y %s %p\n' | sort
   if [[ -f .git/config ]]; then
     cat .git/config
   fi
@@ -261,14 +261,14 @@ run_gate() {
 init_commit_gate() {
   local problems
   cd "$consumer"
-  logged 4-init bash scripts/init.sh
+  logged 4-init bash scripts/init.sh --no-rules
   problems=$(init_problems)
   if [[ -n "$problems" ]]; then
     printf '%s\n' "$problems" | sed 's/^/  /' >&2
     fail "init did not set up the app"
   fi
   init_state > "$work/init-first"
-  logged 4-init-again bash scripts/init.sh
+  logged 4-init-again bash scripts/init.sh --no-rules
   init_state > "$work/init-second"
   if ! diff "$work/init-first" "$work/init-second" > "$work/init.diff"; then
     sed 's/^/  /' "$work/init.diff" >&2

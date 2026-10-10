@@ -236,5 +236,23 @@
         "core.lock"
       ]
     }
+  ],
+  "postActions": [
+    {
+      "description": "Run scripts/init.sh: check the app name, create the git repository, set the hooks, link the rules and build once.",
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "bash",
+        "args": "scripts/init.sh",
+        "redirectStandardOutput": false,
+        "redirectStandardError": false
+      },
+      "manualInstructions": [
+        {
+          "text": "Next step: run 'bash scripts/init.sh' in the app folder."
+        }
+      ],
+      "continueOnError": false
+    }
   ]
 }

@@ -60,6 +60,7 @@ run_solution "${root_solutions[0]}" .gate/skips
 if [[ -f "$template_solution" ]]; then
   run_solution "$template_solution" template-only/.gate/skips
   bash template-only/scripts/test-update-core.sh
+  bash template-only/scripts/test-init.sh
 fi
 
 printf -v recorded '%s, ' "${results[@]}"
