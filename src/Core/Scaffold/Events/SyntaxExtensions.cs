@@ -1,9 +1,25 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Tsikhanau.Monolith.Scaffold.Events;
 
 internal static class SyntaxExtensions
 {
+    extension(SyntaxNode node)
+    {
+        public String OneLineText =>
+            node
+                .NormalizeWhitespace()
+                .ToString();
+
+        public Int32 StartLine =>
+            node
+                .GetLocation()
+                .GetLineSpan()
+                .StartLinePosition.Line + 1;
+    }
+
     extension(BaseTypeDeclarationSyntax declaration)
     {
         public String Name => declaration.Identifier.Text;
@@ -27,6 +43,11 @@ internal static class SyntaxExtensions
     {
         public IReadOnlyList<ParameterSyntax> PositionalParameters =>
             declaration.ParameterList is { } parameterList ? parameterList.Parameters : [];
+    }
+
+    extension(FieldDeclarationSyntax fieldDeclaration)
+    {
+        public Boolean IsConstant => fieldDeclaration.Modifiers.Any(SyntaxKind.ConstKeyword);
     }
 
     extension(TypeSyntax type)

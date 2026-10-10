@@ -8,6 +8,8 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 {
     private const String RailwayNamespace = "Tsikhanau.Railway";
 
+    private const String CommandsNamespace = "Tsikhanau.Monolith.Application.Commands";
+
     private const String NotImplementedDeclaration = "    private static readonly Error NotImplemented =";
 
     public IReadOnlyList<NewFile> CreateFiles() =>
@@ -16,6 +18,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
             FeatureKind.Query => [QueryFile, DtoFile, HandlerFile, .. QueryEndpointFiles],
             FeatureKind.PublicQuery => [PublicQueryFile, PublicDtoFile, HandlerFile],
             FeatureKind.EventHandler => [HandlerFile],
+            FeatureKind.InternalCommand => [InternalCommandFile, HandlerFile],
             _ => [CommandFile, HandlerFile, .. CommandEndpointFiles],
         };
 
@@ -36,6 +39,17 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
                 feature.Namespace,
                 [RailwayNamespace],
                 RecordDeclaration("internal", feature.Command, $"{feature.Module.CommandMarker}<Unit>")));
+
+    private NewFile InternalCommandFile =>
+        new(
+            feature.InFeature($"{feature.InternalCommand}.cs"),
+            CodeFile(
+                feature.Namespace,
+                [CommandsNamespace],
+                $"""
+                 [InternalCommandName("{feature.InternalCommandName.Value}")]
+                 {RecordDeclaration("internal", $"{feature.InternalCommand}(Guid Id)", "InternalCommand(Id)")}
+                 """));
 
     private NewFile QueryFile =>
         new(
@@ -83,7 +97,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
             FeatureKind.Query => ["Tsikhanau.Monolith.Application.Queries"],
             FeatureKind.PublicQuery => ["Tsikhanau.Monolith.Application.Queries", feature.PublicQueryNamespace],
             FeatureKind.EventHandler => ["Tsikhanau.Monolith.Application.Events", HandledEvent.Namespace],
-            _ => ["Tsikhanau.Monolith.Application.Commands"],
+            _ => [CommandsNamespace],
         };
 
     private EventDeclaration HandledEvent => feature.Event.Value;

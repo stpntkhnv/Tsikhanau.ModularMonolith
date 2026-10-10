@@ -15,6 +15,10 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
 
     private const String InboxNamespace = "Tsikhanau.Monolith.Infrastructure.Inbox";
 
+    private const String InternalCommandsNamespace = "Tsikhanau.Monolith.Infrastructure.InternalCommands";
+
+    private const String MessageIdFromTheClock = "Guid.CreateVersion7(App.Time.GetUtcNow())";
+
     private const String CancellationTokenProperty =
         "    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;\n\n";
 
@@ -28,6 +32,7 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
             (FeatureKind.EventHandler, _) when HandledEvent.Kind == EventKind.Domain => DomainEventTest,
             (FeatureKind.EventHandler, _) => IntegrationEventTest,
             (FeatureKind.PublicQuery, _) => QueryFacadeTest,
+            (FeatureKind.InternalCommand, _) => InternalCommandTest,
             (_, EndpointMethod.None) => FacadeTest,
             _ => HttpTest,
         };
@@ -104,34 +109,38 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private FeatureTest IntegrationEventTest =>
         new(
             $"{ToSentence(HandledEvent.Name)}_is_handled_through_the_inbox",
-            [.. HandledEvent.Usings, $"{feature.Module.Namespace}.Infrastructure.Persistence", InboxNamespace],
+            [.. HandledEvent.Usings, PersistenceNamespace, InboxNamespace],
             UsesCancellationToken: false,
             Lines(
                 BuildEvent,
                 String.Empty,
                 $"{Indentation}await App.PublishAsync({HandledEvent.ParameterName});",
                 $"{Indentation}await App.ProcessQueuesAsync();",
-                ReadInboxRows,
+                ReadQueueRows("inboxRows", "InboxMessage.Table"),
                 String.Empty,
-                $"{Indentation}inboxRows",
-                $"{Indentation}    .Select(inboxRow => (inboxRow.Id, inboxRow.IsProcessed))",
-                $"{Indentation}    .ShouldBe([({HandledEvent.ParameterName}.Id, true)]);"));
+                AssertOnlyRowIsProcessed("inboxRows", "inboxRow", HandledEvent.ParameterName)));
 
-    private String BuildEvent
-    {
-        get
-        {
-            var construction = $"var {HandledEvent.ParameterName} = new {HandledEvent.Name}(";
-            var samples = HandledEvent.Members.Select(member => member.Expression);
+    private FeatureTest InternalCommandTest =>
+        new(
+            $"{Sentence}_runs_when_the_queues_run",
+            [feature.Module.Namespace, feature.Namespace, PersistenceNamespace, InternalCommandsNamespace],
+            UsesCancellationToken: false,
+            Lines(
+                Construct("internalCommand", feature.InternalCommand, [MessageIdFromTheClock]),
+                String.Empty,
+                $"{Indentation}await App.EnqueueAsync<{feature.Module.FacadeContract}>(internalCommand);",
+                $"{Indentation}await App.ProcessQueuesAsync();",
+                ReadQueueRows("internalCommandRows", "InternalCommandMessage.Table"),
+                String.Empty,
+                AssertOnlyRowIsProcessed("internalCommandRows", "internalCommandRow", "internalCommand")));
 
-            return FirstThatFits(
-                $"{Indentation}{construction}{String.Join(", ", samples)});",
-                $"""
-                 {Indentation}{construction}
-                 {Indentation}    {String.Join($",\n{Indentation}    ", samples)});
-                 """);
-        }
-    }
+    private String PersistenceNamespace => $"{feature.Module.Namespace}.Infrastructure.Persistence";
+
+    private String BuildEvent =>
+        Construct(
+            HandledEvent.ParameterName,
+            HandledEvent.Name,
+            [.. HandledEvent.Members.Select(member => member.Expression)]);
 
     private String DispatchEvent =>
         AwaitCall(
@@ -139,11 +148,8 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
             $"App.DispatchAsync<{feature.Module.FacadeContract}>",
             [HandledEvent.ParameterName]);
 
-    private String ReadInboxRows =>
-        AwaitCall(
-            "inboxRows",
-            "App.Database.ReadQueueRowsAsync",
-            [$"{feature.Module.DbContext}.SchemaName", "InboxMessage.Table"]);
+    private String ReadQueueRows(String variable, String table) =>
+        AwaitCall(variable, "App.Database.ReadQueueRowsAsync", [$"{feature.Module.DbContext}.SchemaName", table]);
 
     private String CallThroughFacade(String facadeVariable, String facadeType) =>
         Lines(
@@ -197,12 +203,24 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     }
 
     private static String AwaitCall(String variable, String call, IReadOnlyList<String> arguments) =>
+        AssignCall(variable, $"await {call}", arguments);
+
+    private static String Construct(String variable, String type, IReadOnlyList<String> arguments) =>
+        AssignCall(variable, $"new {type}", arguments);
+
+    private static String AssignCall(String variable, String call, IReadOnlyList<String> arguments) =>
         FirstThatFits(
-            $"{Indentation}var {variable} = await {call}({String.Join(", ", arguments)});",
+            $"{Indentation}var {variable} = {call}({String.Join(", ", arguments)});",
             $"""
-             {Indentation}var {variable} = await {call}(
+             {Indentation}var {variable} = {call}(
              {Indentation}    {String.Join($",\n{Indentation}    ", arguments)});
              """);
+
+    private static String AssertOnlyRowIsProcessed(String rowsVariable, String rowVariable, String messageVariable) =>
+        Lines(
+            $"{Indentation}{rowsVariable}",
+            $"{Indentation}    .Select({rowVariable} => ({rowVariable}.Id, {rowVariable}.IsProcessed))",
+            $"{Indentation}    .ShouldBe([({messageVariable}.Id, true)]);");
 
     private static IEnumerable<String> BlankLineAfter(String statement) =>
         statement.Contains('\n', StringComparison.Ordinal) ? [String.Empty] : [];

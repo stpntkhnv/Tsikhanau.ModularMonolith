@@ -20,6 +20,10 @@ internal sealed class SourceProjectReader(IFileSystem fileSystem)
             .SelectMany(moduleName => ReadProjects(app, moduleName))
             .CombineAll();
 
+    public Result<IReadOnlyList<SourceProject>> Read(AppLayout app, String moduleName) =>
+        ReadProjects(app, moduleName)
+            .CombineAll();
+
     private IEnumerable<Result<SourceProject>> ReadProjects(AppLayout app, String moduleName)
     {
         var projectName = $"{app.ProjectPrefix}.Modules.{moduleName}";

@@ -2,6 +2,7 @@ using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Files;
+using Tsikhanau.Monolith.Scaffold.InternalCommands;
 using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Monolith.Scaffold.Transactions;
 using Tsikhanau.Railway;
@@ -61,9 +62,10 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
 
         return Result
             .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
+            .And(EnsureInternalCommandNameIsFree(feature, fileSystem))
             .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
             .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
-            .Bind((_, facadeChange, referenceEdits) =>
+            .Bind((_, _, facadeChange, referenceEdits) =>
                 CombinePlan(feature, facadeChange, referenceEdits, featureFiles, nextStep));
     }
 
@@ -94,6 +96,14 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
                 "scaffold.exists",
                 $"feature {feature.Name} of {feature.Module.Name} already exists: {String.Join(", ", existing)}");
     }
+
+    private static Result<Unit> EnsureInternalCommandNameIsFree(ScaffoldedFeature feature, IFileSystem fileSystem) =>
+        feature.InternalCommandName.Match(
+            name => new SourceProjectReader(fileSystem)
+                .Read(feature.Module.App, feature.Module.Name)
+                .Bind(moduleProjects => new InternalCommandNameVerifier(feature.Module.Name, moduleProjects)
+                    .EnsureFree(name)),
+            () => Result.Success());
 
     private static IEnumerable<String> FindFeatureFolders(ScaffoldedFeature feature, IFileSystem fileSystem) =>
         new[] { feature.FeaturesFolder, feature.PublicQueriesFolder }

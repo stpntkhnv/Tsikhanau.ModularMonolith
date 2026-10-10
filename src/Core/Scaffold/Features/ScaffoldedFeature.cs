@@ -40,9 +40,20 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String Query => $"{Name}Query";
 
+    public String InternalCommand => $"{Name}InternalCommand";
+
+    public Optional<String> InternalCommandName =>
+        Kind == FeatureKind.InternalCommand ? Name.ToKebabCase() : Optional<String>.None();
+
     public String Dto => $"{ReadNoun}Dto";
 
-    public String HandledRequest => IsQuery ? Query : Command;
+    public String HandledRequest =>
+        Kind switch
+        {
+            FeatureKind.Query or FeatureKind.PublicQuery => Query,
+            FeatureKind.InternalCommand => InternalCommand,
+            _ => Command,
+        };
 
     public String Handler =>
         Event.Match(handledEvent => $"{Name}{handledEvent.HandlerSuffix}", () => $"{HandledRequest}Handler");
@@ -100,7 +111,7 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
         Kind switch
         {
             FeatureKind.Query or FeatureKind.PublicQuery => currentShape.WithQueries(),
-            FeatureKind.EventHandler => currentShape,
+            FeatureKind.EventHandler or FeatureKind.InternalCommand => currentShape,
             _ => currentShape.WithCommands(),
         };
 }

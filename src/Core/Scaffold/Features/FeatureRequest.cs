@@ -14,6 +14,9 @@ internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKin
     private const String EventHandlerWithEndpoint =
         "an event handler has no endpoint: the module runs it when the event arrives";
 
+    private const String InternalCommandWithEndpoint =
+        "an internal command has no endpoint: a handler of the module schedules it and the queue runs it";
+
     public Optional<String> EventType { get; init; } = Optional<String>.None();
 
     private String PublicQueryWithEndpoint =>
@@ -31,6 +34,7 @@ internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKin
         {
             FeatureKind.Query => "a query",
             FeatureKind.PublicQuery => "a public query",
+            FeatureKind.InternalCommand => "an internal command",
             _ => "a command",
         };
 
@@ -48,6 +52,7 @@ internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKin
                 $"a query answers only GET, not {HttpMethodName}: {ChangeIsCommand}"),
             (FeatureKind.PublicQuery, not EndpointMethod.None) => BuildError(PublicQueryWithEndpoint),
             (FeatureKind.EventHandler, not EndpointMethod.None) => BuildError(EventHandlerWithEndpoint),
+            (FeatureKind.InternalCommand, not EndpointMethod.None) => BuildError(InternalCommandWithEndpoint),
             _ => this,
         };
 

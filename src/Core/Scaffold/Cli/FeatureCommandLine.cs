@@ -8,7 +8,7 @@ internal static class FeatureCommandLine
 {
     public const String Synopsis = $"bash scripts/scaffold.sh feature <Module> <Name> {KindSynopsis} {OptionsSynopsis}";
 
-    private const String KindSynopsis = "--kind command|query|public-query|event-handler";
+    private const String KindSynopsis = "--kind command|query|public-query|event-handler|internal-command";
 
     private const String OptionsSynopsis = $"[{EndpointOption} none|get|post|put|delete] [{EventOption} <Type>]";
 
@@ -26,6 +26,7 @@ internal static class FeatureCommandLine
         ["query"] = FeatureKind.Query,
         ["public-query"] = FeatureKind.PublicQuery,
         ["event-handler"] = FeatureKind.EventHandler,
+        ["internal-command"] = FeatureKind.InternalCommand,
     };
 
     private static readonly Dictionary<String, EndpointMethod> Methods = new(StringComparer.OrdinalIgnoreCase)

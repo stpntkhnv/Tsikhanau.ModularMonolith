@@ -21,9 +21,14 @@ public sealed class FeatureRequestTests
     private const String EventHandlerWithEndpoint =
         "an event handler has no endpoint: the module runs it when the event arrives";
 
+    private const String InternalCommandWithEndpoint =
+        "an internal command has no endpoint: a handler of the module schedules it and the queue runs it";
+
     private const String EventOfAnotherKind = "--event belongs to --kind event-handler:";
 
     private const String PublicQueryWithEvent = $"{EventOfAnotherKind} a public query handles no event";
+
+    private const String InternalCommandWithEvent = $"{EventOfAnotherKind} an internal command handles no event";
 
     private const String EventHandlerWithoutEvent =
         "--kind event-handler needs --event <Type>: a domain event of Notes or an integration event of a neighbour";
@@ -96,6 +101,8 @@ public sealed class FeatureRequestTests
     [InlineData("Query", "Delete", $"a query answers only GET, not DELETE: {ChangeIsCommand}")]
     [InlineData("PublicQuery", "Get", PublicQueryWithEndpoint)]
     [InlineData("PublicQuery", "Post", PublicQueryWithEndpoint)]
+    [InlineData("InternalCommand", "Delete", InternalCommandWithEndpoint)]
+    [InlineData("InternalCommand", "Get", InternalCommandWithEndpoint)]
     public void Endpoint_method_that_does_not_fit_the_kind_is_refused(String kind, String method, String problem)
     {
         var request = new FeatureRequest(
@@ -109,6 +116,16 @@ public sealed class FeatureRequestTests
         var message = validated.Match(_ => "valid", error => error.Message);
 
         message.ShouldBe(problem);
+    }
+
+    [Fact]
+    public void Internal_command_without_an_endpoint_is_valid()
+    {
+        var request = new FeatureRequest("Notes", "SendDigest", FeatureKind.InternalCommand, EndpointMethod.None);
+
+        var validated = request.Validate();
+
+        validated.ShouldBe(Result.Success(request));
     }
 
     [Fact]
@@ -128,6 +145,7 @@ public sealed class FeatureRequestTests
     [InlineData("Command", "None", "NoteCreatedDomainEvent", $"{EventOfAnotherKind} a command handles no event")]
     [InlineData("Query", "Get", "NoteCreatedDomainEvent", $"{EventOfAnotherKind} a query handles no event")]
     [InlineData("PublicQuery", "None", "NoteCreatedDomainEvent", PublicQueryWithEvent)]
+    [InlineData("InternalCommand", "None", "NoteCreatedDomainEvent", InternalCommandWithEvent)]
     public void Event_that_does_not_fit_the_kind_is_refused(
         String kind,
         String method,

@@ -14,8 +14,8 @@ public sealed class ScaffoldToolTests : IDisposable
     private const String ModuleSynopsis = "bash scripts/scaffold.sh module <Name> [--settings]";
 
     private const String FeatureSynopsis =
-        "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query|event-handler "
-        + "[--endpoint none|get|post|put|delete] [--event <Type>]";
+        "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query|event-handler|"
+        + "internal-command [--endpoint none|get|post|put|delete] [--event <Type>]";
 
     private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureSynopsis}";
 
@@ -91,6 +91,8 @@ public sealed class ScaffoldToolTests : IDisposable
     [InlineData("feature Notes Pin --kind command --endpoint patch", "--endpoint 'patch' is not an endpoint method")]
     [InlineData("feature Notes Pin --kind Event-handler --event E", "--kind 'Event-handler' is not a feature kind")]
     [InlineData("feature Notes Pin --kind event_handler --event E", "--kind 'event_handler' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind Internal-command", "--kind 'Internal-command' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind internal_command", "--kind 'internal_command' is not a feature kind")]
     [InlineData("feature Notes Pin --kind event-handler --event", "--event needs a value")]
     [InlineData("feature Notes Pin --event --kind event-handler", "--event needs a value")]
     [InlineData("feature Notes Pin --kind event-handler --event A --event B", "--event is given twice")]
