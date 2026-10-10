@@ -30,8 +30,8 @@ public static class ServiceDefaultsExtensions
     {
         builder.AddHealth();
         builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
-        builder.Services.AddProblemDetails(
-            problemDetailsOptions => problemDetailsOptions.CustomizeProblemDetails = CustomizeProblemDetails);
+        builder.Services.AddProblemDetails();
+        builder.Services.PostConfigure<ProblemDetailsOptions>(KeepTheCoreProblemShape);
 
         builder.Services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IProblemDetailsWriter, AnyAcceptProblemDetailsWriter>());
@@ -97,6 +97,9 @@ public static class ServiceDefaultsExtensions
         app.Services
             .GetRequiredService<IServiceProviderIsService>()
             .IsService(typeof(TService));
+
+    private static void KeepTheCoreProblemShape(ProblemDetailsOptions problemDetailsOptions) =>
+        problemDetailsOptions.CustomizeProblemDetails += CustomizeProblemDetails;
 
     private static void CustomizeProblemDetails(ProblemDetailsContext context)
     {

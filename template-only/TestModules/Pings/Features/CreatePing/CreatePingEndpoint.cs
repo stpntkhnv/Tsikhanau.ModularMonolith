@@ -22,6 +22,9 @@ internal sealed class CreatePingEndpoint : IEndpoint
             .ExecuteCommandAsync(CreateCommand(request, timeProvider), cancellationToken)
             .ToCreatedAsync(GetPingEndpoint.Name, pingId => new { pingId });
 
-    private static CreatePingCommand CreateCommand(CreatePingRequest request, TimeProvider timeProvider) =>
-        new(Guid.CreateVersion7(timeProvider.GetUtcNow()), request.Label, request.Nickname);
+    private static CreatePingCommand CreateCommand(CreatePingRequest request, TimeProvider timeProvider)
+    {
+        var createdOn = timeProvider.GetUtcNow();
+        return new(Guid.CreateVersion7(createdOn), request.Label, request.Nickname);
+    }
 }

@@ -10,10 +10,10 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
 {
     private const String SchemaIdKey = "x-schema-id";
 
-    private static readonly PropertyInfo[] Keywords = typeof(OpenApiSchema)
+    private static readonly List<PropertyInfo> Keywords = typeof(OpenApiSchema)
         .GetProperties()
         .Where(IsKeyword)
-        .ToArray();
+        .ToList();
 
     private readonly HashSet<Type> _valueTypesInProgress = [];
 
@@ -100,13 +100,8 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
         schema.Type = valueSchema.Type | JsonSchemaType.Null;
     }
 
-    private static void CopyKeywords(OpenApiSchema source, OpenApiSchema target)
-    {
-        foreach (var keyword in Keywords)
-        {
-            CopyKeywordWhenSet(keyword, source, target);
-        }
-    }
+    private static void CopyKeywords(OpenApiSchema source, OpenApiSchema target) =>
+        Keywords.ForEach(keyword => CopyKeywordWhenSet(keyword, source, target));
 
     private static void CopyKeywordWhenSet(PropertyInfo keyword, OpenApiSchema source, OpenApiSchema target)
     {
