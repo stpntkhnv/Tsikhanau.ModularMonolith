@@ -6,4 +6,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Fixtures/Sources/**" />
+    <EmbeddedResource Include="Fixtures/Sources/**/*.cs" LogicalName="Fixtures/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

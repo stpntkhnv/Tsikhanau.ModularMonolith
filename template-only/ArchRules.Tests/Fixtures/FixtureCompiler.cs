@@ -8,7 +8,8 @@ internal static class FixtureCompiler
 {
     private static readonly CSharpCompilationOptions CompilationOptions =
         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            .WithNullableContextOptions(NullableContextOptions.Enable);
+            .WithNullableContextOptions(NullableContextOptions.Enable)
+            .WithOptimizationLevel(OptimizationLevel.Release);
 
     public static IReadOnlyList<MetadataReference> RuntimeReferences { get; } =
     [
@@ -17,13 +18,15 @@ internal static class FixtureCompiler
             .Select(path => MetadataReference.CreateFromFile(path)),
     ];
 
-    public static Byte[] Compile(String assemblyName, String source, IEnumerable<MetadataReference> references)
+    public static Byte[] Compile(String assemblyName, String source, IEnumerable<MetadataReference> references) =>
+        Compile(assemblyName, [CSharpSyntaxTree.ParseText(source)], references);
+
+    public static Byte[] Compile(
+        String assemblyName,
+        IEnumerable<SyntaxTree> syntaxTrees,
+        IEnumerable<MetadataReference> references)
     {
-        var compilation = CSharpCompilation.Create(
-            assemblyName,
-            [CSharpSyntaxTree.ParseText(source)],
-            references,
-            CompilationOptions);
+        var compilation = CSharpCompilation.Create(assemblyName, syntaxTrees, references, CompilationOptions);
 
         using var imageStream = new MemoryStream();
         var emitResult = compilation.Emit(imageStream);
