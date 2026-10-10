@@ -34,6 +34,7 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
         {
             ([], _) => BuildNotFoundError(moduleName, eventType, name),
             ([var candidate], _) => EnsureHandledBy(candidate, moduleName)
+                .Bind(EnsureConcrete)
                 .Bind(BuildDeclaration),
             (_, [var fullName]) => BuildError(
                 $"{fullName} is declared more than once (partial); scaffold reads an event from one declaration"),
@@ -110,6 +111,13 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
             _ => BuildError($"{candidate.FullName} sits in {project.Role}, where {Describe(kind)} does not belong"),
         };
     }
+
+    private static Result<EventCandidate> EnsureConcrete(EventCandidate candidate) =>
+        candidate.Declaration.IsAbstract
+            ? BuildError(
+                $"{candidate.FullName} is abstract, and the generated test builds the event it handles; "
+                + "pass a concrete event")
+            : candidate;
 
     private static Result<EventDeclaration> BuildDeclaration(EventCandidate candidate)
     {

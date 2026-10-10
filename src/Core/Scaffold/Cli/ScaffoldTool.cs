@@ -17,6 +17,12 @@ internal sealed class ScaffoldTool(
 
     private const Int32 UsageExitCode = 2;
 
+    private const String LockPath = "src/Core/Scaffold/obj/scaffold.lock";
+
+    private const String LockedOut =
+        $"cannot take the scaffold lock {LockPath}, which another scaffold command in this app holds while it runs; "
+        + "run this one when that one ends";
+
     public Task<Int32> RunAsync(IReadOnlyList<String> arguments, CancellationToken cancellationToken) =>
         ScaffoldCommandLine
             .Parse(arguments)
@@ -26,12 +32,25 @@ internal sealed class ScaffoldTool(
 
     public async Task<Int32> RunAsync(IScaffoldCommand command, CancellationToken cancellationToken)
     {
-        var outcome = await new AppLayoutReader(fileSystem)
-            .Read()
-            .Bind(app => command.Plan(app, fileSystem))
-            .BindAsync(plan => RunPlanAsync(plan, cancellationToken));
+        var outcome = await fileSystem
+            .Attempt(() => fileSystem.Lock(LockPath), LockedOut)
+            .BindAsync(appLock => RunLockedAsync(command, appLock, cancellationToken));
 
         return outcome.Match(ReportSuccess, error => ReportFailure(error, FailedExitCode));
+    }
+
+    private async Task<Result<ScaffoldPlan>> RunLockedAsync(
+        IScaffoldCommand command,
+        IDisposable appLock,
+        CancellationToken cancellationToken)
+    {
+        using (appLock)
+        {
+            return await new AppLayoutReader(fileSystem)
+                .Read()
+                .Bind(app => command.Plan(app, fileSystem))
+                .BindAsync(plan => RunPlanAsync(plan, cancellationToken));
+        }
     }
 
     private Task<Result<ScaffoldPlan>> RunPlanAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>

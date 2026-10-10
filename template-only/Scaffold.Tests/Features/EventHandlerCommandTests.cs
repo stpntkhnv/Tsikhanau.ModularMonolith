@@ -271,6 +271,52 @@ public sealed class EventHandlerCommandTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Fact]
+    public async Task Abstract_event_is_refused_before_any_write()
+    {
+        _app.Write(
+            $"{NotesProject}/Domain/Notes/Events/NoteEvent.cs",
+            """
+            namespace Acme.Shop.Modules.Notes.Domain.Notes.Events;
+
+            internal abstract record NoteEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+            """);
+
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Notes NoteChanged --kind event-handler --event NoteEvent");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            "scaffold: Acme.Shop.Modules.Notes.Domain.Notes.Events.NoteEvent is abstract, and the generated test "
+            + "builds the event it handles; pass a concrete event\n");
+
+        after.ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task Reference_tag_that_does_not_end_on_its_first_line_is_refused_before_any_write()
+    {
+        ReplaceInTagsProject(OwnContractsReference, $"{OwnContractsReference[..^3]}\n      />");
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(NeighbourEventCommand);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldStartWith(
+            $"scaffold: {TagsProjectFile}:7 holds a <ProjectReference> tag that does not end on that line; ",
+            Case.Sensitive);
+
+        after.ShouldBe(before);
+    }
+
     [Theory]
     [InlineData("bin")]
     [InlineData("obj")]

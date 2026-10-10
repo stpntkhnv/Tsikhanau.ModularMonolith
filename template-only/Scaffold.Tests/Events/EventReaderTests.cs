@@ -271,6 +271,35 @@ public sealed class EventReaderTests
         kind.ShouldBe(Result.Success(EventKind.Domain));
     }
 
+    [Fact]
+    public void Abstract_event_is_refused_with_a_request_for_a_concrete_event()
+    {
+        var reader = CreateReader(
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain.Notes.Events;
+
+                public abstract record NoteEvent(DateTimeOffset OccurredOn) : DomainEvent(OccurredOn);
+                """),
+            (
+                "Notes",
+                false,
+                """
+                namespace Acme.Shop.Modules.Notes.Domain.Notes.Events;
+
+                public sealed record NoteRetiredDomainEvent(DateTimeOffset OccurredOn) : NoteEvent(OccurredOn);
+                """));
+
+        var found = reader.Read("Notes", "NoteEvent");
+
+        ReadMessage(found)
+            .ShouldBe(
+                "Acme.Shop.Modules.Notes.Domain.Notes.Events.NoteEvent is abstract, and the generated test builds the "
+                + "event it handles; pass a concrete event");
+    }
+
     [Theory]
     [InlineData(
         "NoteBurnedDomainEvent",

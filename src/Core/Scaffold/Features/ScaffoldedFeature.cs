@@ -82,6 +82,10 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String HttpPath => $"/{Module.Route}{Route}";
 
+    public String HttpMethod => $"{Method}".ToUpperInvariant();
+
+    public String MapMethod => $"Map{Method}";
+
     public String FacadeParameter => Module.ModuleClass.ToCamelCase();
 
     public String QueryFacadeParameter => $"{Module.Name}QueryFacade".ToCamelCase();

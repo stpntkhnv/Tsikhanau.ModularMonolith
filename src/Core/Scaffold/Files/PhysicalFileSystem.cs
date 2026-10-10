@@ -42,6 +42,13 @@ internal sealed class PhysicalFileSystem(String root) : IFileSystem
         }
     }
 
+    public IDisposable Lock(String path)
+    {
+        var fullPath = ToFullPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? _root);
+        return new FileStream(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+    }
+
     private String ToFullPath(String path)
     {
         var fullPath = Path.GetFullPath(path, _root);

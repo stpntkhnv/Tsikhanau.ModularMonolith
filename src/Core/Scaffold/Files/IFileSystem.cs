@@ -19,4 +19,6 @@ internal interface IFileSystem
     void DeleteFile(String path);
 
     void DeleteDirectory(String path);
+
+    IDisposable Lock(String path);
 }

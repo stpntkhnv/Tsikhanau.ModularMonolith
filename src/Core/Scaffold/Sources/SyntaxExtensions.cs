@@ -45,6 +45,8 @@ internal static class SyntaxExtensions
 
         public Boolean IsTopLevel => declaration.Parent is BaseNamespaceDeclarationSyntax or CompilationUnitSyntax;
 
+        public Boolean IsAbstract => declaration.Modifiers.Any(SyntaxKind.AbstractKeyword);
+
         public IEnumerable<TypeSyntax> BaseTypes =>
             declaration.BaseList is { } baseList ? baseList.Types.Select(baseType => baseType.Type) : [];
     }

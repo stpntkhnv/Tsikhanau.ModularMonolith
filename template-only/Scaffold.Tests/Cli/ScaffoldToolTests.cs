@@ -21,6 +21,8 @@ public sealed class ScaffoldToolTests : IDisposable
 
     private const String NewFilePath = "src/Modules/Notes/NotesModule.cs";
 
+    private const String TagsFilePath = "src/Modules/Tags/TagsModule.cs";
+
     private readonly SampleApp _app = SampleApp.Create();
 
     private readonly StringWriter _output = new();
@@ -144,6 +146,44 @@ public sealed class ScaffoldToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Second_command_is_refused_while_one_runs_and_runs_once_it_ends()
+    {
+        using var secondError = new StringWriter();
+        var secondTool = new ScaffoldTool(
+            _app.FileSystem,
+            FakeProcessRunner.Succeeding(),
+            TextWriter.Null,
+            secondError);
+
+        var secondExitCode = 0;
+        var migration = new FakeProcessRunner(async (_, cancellationToken) =>
+        {
+            secondExitCode = await secondTool.RunAsync(new PlannedCommand(_ => PlanTagsModule()), cancellationToken);
+            return Result.Success();
+        });
+
+        var exitCode = await new ScaffoldTool(_app.FileSystem, migration, _output, _error)
+            .RunAsync(new PlannedCommand(PlanNewModule), CancellationToken);
+
+        var tagsExistedWhileNotesRan = _app.Exists(TagsFilePath);
+        var nextExitCode = await secondTool.RunAsync(new PlannedCommand(_ => PlanTagsModule()), CancellationToken);
+        var tagsExistAfterwards = _app.Exists(TagsFilePath);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        secondExitCode.ShouldBe(1);
+        secondError
+            .ToString()
+            .ShouldStartWith(
+                "scaffold: cannot take the scaffold lock src/Core/Scaffold/obj/scaffold.lock, which another scaffold "
+                + "command in this app holds while it runs; run this one when that one ends: ",
+                Case.Sensitive);
+
+        tagsExistedWhileNotesRan.ShouldBeFalse();
+        nextExitCode.ShouldBe(0, secondError.ToString());
+        tagsExistAfterwards.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Command_that_cannot_plan_changes_nothing()
     {
         var before = _app.TakeSnapshot();
@@ -212,6 +252,9 @@ public sealed class ScaffoldToolTests : IDisposable
                 [new NewFile(NewFilePath, "sealed class NotesModule;\n")],
                 [programEdit],
                 [new ExternalStep("bash", ["scripts/add-migration.sh", "Notes", "Initial"])]));
+
+    private static Result<ScaffoldPlan> PlanTagsModule() =>
+        new ScaffoldPlan([new NewFile(TagsFilePath, "sealed class TagsModule;\n")], [], []);
 
     private sealed class PlannedCommand(Func<AppLayout, Result<ScaffoldPlan>> plan) : IScaffoldCommand
     {

@@ -59,6 +59,8 @@ internal sealed class FailingFileSystem(
 
     public void DeleteDirectory(String path) => _fileSystem.DeleteDirectory(path);
 
+    public IDisposable Lock(String path) => _fileSystem.Lock(path);
+
     private void WritePartially(String path, Byte[] content)
     {
         if (writesPartially)

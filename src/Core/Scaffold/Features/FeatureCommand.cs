@@ -62,10 +62,11 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
 
         return Result
             .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
+            .And(VerifyRoute(feature, fileSystem))
             .And(VerifyInternalCommandName(feature, fileSystem))
             .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
             .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
-            .Bind((_, nameNote, facadeChange, referenceEdits) =>
+            .Bind((_, _, nameNote, facadeChange, referenceEdits) =>
                 CombinePlan(
                     feature,
                     facadeChange,
@@ -106,6 +107,13 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
                 "scaffold.exists",
                 $"feature {feature.Name} of {feature.Module.Name} already exists: {String.Join(", ", existing)}");
     }
+
+    private static Result<Unit> VerifyRoute(ScaffoldedFeature feature, IFileSystem fileSystem) =>
+        feature.Method == EndpointMethod.None
+            ? Unit.Value
+            : new SourceProjectReader(fileSystem)
+                .Read(feature.Module.App, feature.Module.Name)
+                .Bind(moduleProjects => new RouteVerifier(moduleProjects).Verify(feature));
 
     private static Result<Optional<String>> VerifyInternalCommandName(
         ScaffoldedFeature feature,

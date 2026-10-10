@@ -662,6 +662,27 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Theory]
+    [InlineData("NoteSummary", "GetNoteSummary")]
+    [InlineData("GetNoteSummary", "NoteSummary")]
+    public async Task Query_whose_route_the_module_maps_already_is_refused_before_any_write(String first, String second)
+    {
+        await RunAndCommitAsync($"feature Notes {first} --kind query --endpoint get");
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync($"feature Notes {second} --kind query --endpoint get");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: feature {second} of Notes would answer GET /notes/note-summary, which "
+            + $"{NotesProject}/Features/{first}/{first}Endpoint.cs:12 maps already; choose another feature name\n");
+
+        after.ShouldBe(before);
+    }
+
     [Fact]
     public async Task Public_query_that_exists_is_refused_with_both_its_folders_and_its_files()
     {

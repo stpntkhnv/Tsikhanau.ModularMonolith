@@ -38,6 +38,21 @@ public sealed class CheckFeatureFailuresTests : IDisposable
 
     private const String RecountTagsText = "RecountTags in Tags is not implemented";
 
+    private const String Solution =
+        """
+        <Solution>
+          <Folder Name="/src/Bootstrapper/">
+            <Project Path="src/Bootstrapper/Acme.Shop.Bootstrapper/Acme.Shop.Bootstrapper.csproj" />
+          </Folder>
+          <Folder Name="/src/Tests/">
+            <Project Path="src/Tests/ArchTests/Acme.Shop.ArchTests.csproj" />
+            <Project Path="src/Tests/IntegrationTests/Acme.Shop.IntegrationTests.csproj" />
+            <Project Path="src/Tests/Testing.App/Acme.Shop.Testing.App.csproj" />
+            <Project Path="src/Tests/UnitTests/Acme.Shop.UnitTests.csproj" />
+          </Folder>
+        </Solution>
+        """;
+
     private static readonly String[] ScaffoldedTests =
     [
         ArchiveNoteTest,
@@ -55,6 +70,8 @@ public sealed class CheckFeatureFailuresTests : IDisposable
     private static readonly String GreenGate = ReadRecordedGate("green.txt");
 
     private static readonly String FailedGate = ReadRecordedGate("ten-features.txt");
+
+    private static readonly String CrashedGate = ReadRecordedGate("crashed-app.txt");
 
     private readonly DirectoryInfo _app = Directory.CreateTempSubdirectory("check-feature-failures-");
 
@@ -274,6 +291,35 @@ public sealed class CheckFeatureFailuresTests : IDisposable
             + "(<App>.IntegrationTests.Modules.<Module>.<Feature>Tests.<Method>)");
     }
 
+    [Fact]
+    public async Task Test_app_without_a_summary_is_refused()
+    {
+        WriteGate(FailedGateWithout("Acme.Shop.UnitTests"));
+
+        var check = await RunAsync(ScaffoldedTests);
+
+        ShouldBeRefused(
+            check,
+            "no test summary line for Acme.Shop.UnitTests; every test project of Acme.Shop.slnx must report one");
+    }
+
+    [Fact]
+    public async Task Crashed_test_app_is_refused()
+    {
+        WriteGate(CrashedGate);
+
+        var check = await RunAsync(ScaffoldedTests);
+
+        ShouldBeRefused(
+            check,
+            "Acme.Shop.ArchTests has no failed test, so it must pass, but its summary says "
+            + "'Zero tests ran (1s 391ms)'");
+
+        check.ErrorLines[1].ShouldBe(
+            $"{Prefix}Acme.Shop.ArchTests ended with exit code 134, not 2: its test process failed (aborted or "
+            + "crashed), not only its tests");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -296,8 +342,16 @@ public sealed class CheckFeatureFailuresTests : IDisposable
         return FailedGate.Replace(text, replacement, StringComparison.Ordinal);
     }
 
+    private static String FailedGateWithout(String testApp) =>
+        String.Join(
+            '\n',
+            FailedGate
+                .Split('\n')
+                .Where(line => !line.Contains($"/{testApp}.dll (", StringComparison.Ordinal)));
+
     private void WriteGate(String output, Int32 exitCode, String skips = "0\n")
     {
+        File.WriteAllText(Path.Combine(_app.FullName, "Acme.Shop.slnx"), Solution);
         File.WriteAllText(Path.Combine(_app.FullName, "gate-output.txt"), output);
         File.WriteAllText(Path.Combine(_app.FullName, "gate.sh"), $"cat gate-output.txt\nexit {exitCode}\n");
         Directory.CreateDirectory(Path.Combine(_app.FullName, ".gate"));

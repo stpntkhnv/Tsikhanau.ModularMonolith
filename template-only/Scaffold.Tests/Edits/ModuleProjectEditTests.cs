@@ -54,6 +54,29 @@ public sealed class ModuleProjectEditTests
         @"    <ProjectReference Include=""..\..\Zones\Acme.Shop.Modules.Zones.Contracts\"
         + @"Acme.Shop.Modules.Zones.Contracts.csproj"" />";
 
+    private const String OwnContractsClosingOnTheNextLine =
+        @"    <ProjectReference Include=""..\Acme.Shop.Modules.Tags.Contracts\"
+        + @"Acme.Shop.Modules.Tags.Contracts.csproj"""
+        + "\n      />";
+
+    private const String OwnContractsWithItsIncludeOnTheNextLine =
+        "    <ProjectReference\n"
+        + @"      Include=""..\Acme.Shop.Modules.Tags.Contracts\Acme.Shop.Modules.Tags.Contracts.csproj"" />";
+
+    private const String OwnContractsWithItsTagEndingOnTheNextLine =
+        @"    <ProjectReference Include=""..\Acme.Shop.Modules.Tags.Contracts\"
+        + @"Acme.Shop.Modules.Tags.Contracts.csproj"""
+        + "\n      Private=\"true\">\n    </ProjectReference>";
+
+    private const String BillingContractsClosingOnTheNextLine =
+        @"    <ProjectReference Include=""..\..\Billing\Acme.Shop.Modules.Billing.Contracts\"
+        + @"Acme.Shop.Modules.Billing.Contracts.csproj"""
+        + "\n      />";
+
+    private const String CoreDomainClosingOnTheNextLine =
+        @"    <ProjectReference Include=""..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj"""
+        + "\n      />";
+
     private static readonly ScaffoldedModule Tags = SampleModules.Create("Tags");
 
     private static readonly String TagsProject = new ModuleTemplate(Tags, hasSettings: false)
@@ -111,6 +134,32 @@ public sealed class ModuleProjectEditTests
             .ShouldBe(project.Replace(ownContracts, $"{ownContracts}\n{NotesContracts}", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData(OwnContractsClosingOnTheNextLine, 7)]
+    [InlineData(OwnContractsWithItsIncludeOnTheNextLine, 7)]
+    [InlineData(OwnContractsWithItsTagEndingOnTheNextLine, 7)]
+    [InlineData(OwnContracts + "\n" + BillingContractsClosingOnTheNextLine, 8)]
+    public void Reference_whose_tag_does_not_end_on_its_first_line_is_refused(String references, Int32 line)
+    {
+        var project = TagsProject.Replace(OwnContracts, references, StringComparison.Ordinal);
+
+        var edit = AddNotesContracts(project);
+
+        ReadText(edit)
+            .ShouldBe(BuildSplitTagError(line));
+    }
+
+    [Fact]
+    public void Reference_to_the_core_whose_tag_does_not_end_on_its_first_line_is_refused()
+    {
+        var project = TagsProject.Replace(CoreDomain, CoreDomainClosingOnTheNextLine, StringComparison.Ordinal);
+
+        var edit = AddNotesContracts(project);
+
+        ReadText(edit)
+            .ShouldBe(BuildSplitTagError(8));
+    }
+
     [Fact]
     public void Project_with_windows_line_endings_keeps_them()
     {
@@ -134,6 +183,11 @@ public sealed class ModuleProjectEditTests
                 $@"{Tags.ProjectPath} must hold the reference to ..\Acme.Shop.Modules.Tags.Contracts\"
                 + "Acme.Shop.Modules.Tags.Contracts.csproj");
     }
+
+    private static String BuildSplitTagError(Int32 line) =>
+        $"{Tags.ProjectPath}:{line} holds a <ProjectReference> tag that does not end on that line; scaffold edits "
+        + "references whose tag is one line, <ProjectReference Include=\"...\" /> or <ProjectReference "
+        + "Include=\"...\"> with its children below, so write the tag on one line and run scaffold again";
 
     private static String WithReferencesAfterOwnContracts(IEnumerable<String> references) =>
         TagsProject.Replace(
