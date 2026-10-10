@@ -6,8 +6,9 @@ namespace Tsikhanau.Monolith.ArchRules.Rules;
 internal static class RuleLines
 {
     private const String OptionalInsteadOfNull =
-        "Absence is `Optional<T>`, never `null`: in what Domain and Features return and in what messages and "
-        + "requests carry.";
+        "Absence is `Optional<T>`, never `null`: in what Domain types and feature classes return and in what "
+        + "integration events, commands and request records carry. Queries and DTOs carry `Optional<T>` too; only a "
+        + "Dapper `<Name>Row` record holds a nullable member, which its handler maps to the DTO at once.";
 
     private const String InjectedTime =
         "Time comes from the injected `TimeProvider`, ids from `Guid.CreateVersion7(createdOn)`; the domain takes "

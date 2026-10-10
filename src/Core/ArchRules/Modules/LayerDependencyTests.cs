@@ -91,7 +91,8 @@ public abstract class LayerDependencyTests<TInputs> : ArchRuleTests<TInputs>
         Check(
             LayerDependencyRules.ModuleDoesNotReadConfigurationDirectly(Modules, GetModule(name)),
             $"{name} has no types",
-            "Bind a settings record with AddSettings<TSettings> and take it in the constructor");
+            "Bind a settings record with AddSettings<TSettings>, take IOptions<TSettings> in the constructor and read "
+            + "its Value");
 
     [Theory]
     [EveryModule]
