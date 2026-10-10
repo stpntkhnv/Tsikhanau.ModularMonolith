@@ -1,9 +1,9 @@
 using System.Reflection;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
 using Tsikhanau.Monolith.ArchRules.Projects;
+using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using Tsikhanau.Monolith.TestModules.Pings;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Inputs;
@@ -24,12 +24,6 @@ public sealed class ModuleLoadingTests
 
     private const String OrphanLoadFailure =
         $"Orphan cannot load its assemblies: Could not load file or assembly '{OrphanBaseAssemblyName},";
-
-    private static readonly IReadOnlyList<MetadataReference> RuntimeReferences =
-        ((String)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator)
-            .Select(path => MetadataReference.CreateFromFile(path))
-            .ToList();
 
     private static readonly Lazy<Byte[]> OrphanAssemblyImage = new(CompileOrphanAssembly);
 
@@ -110,29 +104,14 @@ public sealed class ModuleLoadingTests
 
     private static Byte[] CompileOrphanAssembly()
     {
-        var baseImage = Compile(
+        var baseImage = FixtureCompiler.Compile(
             OrphanBaseAssemblyName,
             $"namespace {OrphanBaseAssemblyName};\n\npublic class OrphanBase;",
-            RuntimeReferences);
+            FixtureCompiler.RuntimeReferences);
 
-        return Compile(
+        return FixtureCompiler.Compile(
             OrphanRootNamespace,
             $"namespace {OrphanRootNamespace}.Domain;\n\npublic sealed class Orphan : {OrphanBaseAssemblyName}.OrphanBase;",
-            [.. RuntimeReferences, MetadataReference.CreateFromImage(baseImage)]);
-    }
-
-    private static Byte[] Compile(String assemblyName, String source, IEnumerable<MetadataReference> references)
-    {
-        var compilation = CSharpCompilation.Create(
-            assemblyName,
-            [CSharpSyntaxTree.ParseText(source)],
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-        using var imageStream = new MemoryStream();
-        var emitResult = compilation.Emit(imageStream);
-
-        emitResult.Success.ShouldBeTrue();
-        return imageStream.ToArray();
+            [.. FixtureCompiler.RuntimeReferences, MetadataReference.CreateFromImage(baseImage)]);
     }
 }

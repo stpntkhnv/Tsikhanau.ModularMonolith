@@ -14,4 +14,12 @@ public abstract class NullabilityTests<TInputs> : ArchRuleTests<TInputs>
             NullabilityRules.DomainAndFeatureClassesReturnOptionalInsteadOfNull(GetModule(name)),
             $"{name} has no Domain or Features types",
             "Return Optional<T> for a value that may be absent");
+
+    [Theory]
+    [EveryModule]
+    public void Messages_and_requests_carry_optional_instead_of_null(String name) =>
+        Check(
+            NullabilityRules.MessagesAndRequestsCarryOptionalInsteadOfNull(GetModule(name)),
+            $"{name} has no integration events, commands or request records",
+            "Carry Optional<T> for a value that may be absent");
 }
