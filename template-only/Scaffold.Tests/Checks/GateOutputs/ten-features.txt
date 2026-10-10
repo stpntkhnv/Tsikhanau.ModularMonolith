@@ -1,0 +1,289 @@
+core-hash: the core matches core.lock, version 46
+  Determining projects to restore...
+  Restored /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/Acme.Shop.Bootstrapper.csproj (in 292 ms).
+  24 of 25 projects are up-to-date for restore.
+  Tsikhanau.Monolith.Analyzers -> /work/Acme.Shop/src/Core/Analyzers/bin/Release/netstandard2.0/Tsikhanau.Monolith.Analyzers.dll
+  Tsikhanau.Railway.Analyzers -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.Analyzers/bin/Release/netstandard2.0/Tsikhanau.Railway.Analyzers.dll
+  Acme.Shop.UnitTests -> /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll
+  Tsikhanau.Railway.Analyzers.CodeFixes -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.Analyzers.CodeFixes/bin/Release/netstandard2.0/Tsikhanau.Railway.Analyzers.CodeFixes.dll
+  Tsikhanau.Monolith.Shared -> /work/Acme.Shop/src/Core/Shared/bin/Release/net10.0/Tsikhanau.Monolith.Shared.dll
+  Tsikhanau.Railway -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway/bin/Release/net10.0/Tsikhanau.Railway.dll
+  Tsikhanau.Monolith.Contracts -> /work/Acme.Shop/src/Core/Contracts/bin/Release/net10.0/Tsikhanau.Monolith.Contracts.dll
+  Tsikhanau.Monolith.Domain -> /work/Acme.Shop/src/Core/Domain/bin/Release/net10.0/Tsikhanau.Monolith.Domain.dll
+  Tsikhanau.Railway.AspNetCore -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.AspNetCore/bin/Release/net10.0/Tsikhanau.Railway.AspNetCore.dll
+  Acme.Shop.Modules.Tags.Contracts -> /work/Acme.Shop/src/Modules/Tags/Acme.Shop.Modules.Tags.Contracts/bin/Release/net10.0/Acme.Shop.Modules.Tags.Contracts.dll
+  Acme.Shop.Modules.Notes.Contracts -> /work/Acme.Shop/src/Modules/Notes/Acme.Shop.Modules.Notes.Contracts/bin/Release/net10.0/Acme.Shop.Modules.Notes.Contracts.dll
+  Tsikhanau.Monolith.Scaffold -> /work/Acme.Shop/src/Core/Scaffold/bin/Release/net10.0/Tsikhanau.Monolith.Scaffold.dll
+  Tsikhanau.Monolith.Hosting -> /work/Acme.Shop/src/Core/Hosting/bin/Release/net10.0/Tsikhanau.Monolith.Hosting.dll
+  Tsikhanau.Monolith.Application -> /work/Acme.Shop/src/Core/Application/bin/Release/net10.0/Tsikhanau.Monolith.Application.dll
+  Tsikhanau.Monolith.Api -> /work/Acme.Shop/src/Core/Api/bin/Release/net10.0/Tsikhanau.Monolith.Api.dll
+  Tsikhanau.Monolith.Infrastructure -> /work/Acme.Shop/src/Core/Infrastructure/bin/Release/net10.0/Tsikhanau.Monolith.Infrastructure.dll
+  Acme.Shop.Modules.Tags -> /work/Acme.Shop/src/Modules/Tags/Acme.Shop.Modules.Tags/bin/Release/net10.0/Acme.Shop.Modules.Tags.dll
+  Tsikhanau.Monolith.Testing -> /work/Acme.Shop/src/Core/Testing/bin/Release/net10.0/Tsikhanau.Monolith.Testing.dll
+  Acme.Shop.Modules.Notes -> /work/Acme.Shop/src/Modules/Notes/Acme.Shop.Modules.Notes/bin/Release/net10.0/Acme.Shop.Modules.Notes.dll
+  Tsikhanau.Monolith.ArchRules -> /work/Acme.Shop/src/Core/ArchRules/bin/Release/net10.0/Tsikhanau.Monolith.ArchRules.dll
+  Acme.Shop.Bootstrapper -> /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/bin/Release/net10.0/Acme.Shop.Bootstrapper.dll
+  Acme.Shop.AppHost -> /work/Acme.Shop/src/Aspire/Acme.Shop.AppHost/bin/Release/net10.0/Acme.Shop.AppHost.dll
+  Acme.Shop.Testing.App -> /work/Acme.Shop/src/Tests/Testing.App/bin/Release/net10.0/Acme.Shop.Testing.App.dll
+  Acme.Shop.ArchTests -> /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll
+  Acme.Shop.IntegrationTests -> /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.35
+Running tests from /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64)
+Running tests from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+Running tests from /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64)
+/work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64) passed (565ms)
+/work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64) passed (1s 391ms)
+[+0/x0/?0] Acme.Shop.IntegrationTests.dll (net10.0|x64)(2s)
+
+failed Acme.Shop.IntegrationTests.Modules.Notes.DeleteNoteTests.Delete_note_answers_no_content (138ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : response.StatusCode
+      should be
+  HttpStatusCode.NoContent
+      but was
+  HttpStatusCode.UnprocessableEntity
+  
+  Additional Info:
+      {"type":"https://tools.ietf.org/html/rfc4918#section-11.2","title":"Unprocessable Entity","status":422,"detail":"DeleteNote in Notes is not implemented","code":"DeleteNote.NotImplemented","traceId":"00-9f47123b4951004615e89f57af4b39b3-9958937a90c86559-01"}
+    at Acme.Shop.IntegrationTests.Modules.Notes.DeleteNoteTests.Delete_note_answers_no_content() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/DeleteNoteTests.cs:18
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Notes.CreateNoteTests.Create_note_answers_no_content (20ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : response.StatusCode
+      should be
+  HttpStatusCode.NoContent
+      but was
+  HttpStatusCode.UnprocessableEntity
+  
+  Additional Info:
+      {"type":"https://tools.ietf.org/html/rfc4918#section-11.2","title":"Unprocessable Entity","status":422,"detail":"CreateNote in Notes is not implemented","code":"CreateNote.NotImplemented","traceId":"00-e40e905c3b811b7614612a4582c812f9-a79e70556399d206-01"}
+    at Acme.Shop.IntegrationTests.Modules.Notes.CreateNoteTests.Create_note_answers_no_content() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/CreateNoteTests.cs:19
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Notes.RenameNoteTests.Rename_note_answers_no_content (11ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : response.StatusCode
+      should be
+  HttpStatusCode.NoContent
+      but was
+  HttpStatusCode.UnprocessableEntity
+  
+  Additional Info:
+      {"type":"https://tools.ietf.org/html/rfc4918#section-11.2","title":"Unprocessable Entity","status":422,"detail":"RenameNote in Notes is not implemented","code":"RenameNote.NotImplemented","traceId":"00-5741f123f192a2e45d484cc46bad3026-636da5a68333fe9b-01"}
+    at Acme.Shop.IntegrationTests.Modules.Notes.RenameNoteTests.Rename_note_answers_no_content() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/RenameNoteTests.cs:19
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Tags.NoteCreatedTests.Note_created_integration_event_is_handled_through_the_inbox (374ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.InvalidOperationException : Queues hold failed or retrying messages: Tags inbox_messages notes.note-created after 1 attempts: NoteCreated.NotImplemented: NoteCreated in Tags is not implemented. A test that expects a failure processes queues with ProcessQueuesAllowingFailuresAsync
+    at Tsikhanau.Monolith.Testing.Queues.QueueDriver.ProcessAllAsync(IServiceProvider serviceProvider) in /work/Acme.Shop/src/Core/Testing/Queues/QueueDriver.cs:17
+    at Acme.Shop.IntegrationTests.Modules.Tags.NoteCreatedTests.Note_created_integration_event_is_handled_through_the_inbox() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Tags/NoteCreatedTests.cs:21
+    --- End of stack trace from previous location ---
+failed Acme.Shop.IntegrationTests.Modules.Notes.CountNotesTests.Count_notes_succeeds_through_the_facade (15ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : result
+      should be
+  Success(CountNotesDto { })
+      but was
+  Failure([CountNotes.NotImplemented] CountNotes in Notes is not implemented)
+    at Acme.Shop.IntegrationTests.Modules.Notes.CountNotesTests.Count_notes_succeeds_through_the_facade() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/CountNotesTests.cs:20
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Notes.ArchiveNoteTests.Archive_note_succeeds_through_the_facade (11ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : await notesModule.ExecuteCommandAsync(new ArchiveNoteCommand(), CancellationToken);
+  
+          result
+      should be
+  Success(())
+      but was
+  Failure([ArchiveNote.NotImplemented] ArchiveNote in Notes is not implemented)
+    at Acme.Shop.IntegrationTests.Modules.Notes.ArchiveNoteTests.Archive_note_succeeds_through_the_facade() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/ArchiveNoteTests.cs:18
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Notes.GetNoteSummaryTests.Get_note_summary_answers_ok (10ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : response.StatusCode
+      should be
+  HttpStatusCode.OK
+      but was
+  HttpStatusCode.UnprocessableEntity
+  
+  Additional Info:
+      {"type":"https://tools.ietf.org/html/rfc4918#section-11.2","title":"Unprocessable Entity","status":422,"detail":"GetNoteSummary in Notes is not implemented","code":"GetNoteSummary.NotImplemented","traceId":"00-009b3f8aed8e5976bad5457ad271f360-5d5cd1a21a12fe57-01"}
+    at Acme.Shop.IntegrationTests.Modules.Notes.GetNoteSummaryTests.Get_note_summary_answers_ok() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/GetNoteSummaryTests.cs:18
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+[+23/x7/?0] Acme.Shop.IntegrationTests.dll (net10.0|x64)(5s)
+
+failed Acme.Shop.IntegrationTests.Modules.Tags.RecountTagsTests.Recount_tags_runs_when_the_queues_run (126ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.InvalidOperationException : Queues hold failed or retrying messages: Tags internal_commands recount-tags after 1 attempts: RecountTags.NotImplemented: RecountTags in Tags is not implemented. A test that expects a failure processes queues with ProcessQueuesAllowingFailuresAsync
+    at Tsikhanau.Monolith.Testing.Queues.QueueDriver.ProcessAllAsync(IServiceProvider serviceProvider) in /work/Acme.Shop/src/Core/Testing/Queues/QueueDriver.cs:17
+    at Acme.Shop.IntegrationTests.Modules.Tags.RecountTagsTests.Recount_tags_runs_when_the_queues_run() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Tags/RecountTagsTests.cs:17
+    --- End of stack trace from previous location ---
+failed Acme.Shop.IntegrationTests.Modules.Tags.GetTagTests.Get_tag_succeeds_through_the_query_facade (9ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : result
+      should be
+  Success(TagDto { })
+      but was
+  Failure([GetTag.NotImplemented] GetTag in Tags is not implemented)
+    at Acme.Shop.IntegrationTests.Modules.Tags.GetTagTests.Get_tag_succeeds_through_the_query_facade() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Tags/GetTagTests.cs:20
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+failed Acme.Shop.IntegrationTests.Modules.Notes.NoteCreatedTests.Note_created_domain_event_is_handled (20ms)
+  from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : dispatched
+      should be
+  Success(())
+      but was
+  Failure([NoteCreated.NotImplemented] NoteCreated in Notes is not implemented)
+    at Acme.Shop.IntegrationTests.Modules.Notes.NoteCreatedTests.Note_created_domain_event_is_handled() in /work/Acme.Shop/src/Tests/IntegrationTests/Modules/Notes/NoteCreatedTests.cs:32
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+/work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64) failed with 10 error(s) (7s 634ms)
+Exit code: 2
+  Standard output: [testcontainers.org 00:00:00.53] Connected to Docker:
+    Host: unix:///run/host/run/user/1000/podman/podman.sock
+    Server Version: 6.1.3
+    Kernel Version: 7.2.9-arch1-1
+    API Version: 1.44
+    Operating System: arch
+    Total Memory: 31.26 GB
+  [testcontainers.org 00:00:00.67] Docker container 0e2584ee9d91 created
+  [testcontainers.org 00:00:00.71] Start Docker container 0e2584ee9d91
+  [testcontainers.org 00:00:00.80] Wait for Docker container 0e2584ee9d91 to complete readiness checks
+  [testcontainers.org 00:00:00.80] Execute "pg_isready --host localhost --dbname postgres --username postgres" at Docker container 0e2584ee9d91
+  [testcontainers.org 00:00:01.85] Execute "pg_isready --host localhost --dbname postgres --username postgres" at Docker container 0e2584ee9d91
+  [testcontainers.org 00:00:01.90] Docker container 0e2584ee9d91 ready
+  info: Tsikhanau.Monolith.Infrastructure.Modules.ModuleDatabaseExtensions[1489420192]
+        Waiting for the database preparation lock
+  fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+        Failed executing DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='600']
+        SELECT migration_id, product_version
+        FROM notes.__ef_migrations_history
+        ORDER BY migration_id;
+  info: Microsoft.EntityFrameworkCore.Migrations[20402]
+        Applying migration '20261010123337_Initial'.
+  fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+        Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='600']
+        SELECT migration_id, product_version
+        FROM tags.__ef_migrations_history
+        ORDER BY migration_id;
+  info: Microsoft.EntityFrameworkCore.Migrations[20402]
+        Applying migration '20261010123410_Initial'.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Development
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper
+  fail: Tsikhanau.Monolith.Infrastructure.Inbox.InboxPump[1434043348]
+        Message failed: NoteCreated.NotImplemented: NoteCreated in Tags is not implemented
+  crit: Acme.Shop.IntegrationTests[1023256192]
+        Host terminated unexpectedly
+        System.InvalidOperationException: Connection string 'database' is missing
+           at Tsikhanau.Monolith.Infrastructure.Database.DatabaseConnectionStrings.From(IConfiguration configuration, IHostEnvironment hostEnvironment) in /work/Acme.Shop/src/Core/Infrastructure/Database/DatabaseConnectionStrings.cs:line 29
+           at Tsikhanau.Monolith.Infrastructure.Platform.PlatformServiceCollectionExtensions.EnsureConnectionString(IHostApplicationBuilder builder) in /work/Acme.Shop/src/Core/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs:line 20
+           at Acme.Shop.Bootstrapper.Platform.PlatformExtensions.AddPlatform(WebApplicationBuilder builder) in /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/Platform/PlatformExtensions.cs:line 9
+           at Program.<<Main>$>g__BuildApp|0_0(String[] args) in /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/Program.cs:line 32
+  crit: Acme.Shop.IntegrationTests[1023256192]
+        Host terminated unexpectedly
+        System.InvalidOperationException: Connection string 'database' has no password; module logins derive their passwords from it
+           at Tsikhanau.Monolith.Infrastructure.Database.DatabaseConnectionStrings.From(IConfiguration configuration, IHostEnvironment hostEnvironment) in /work/Acme.Shop/src/Core/Infrastructure/Database/DatabaseConnectionStrings.cs:line 39
+           at Tsikhanau.Monolith.Infrastructure.Platform.PlatformServiceCollectionExtensions.EnsureConnectionString(IHostApplicationBuilder builder) in /work/Acme.Shop/src/Core/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs:line 20
+           at Acme.Shop.Bootstrapper.Platform.PlatformExtensions.AddPlatform(WebApplicationBuilder builder) in /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/Platform/PlatformExtensions.cs:line 9
+           at Program.<<Main>$>g__BuildApp|0_0(String[] args) in /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/Program.cs:line 32
+  info: Tsikhanau.Monolith.Infrastructure.Modules.ModuleDatabaseExtensions[1489420192]
+        Waiting for the database preparation lock
+  info: Microsoft.EntityFrameworkCore.Migrations[20405]
+        No migrations were applied. The database is already up to date.
+  info: Microsoft.EntityFrameworkCore.Migrations[20405]
+        No migrations were applied. The database is already up to date.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Production
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  info: Tsikhanau.Monolith.Infrastructure.Modules.ModuleDatabaseExtensions[1489420192]
+        Waiting for the database preparation lock
+  info: Microsoft.EntityFrameworkCore.Migrations[20405]
+        No migrations were applied. The database is already up to date.
+  info: Microsoft.EntityFrameworkCore.Migrations[20405]
+        No migrations were applied. The database is already up to date.
+  info: Microsoft.Hosting.Lifetime[0]
+        Application started. Press Ctrl+C to shut down.
+  info: Microsoft.Hosting.Lifetime[0]
+        Hosting environment: Development
+  info: Microsoft.Hosting.Lifetime[0]
+        Content root path: /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  fail: Tsikhanau.Monolith.Infrastructure.InternalCommands.InternalCommandsPump[1434043348]
+        Message failed: RecountTags.NotImplemented: RecountTags in Tags is not implemented
+  info: Microsoft.Hosting.Lifetime[0]
+        Application is shutting down...
+  [testcontainers.org 00:00:06.73] Delete Docker container 0e2584ee9d91
+  
+
+Test run summary: Failed!
+  /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64) passed (1s 391ms)
+  /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64) passed (565ms)
+  /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64) failed with 10 error(s) (7s 634ms)
+
+  total: 133
+  failed: 10
+  succeeded: 123
+  skipped: 0
+  duration: 7s 823ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

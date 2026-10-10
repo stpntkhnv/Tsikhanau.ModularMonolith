@@ -27,8 +27,6 @@ internal sealed class SampleApp : IDisposable
 
     private const String TemplateHostFolder = $"src/Bootstrapper/{TemplateName}.Bootstrapper";
 
-    private const String NoTemplateRoot = "no folder above the test output holds global.json";
-
     private SampleApp(String root) => Root = root;
 
     public static String Solution { get; } = ReadTemplateFile($"{TemplateName}.slnx");
@@ -95,14 +93,9 @@ internal sealed class SampleApp : IDisposable
 
     private static String ReadTemplateFile(String relativePath) =>
         File
-            .ReadAllText(Path.Combine(FindTemplateRoot(new DirectoryInfo(AppContext.BaseDirectory)), relativePath))
+            .ReadAllText(Path.Combine(TemplateFolder.Root, relativePath))
             .Replace(TemplateName, Name, StringComparison.Ordinal)
             .Replace(TemplateLoginPrefix, LoginPrefix, StringComparison.Ordinal);
-
-    private static String FindTemplateRoot(DirectoryInfo folder) =>
-        File.Exists(Path.Combine(folder.FullName, "global.json"))
-            ? folder.FullName
-            : FindTemplateRoot(folder.Parent ?? throw new InvalidOperationException(NoTemplateRoot));
 
     private String HashFiles() =>
         String.Join(

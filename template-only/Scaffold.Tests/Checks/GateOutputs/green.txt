@@ -1,0 +1,52 @@
+core-hash: the core matches core.lock, version 46
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Tsikhanau.Railway.Analyzers -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.Analyzers/bin/Release/netstandard2.0/Tsikhanau.Railway.Analyzers.dll
+  Tsikhanau.Monolith.Analyzers -> /work/Acme.Shop/src/Core/Analyzers/bin/Release/netstandard2.0/Tsikhanau.Monolith.Analyzers.dll
+  Tsikhanau.Railway.Analyzers.CodeFixes -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.Analyzers.CodeFixes/bin/Release/netstandard2.0/Tsikhanau.Railway.Analyzers.CodeFixes.dll
+  Tsikhanau.Monolith.Shared -> /work/Acme.Shop/src/Core/Shared/bin/Release/net10.0/Tsikhanau.Monolith.Shared.dll
+  Acme.Shop.UnitTests -> /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll
+  Tsikhanau.Railway -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway/bin/Release/net10.0/Tsikhanau.Railway.dll
+  Tsikhanau.Monolith.Domain -> /work/Acme.Shop/src/Core/Domain/bin/Release/net10.0/Tsikhanau.Monolith.Domain.dll
+  Tsikhanau.Monolith.Contracts -> /work/Acme.Shop/src/Core/Contracts/bin/Release/net10.0/Tsikhanau.Monolith.Contracts.dll
+  Tsikhanau.Railway.AspNetCore -> /work/Acme.Shop/src/Packages/Tsikhanau.Railway.AspNetCore/bin/Release/net10.0/Tsikhanau.Railway.AspNetCore.dll
+  Tsikhanau.Monolith.Application -> /work/Acme.Shop/src/Core/Application/bin/Release/net10.0/Tsikhanau.Monolith.Application.dll
+  Tsikhanau.Monolith.Api -> /work/Acme.Shop/src/Core/Api/bin/Release/net10.0/Tsikhanau.Monolith.Api.dll
+  Tsikhanau.Monolith.Scaffold -> /work/Acme.Shop/src/Core/Scaffold/bin/Release/net10.0/Tsikhanau.Monolith.Scaffold.dll
+  Tsikhanau.Monolith.Hosting -> /work/Acme.Shop/src/Core/Hosting/bin/Release/net10.0/Tsikhanau.Monolith.Hosting.dll
+  Tsikhanau.Monolith.Infrastructure -> /work/Acme.Shop/src/Core/Infrastructure/bin/Release/net10.0/Tsikhanau.Monolith.Infrastructure.dll
+  Tsikhanau.Monolith.Testing -> /work/Acme.Shop/src/Core/Testing/bin/Release/net10.0/Tsikhanau.Monolith.Testing.dll
+  Acme.Shop.Bootstrapper -> /work/Acme.Shop/src/Bootstrapper/Acme.Shop.Bootstrapper/bin/Release/net10.0/Acme.Shop.Bootstrapper.dll
+  Tsikhanau.Monolith.ArchRules -> /work/Acme.Shop/src/Core/ArchRules/bin/Release/net10.0/Tsikhanau.Monolith.ArchRules.dll
+  Acme.Shop.AppHost -> /work/Acme.Shop/src/Aspire/Acme.Shop.AppHost/bin/Release/net10.0/Acme.Shop.AppHost.dll
+  Acme.Shop.Testing.App -> /work/Acme.Shop/src/Tests/Testing.App/bin/Release/net10.0/Acme.Shop.Testing.App.dll
+  Acme.Shop.ArchTests -> /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll
+  Acme.Shop.IntegrationTests -> /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:10.08
+Running tests from /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64)
+Running tests from /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64)
+Running tests from /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64)
+/work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64) passed (959ms)
+/work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64) passed (2s 376ms)
+[+0/x0/?0] Acme.Shop.IntegrationTests.dll (net10.0|x64)(2s)
+
+[+18/x0/?0] Acme.Shop.IntegrationTests.dll (net10.0|x64)(5s)
+
+/work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64) passed (7s 286ms)
+
+Test run summary: Passed!
+  /work/Acme.Shop/src/Tests/UnitTests/bin/Release/net10.0/Acme.Shop.UnitTests.dll (net10.0|x64) passed (959ms)
+  /work/Acme.Shop/src/Tests/IntegrationTests/bin/Release/net10.0/Acme.Shop.IntegrationTests.dll (net10.0|x64) passed (7s 286ms)
+  /work/Acme.Shop/src/Tests/ArchTests/bin/Release/net10.0/Acme.Shop.ArchTests.dll (net10.0|x64) passed (2s 376ms)
+
+  total: 74
+  failed: 0
+  succeeded: 74
+  skipped: 0
+  duration: 7s 727ms
+gate: green, skipped tests as recorded: Acme.Shop.slnx 0
