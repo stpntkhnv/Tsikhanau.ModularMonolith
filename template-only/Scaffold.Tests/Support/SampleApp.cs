@@ -19,6 +19,8 @@ internal sealed class SampleApp : IDisposable
 
     public const String AppSettingsPath = "src/Bootstrapper/Acme.Shop.Bootstrapper/appsettings.json";
 
+    public const String IntegrationTestsProjectPath = "src/Tests/IntegrationTests/Acme.Shop.IntegrationTests.csproj";
+
     private const String TemplateName = "ModularMonolith";
 
     private const String TemplateLoginPrefix = "modularmonolith";
@@ -38,6 +40,9 @@ internal sealed class SampleApp : IDisposable
 
     public static String AppSettings { get; } = ReadTemplateFile($"{TemplateHostFolder}/appsettings.json");
 
+    public static String IntegrationTestsProject { get; } =
+        ReadTemplateFile($"src/Tests/IntegrationTests/{TemplateName}.IntegrationTests.csproj");
+
     public String Root { get; }
 
     public PhysicalFileSystem FileSystem => new(Root);
@@ -49,6 +54,7 @@ internal sealed class SampleApp : IDisposable
         app.Write(HostProjectPath, HostProject);
         app.Write(ProgramPath, Program);
         app.Write(AppSettingsPath, AppSettings);
+        app.Write(IntegrationTestsProjectPath, IntegrationTestsProject);
         app.Write("src/Modules/.gitkeep", String.Empty);
         app.Write(".gitignore", "bin/\nobj/\n");
         app.RunGit("init", "-q", "-b", "main");

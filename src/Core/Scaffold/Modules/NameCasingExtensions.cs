@@ -10,6 +10,8 @@ internal static class NameCasingExtensions
             String.Concat(name.Select((letter, index) => ToSnakeCasePart(name, letter, index)));
 
         public String ToKebabCase() => JsonNamingPolicy.KebabCaseLower.ConvertName(name);
+
+        public String ToCamelCase() => JsonNamingPolicy.CamelCase.ConvertName(name);
     }
 
     private static String ToSnakeCasePart(String name, Char letter, Int32 index) =>

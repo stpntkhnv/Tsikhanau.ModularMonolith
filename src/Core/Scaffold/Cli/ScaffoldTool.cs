@@ -29,14 +29,19 @@ internal sealed class ScaffoldTool(
         var outcome = await new AppLayoutReader(fileSystem)
             .Read()
             .Bind(app => command.Plan(app, fileSystem))
-            .BindAsync(plan => new Transaction(fileSystem, processRunner).RunAsync(plan, cancellationToken));
+            .BindAsync(plan => RunPlanAsync(plan, cancellationToken));
 
-        return outcome.Match(_ => ReportSuccess(), error => ReportFailure(error, FailedExitCode));
+        return outcome.Match(ReportSuccess, error => ReportFailure(error, FailedExitCode));
     }
 
-    private Int32 ReportSuccess()
+    private Task<Result<String>> RunPlanAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
+        new Transaction(fileSystem, processRunner)
+            .RunAsync(plan, cancellationToken)
+            .MapAsync(_ => plan.NextStep);
+
+    private Int32 ReportSuccess(String nextStep)
     {
-        outputTextWriter.WriteLine("scaffold: done; next, run ./gate.sh and commit");
+        outputTextWriter.WriteLine($"scaffold: done; {nextStep}");
         return SucceededExitCode;
     }
 

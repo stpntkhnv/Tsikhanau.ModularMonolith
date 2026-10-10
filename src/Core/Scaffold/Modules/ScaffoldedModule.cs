@@ -10,6 +10,8 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
 
     public String Schema => ModuleName.Schema;
 
+    public String Route => ModuleName.Route;
+
     public String Namespace => $"{App.RootNamespace}.Modules.{Name}";
 
     public String ProjectName => $"{App.ProjectPrefix}.Modules.{Name}";
@@ -31,6 +33,8 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
     public String FacadeContract => $"I{Name}Module";
 
     public String FacadeClass => $"{Name}ModuleFacade";
+
+    public String CommandMarker => $"I{Name}Command";
 
     public String DbContext => $"{Name}DbContext";
 

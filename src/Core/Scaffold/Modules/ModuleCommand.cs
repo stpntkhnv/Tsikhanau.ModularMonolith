@@ -11,8 +11,6 @@ internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffol
 {
     private const String MigrationName = "Initial";
 
-    private const String LineTooLong = "more than the 120 the build allows; choose a shorter name";
-
     public Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem) =>
         ModuleName
             .Parse(name, app.LoginPrefix)
@@ -42,18 +40,10 @@ internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffol
             .And(PlanEdits(module))
             .Map((newFiles, fileEdits) => new ScaffoldPlan(newFiles, fileEdits, [CreateMigrationStep(module)]));
 
-    private Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module)
-    {
-        var newFiles = new ModuleTemplate(module, hasSettings).CreateFiles();
-
-        return CodeLayout
-            .FindTooLongLine(newFiles)
-            .Match(
-                tooLongLine => Error.Failure(
-                    "scaffold.name",
-                    $"module name '{module.Name}' makes {tooLongLine}, {LineTooLong}"),
-                () => Result.Success(newFiles));
-    }
+    private Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module) =>
+        CodeLayout.EnsureLinesFit(
+            new ModuleTemplate(module, hasSettings).CreateFiles(),
+            $"module name '{module.Name}'");
 
     private Result<IReadOnlyList<FileEdit>> PlanEdits(ScaffoldedModule module) =>
         Result.CombineAll(

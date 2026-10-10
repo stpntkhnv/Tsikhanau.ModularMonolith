@@ -11,7 +11,12 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Cli;
 
 public sealed class ScaffoldToolTests : IDisposable
 {
-    private const String Usage = "usage: bash scripts/scaffold.sh module <Name> [--settings]";
+    private const String ModuleSynopsis = "bash scripts/scaffold.sh module <Name> [--settings]";
+
+    private const String FeatureSynopsis =
+        "bash scripts/scaffold.sh feature <Module> <Name> --kind command [--endpoint none|post|put|delete]";
+
+    private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureSynopsis}";
 
     private const String NewFilePath = "src/Modules/Notes/NotesModule.cs";
 
@@ -62,7 +67,38 @@ public sealed class ScaffoldToolTests : IDisposable
         var error = _error.ToString();
 
         exitCode.ShouldBe(2);
-        error.ShouldBe($"scaffold: module takes one name and optionally --settings; {Usage}\n");
+        error.ShouldBe($"scaffold: module takes one name and optionally --settings; usage: {ModuleSynopsis}\n");
+        after.ShouldBe(before);
+    }
+
+    [Theory]
+    [InlineData("feature", "feature takes a module name and a feature name, then its options")]
+    [InlineData("feature Notes", "feature takes a module name and a feature name, then its options")]
+    [InlineData("feature --kind command Notes Pin", "feature takes a module name and a feature name, then its options")]
+    [InlineData("feature Notes Pin", "feature needs --kind")]
+    [InlineData("feature Notes Pin --endpoint post", "feature needs --kind")]
+    [InlineData("feature Notes Pin --kind", "--kind needs a value")]
+    [InlineData("feature Notes Pin --kind --endpoint post", "--kind needs a value")]
+    [InlineData("feature Notes Pin --kind command --kind command", "--kind is given twice")]
+    [InlineData("feature Notes Pin --kind command --endpoint put --endpoint post", "--endpoint is given twice")]
+    [InlineData("feature Notes Pin --kind command --force yes", "feature does not know '--force'")]
+    [InlineData("feature Notes Pin --kind command post", "feature does not know 'post'")]
+    [InlineData("feature Notes Pin --kind query", "--kind 'query' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind Command", "--kind 'Command' is not a feature kind")]
+    [InlineData("feature Notes Pin --kind command --endpoint patch", "--endpoint 'patch' is not an endpoint method")]
+    public async Task Feature_command_line_scaffold_cannot_read_is_refused_with_the_usage(
+        String commandLine,
+        String problem)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await Tool.RunAsync(commandLine.Split(' '), CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(2);
+        error.ShouldBe($"scaffold: {problem}; usage: {FeatureSynopsis}\n");
         after.ShouldBe(before);
     }
 

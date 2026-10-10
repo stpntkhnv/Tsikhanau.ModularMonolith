@@ -7,7 +7,9 @@ internal static class ScaffoldCommandLine
 {
     private const String SettingsOption = "--settings";
 
-    private const String Usage = $"usage: bash scripts/scaffold.sh module <Name> [{SettingsOption}]";
+    private const String ModuleSynopsis = $"bash scripts/scaffold.sh module <Name> [{SettingsOption}]";
+
+    private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureCommandLine.Synopsis}";
 
     public static Result<IScaffoldCommand> Parse(IReadOnlyList<String> arguments) =>
         arguments switch
@@ -16,12 +18,13 @@ internal static class ScaffoldCommandLine
             ["module", var name, SettingsOption] when IsName(name) => CreateModuleCommand(name, hasSettings: true),
             ["module", ..] => Error.Failure(
                 "scaffold.usage",
-                $"module takes one name and optionally {SettingsOption}; {Usage}"),
+                $"module takes one name and optionally {SettingsOption}; usage: {ModuleSynopsis}"),
+            ["feature", ..] => FeatureCommandLine.Parse([.. arguments.Skip(1)]),
             [] => Error.Failure("scaffold.usage", $"no command given; {Usage}"),
             [var command, ..] => Error.Failure("scaffold.usage", $"unknown command '{command}'; {Usage}"),
         };
 
-    private static Boolean IsName(String argument) => !argument.StartsWith('-');
+    public static Boolean IsName(String argument) => !argument.StartsWith('-');
 
     private static Result<IScaffoldCommand> CreateModuleCommand(String name, Boolean hasSettings) =>
         Result.Success<IScaffoldCommand>(new ModuleCommand(name, hasSettings));
