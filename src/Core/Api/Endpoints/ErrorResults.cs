@@ -53,6 +53,7 @@ internal static class ErrorResults
         error.Inner switch
         {
             ValidationError validationError => validationError.FieldErrors,
+            AggregateError aggregateError => aggregateError.Errors.SelectMany(CollectFieldErrors),
             { } innerError => CollectWrappedFieldErrors(innerError),
             null => []
         };

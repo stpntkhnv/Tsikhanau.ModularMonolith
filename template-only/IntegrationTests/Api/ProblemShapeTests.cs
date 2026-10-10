@@ -10,6 +10,8 @@ public sealed class ProblemShapeTests(PostgresFixture postgresFixture)
 {
     private const String Alice = "alice";
 
+    private const String UnknownRoute = "/nowhere";
+
     private const String NoAcceptHeader = "(none)";
 
     private const Int32 ShownBodyLength = 40;
@@ -22,6 +24,8 @@ public sealed class ProblemShapeTests(PostgresFixture postgresFixture)
 
     private const String BadBodyMembers = "code errors status title traceId type";
 
+    private const String WithoutCode = "code (no code), members status title traceId type";
+
     private const String ServerError =
         $"500 {ProblemJson} {ServerErrorTitle}, code Server.Unexpected, members code status title traceId type";
 
@@ -30,7 +34,12 @@ public sealed class ProblemShapeTests(PostgresFixture postgresFixture)
     private static readonly String[] ExpectedProblems =
     [
         $"bad body: 400 {ProblemJson} {ValidationTitle}, code Request.Invalid, members {BadBodyMembers}",
-        $"no caller: 401 {ProblemJson} Unauthorized, code (no code), members status title traceId type",
+        $"no caller: 401 {ProblemJson} Unauthorized, {WithoutCode}",
+        $"unknown route without a caller: 401 {ProblemJson} Unauthorized, {WithoutCode}",
+        $"no caller id: 403 {ProblemJson} Forbidden, {WithoutCode}",
+        $"unknown route: 404 {ProblemJson} Not Found, {WithoutCode}",
+        $"wrong method: 405 {ProblemJson} Method Not Allowed, {WithoutCode}",
+        $"text body: 415 {ProblemJson} Unsupported Media Type, {WithoutCode}",
         $"helper 500: {ServerError}",
         $"unhandled exception: {ServerError}"
     ];
@@ -96,6 +105,11 @@ public sealed class ProblemShapeTests(PostgresFixture postgresFixture)
         [
             await SendAsync(httpClient, "bad body", Accepting(accept, As(Alice, PostPing("""{"label":""")))),
             await SendAsync(httpClient, "no caller", Accepting(accept, Get($"/pings/{pingId}"))),
+            await SendAsync(httpClient, "unknown route without a caller", Accepting(accept, Get(UnknownRoute))),
+            await SendAsync(httpClient, "no caller id", Accepting(accept, WithoutCallerId(Get($"/pings/{pingId}")))),
+            await SendAsync(httpClient, "unknown route", Accepting(accept, As(Alice, Get(UnknownRoute)))),
+            await SendAsync(httpClient, "wrong method", Accepting(accept, As(Alice, Get("/pings")))),
+            await SendAsync(httpClient, "text body", Accepting(accept, As(Alice, PostPingAsText("label x")))),
             await SendAsync(httpClient, "helper 500", Accepting(accept, As(Alice, Get("/pings/errors/Unexpected")))),
             await SendAsync(
                 httpClient,
@@ -112,6 +126,15 @@ public sealed class ProblemShapeTests(PostgresFixture postgresFixture)
 
     private static HttpRequestMessage PostPing(String json) =>
         new(HttpMethod.Post, "/pings") { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+
+    private static HttpRequestMessage PostPingAsText(String text) =>
+        new(HttpMethod.Post, "/pings") { Content = new StringContent(text, Encoding.UTF8, "text/plain") };
+
+    private static HttpRequestMessage WithoutCallerId(HttpRequestMessage request)
+    {
+        request.Headers.Add(TestCallerAuthenticationHandler.CallerWithoutIdHeader, "yes");
+        return request;
+    }
 
     private static HttpRequestMessage As(String callerId, HttpRequestMessage request)
     {

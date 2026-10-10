@@ -18,6 +18,10 @@ internal sealed class ProduceErrorQueryHandler : IQueryHandler<ProduceErrorQuery
         .WithContext("Ping.Invalid", "Ping is not valid")
         .WithContext("Ping.Rejected", "Ping was rejected");
 
+    private static readonly Error RejectedForItsValues = AggregateError
+        .From([LabelTooLong, NicknameEmpty])
+        .WithContext("Ping.Rejected", "Ping was rejected");
+
     public Task<Result<Unit>> Handle(ProduceErrorQuery query, CancellationToken cancellationToken) =>
         Task.FromResult(Produce(query.Kind));
 
@@ -34,6 +38,7 @@ internal sealed class ProduceErrorQueryHandler : IQueryHandler<ProduceErrorQuery
             ProducedErrorKind.AggregateOfTwoValidations => AggregateError.From([LabelTooLong, NicknameEmpty]),
             ProducedErrorKind.AggregateOfFieldAndFieldlessValidations => AggregateError.From([LabelTooLong, BadShape]),
             ProducedErrorKind.ValidationWithContext => RejectedForItsLabel,
+            ProducedErrorKind.AggregateWithContext => RejectedForItsValues,
             ProducedErrorKind.Unauthorized => Error.Unauthorized("Ping.Unauthorized", "Caller is not signed in"),
             ProducedErrorKind.Forbidden => Error.Forbidden("Ping.Forbidden", "Caller may not see this ping"),
             ProducedErrorKind.NotFound => PingErrors.NotFound,

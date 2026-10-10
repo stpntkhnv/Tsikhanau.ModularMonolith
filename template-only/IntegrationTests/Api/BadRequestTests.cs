@@ -37,6 +37,7 @@ public sealed class BadRequestTests(PostgresFixture postgresFixture)
             "label of the wrong type 400 Request.Invalid errors[label]: The value is not valid.",
             "nickname of the wrong type 400 Request.Invalid errors[nickname]: The value is not valid.",
             "empty body 400 Request.Invalid errors[$]: The request could not be read.",
+            "null body 400 Request.Invalid errors[$]: The body or a route or query value is not valid.",
             "unknown kind in the route 400 Request.Invalid errors[$]: A route or query value is not valid."
         ]);
     }
@@ -127,6 +128,7 @@ public sealed class BadRequestTests(PostgresFixture postgresFixture)
         await PostPingAsync(httpClient, "label of the wrong type", JsonBody("""{"label":5}""")),
         await PostPingAsync(httpClient, "nickname of the wrong type", JsonBody("""{"label":"x","nickname":5}""")),
         await PostPingAsync(httpClient, "empty body", JsonBody(String.Empty)),
+        await PostPingAsync(httpClient, "null body", JsonBody("null")),
         await GetAsync(httpClient, "unknown kind in the route", "/pings/errors/UnknownKind")
     ];
 

@@ -8,14 +8,14 @@ namespace Tsikhanau.Monolith.Hosting;
 
 internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
 {
+    private const String SchemaIdKey = "x-schema-id";
+
     private static readonly PropertyInfo[] Keywords = typeof(OpenApiSchema)
         .GetProperties()
         .Where(IsKeyword)
         .ToArray();
 
-    private readonly HashSet<Type> _describedTypes = [];
-
-    private Int32 _valueSchemasInProgress;
+    private readonly HashSet<Type> _valueTypesInProgress = [];
 
     public static String? CreateSchemaReferenceId(JsonTypeInfo jsonTypeInfo) =>
         IsOptional(jsonTypeInfo.Type) ? null : OpenApiOptions.CreateDefaultSchemaReferenceId(jsonTypeInfo);
@@ -25,13 +25,6 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
         OpenApiSchemaTransformerContext context,
         CancellationToken cancellationToken)
     {
-        if (IsDescribedAgainInsideAValueSchema(context.JsonTypeInfo))
-        {
-            LeaveMembersToItsComponent(schema);
-            return;
-        }
-
-        _describedTypes.Add(context.JsonTypeInfo.Type);
         LeaveOptionalsOutOfRequired(schema, context.JsonTypeInfo);
         if (IsOptional(context.JsonTypeInfo.Type))
         {
@@ -41,16 +34,6 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
 
     private static Boolean IsOptional(Type type) =>
         type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Optional<>);
-
-    private Boolean IsDescribedAgainInsideAValueSchema(JsonTypeInfo jsonTypeInfo) =>
-        _valueSchemasInProgress > 0
-        && HasSchemaOfItsOwn(jsonTypeInfo)
-        && _describedTypes.Contains(jsonTypeInfo.Type);
-
-    private static Boolean HasSchemaOfItsOwn(JsonTypeInfo jsonTypeInfo) =>
-        CreateSchemaReferenceId(jsonTypeInfo) is not null;
-
-    private static void LeaveMembersToItsComponent(OpenApiSchema schema) => schema.Properties?.Clear();
 
     private static void LeaveOptionalsOutOfRequired(OpenApiSchema schema, JsonTypeInfo jsonTypeInfo) =>
         schema.Required?.ExceptWith(GetOptionalPropertyNames(jsonTypeInfo));
@@ -66,6 +49,12 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
         CancellationToken cancellationToken)
     {
         var valueTypeInfo = context.JsonTypeInfo.Options.GetTypeInfo(GetValueType(context.JsonTypeInfo.Type));
+        if (_valueTypesInProgress.Contains(valueTypeInfo.Type))
+        {
+            DescribeAsNullOr(schema, ReferToTheComponentOf(valueTypeInfo));
+            return;
+        }
+
         var valueSchema = await BuildValueSchemaAsync(valueTypeInfo.Type, context, cancellationToken);
         if (IsPrimitive(valueTypeInfo))
         {
@@ -73,7 +62,7 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
             return;
         }
 
-        schema.OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, valueSchema];
+        DescribeAsNullOr(schema, valueSchema);
     }
 
     private static Type GetValueType(Type optionalType) => optionalType.GetGenericArguments()[0];
@@ -83,16 +72,24 @@ internal sealed class OptionalSchemaTransformer : IOpenApiSchemaTransformer
         OpenApiSchemaTransformerContext context,
         CancellationToken cancellationToken)
     {
-        _valueSchemasInProgress++;
+        _valueTypesInProgress.Add(valueType);
         try
         {
             return await context.GetOrCreateSchemaAsync(valueType, cancellationToken: cancellationToken);
         }
         finally
         {
-            _valueSchemasInProgress--;
+            _valueTypesInProgress.Remove(valueType);
         }
     }
+
+    private static OpenApiSchema ReferToTheComponentOf(JsonTypeInfo valueTypeInfo) =>
+        CreateSchemaReferenceId(valueTypeInfo) is { } schemaId
+            ? new OpenApiSchema { Metadata = new Dictionary<String, Object> { [SchemaIdKey] = schemaId } }
+            : new OpenApiSchema();
+
+    private static void DescribeAsNullOr(OpenApiSchema schema, OpenApiSchema valueSchema) =>
+        schema.OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, valueSchema];
 
     private static Boolean IsPrimitive(JsonTypeInfo valueTypeInfo) =>
         valueTypeInfo.Kind == JsonTypeInfoKind.None && !valueTypeInfo.Type.IsEnum;

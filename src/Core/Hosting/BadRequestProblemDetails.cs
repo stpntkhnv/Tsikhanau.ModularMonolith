@@ -19,6 +19,7 @@ internal static class BadRequestProblemDetails
     private const String InvalidValueMessage = "The value is not valid.";
     private const String UnreadableRequestMessage = "The request could not be read.";
     private const String InvalidRouteOrQueryValueMessage = "A route or query value is not valid.";
+    private const String InvalidBodyOrRouteOrQueryValueMessage = "The body or a route or query value is not valid.";
 
     public static Int32 SelectStatusCode(Exception exception) =>
         exception is BadHttpRequestException badHttpRequestException
@@ -52,10 +53,12 @@ internal static class BadRequestProblemDetails
             : new() { [RootPath] = [DescribeBindingFailure(context)] };
 
     private static String DescribeBindingFailure(ProblemDetailsContext context) =>
-        IsMissingItsBody(context) ? UnreadableRequestMessage : InvalidRouteOrQueryValueMessage;
+        TakesABody(context.AdditionalMetadata)
+            ? DescribeBindingFailureOfABodyEndpoint(context.HttpContext)
+            : InvalidRouteOrQueryValueMessage;
 
-    private static Boolean IsMissingItsBody(ProblemDetailsContext context) =>
-        TakesABody(context.AdditionalMetadata) && !CarriesABody(context.HttpContext);
+    private static String DescribeBindingFailureOfABodyEndpoint(HttpContext httpContext) =>
+        CarriesABody(httpContext) ? InvalidBodyOrRouteOrQueryValueMessage : UnreadableRequestMessage;
 
     private static Boolean TakesABody(EndpointMetadataCollection? endpointMetadata) =>
         endpointMetadata?.GetMetadata<IAcceptsMetadata>() is not null;

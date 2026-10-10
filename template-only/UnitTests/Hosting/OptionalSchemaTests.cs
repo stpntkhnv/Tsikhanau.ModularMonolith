@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -150,6 +151,73 @@ public sealed class OptionalSchemaTests
         schemaNames.ShouldBe([nameof(ProbeTree)]);
     }
 
+    [Fact]
+    public async Task Polymorphic_value_reached_through_an_optional_keeps_every_derived_type_whole()
+    {
+        await using var app = await StartProbeAppAsync((ShapeHolder holder) => TypedResults.Ok(holder));
+
+        var document = await ReadDocumentAsync(app);
+        IEnumerable<String> schemas =
+        [
+            .. DescribeSchema(document, "ShapeCircle"),
+            .. DescribeSchema(document, "ShapeSquare"),
+            .. DescribeSchema(document, nameof(ShapeHolder))
+        ];
+
+        var schemaNames = ReadSchemaNames(document);
+
+        schemas.ShouldBe(
+        [
+            "required: color",
+            """$type: {"enum":["circle"],"type":"string"}""",
+            """within: {"oneOf":[{"type":"null"},{"$ref":"#/components/schemas/Shape"}]}""",
+            """color: {"type":"string"}""",
+            "required: color",
+            """$type: {"enum":["square"],"type":"string"}""",
+            """label: {"type":["null","string"]}""",
+            """color: {"type":"string"}""",
+            "required: ",
+            """shape: {"oneOf":[{"type":"null"},{"$ref":"#/components/schemas/Shape"}]}"""
+        ]);
+
+        schemaNames.ShouldBe(["Shape", "ShapeCircle", "ShapeSquare", nameof(ShapeHolder)], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Derived_type_that_reaches_itself_through_an_optional_keeps_every_component_whole()
+    {
+        await using var app = await StartProbeAppAsync((StepHolder holder) => TypedResults.Ok(holder));
+
+        var document = await ReadDocumentAsync(app);
+        IEnumerable<String> schemas =
+        [
+            .. DescribeSchema(document, "StepRepeatedStep"),
+            .. DescribeSchema(document, "StepFinalStep"),
+            .. DescribeSchema(document, nameof(RepeatedStep))
+        ];
+
+        var schemaNames = ReadSchemaNames(document);
+
+        schemas.ShouldBe(
+        [
+            "required: name",
+            """$type: {"enum":["repeated"],"type":"string"}""",
+            """next: {"oneOf":[{"type":"null"},{"$ref":"#/components/schemas/RepeatedStep"}]}""",
+            """name: {"type":"string"}""",
+            "required: name",
+            """$type: {"enum":["final"],"type":"string"}""",
+            """note: {"type":["null","string"]}""",
+            """name: {"type":"string"}""",
+            "required: name",
+            """next: {"oneOf":[{"type":"null"},{"$ref":"#/components/schemas/RepeatedStep"}]}""",
+            """name: {"type":"string"}"""
+        ]);
+
+        schemaNames.ShouldBe(
+            ["Step", "StepRepeatedStep", "StepFinalStep", nameof(RepeatedStep), nameof(StepHolder)],
+            ignoreOrder: true);
+    }
+
     private static async Task<WebApplication> StartProbeAppAsync(Delegate probeHandler)
     {
         var builder = WebApplication.CreateSlimBuilder(
@@ -227,4 +295,26 @@ public sealed class OptionalSchemaTests
     private sealed record ProbeChild(String Name, Optional<ProbeParent> Parent);
 
     private sealed record ProbeTree(String Name, Optional<IReadOnlyList<ProbeTree>> Children);
+
+    [JsonPolymorphic]
+    [JsonDerivedType(typeof(Circle), "circle")]
+    [JsonDerivedType(typeof(Square), "square")]
+    private abstract record Shape(String Color);
+
+    private sealed record Circle(String Color, Optional<Shape> Within) : Shape(Color);
+
+    private sealed record Square(String Color, Optional<String> Label) : Shape(Color);
+
+    private sealed record ShapeHolder(Optional<Shape> Shape);
+
+    [JsonPolymorphic]
+    [JsonDerivedType(typeof(RepeatedStep), "repeated")]
+    [JsonDerivedType(typeof(FinalStep), "final")]
+    private abstract record Step(String Name);
+
+    private sealed record RepeatedStep(String Name, Optional<RepeatedStep> Next) : Step(Name);
+
+    private sealed record FinalStep(String Name, Optional<String> Note) : Step(Name);
+
+    private sealed record StepHolder(Optional<Step> Step);
 }
