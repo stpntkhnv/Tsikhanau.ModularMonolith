@@ -34,14 +34,15 @@ internal sealed class ScaffoldTool(
         return outcome.Match(ReportSuccess, error => ReportFailure(error, FailedExitCode));
     }
 
-    private Task<Result<String>> RunPlanAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
+    private Task<Result<ScaffoldPlan>> RunPlanAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
         new Transaction(fileSystem, processRunner)
             .RunAsync(plan, cancellationToken)
-            .MapAsync(_ => plan.NextStep);
+            .MapAsync(_ => plan);
 
-    private Int32 ReportSuccess(String nextStep)
+    private Int32 ReportSuccess(ScaffoldPlan plan)
     {
-        outputTextWriter.WriteLine($"scaffold: done; {nextStep}");
+        outputTextWriter.WriteLine($"scaffold: done; {plan.NextStep}");
+        plan.Note.Tap(note => outputTextWriter.WriteLine($"scaffold: note: {note}"));
         return SucceededExitCode;
     }
 

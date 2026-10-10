@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Tests.Support;
@@ -27,6 +28,10 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
 
     private const String SendDigestDone = $"scaffold: done; {SendDigestTestFails}";
 
+    private const String CheckScaffold = "template-only/scripts/check-scaffold.sh";
+
+    private const String NewTestReader = "new_test=$(sed -nE '";
+
     private const String NameIsStored =
         "the name is stored in the queue and must be unique in the module, so choose another feature name";
 
@@ -50,7 +55,19 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
         internal static class MailNames
         {
             public const String Shared = "mail-digest";
+
+            internal static class Schedules
+            {
+                public const String Weekly = "send-digest";
+            }
         }
+
+        internal abstract class DigestNameBase
+        {
+            public const String Inherited = "send-digest";
+        }
+
+        internal sealed class InheritedNames : DigestNameBase;
         """;
 
     private readonly SampleApp _app = SampleApp.Create();
@@ -127,6 +144,10 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
     [InlineData(MailDigestCommand, "[InternalCommandName(\"\"\"send-digest\"\"\")]")]
     [InlineData(MailDigestCommand, "[InternalCommandName(\"send\\u002Ddigest\")]")]
     [InlineData(MailDigestCommand, """[InternalCommandName(DigestNames.Send)]""")]
+    [InlineData(
+        MailDigestCommand,
+        """[InternalCommandName(Acme.Shop.Modules.Notes.Features.MailDigest.DigestNames.Send)]""")]
+    [InlineData(MailDigestCommand, """[InternalCommandName(InheritedNames.Inherited)]""")]
     [InlineData(
         "Notes/Acme.Shop.Modules.Notes.Contracts/MailDigestInternalCommand.cs",
         """[InternalCommandName("send-digest")]""")]
@@ -239,7 +260,11 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
     [InlineData("""[InternalCommandName("send-" + "digest")]""", "[InternalCommandName(\"send-\" + \"digest\")]")]
     [InlineData("""[InternalCommandName(DigestNames.Alias)]""", "[InternalCommandName(DigestNames.Alias)]")]
     [InlineData("""[InternalCommandName(DigestNames.Shared)]""", "[InternalCommandName(DigestNames.Shared)]")]
-    public async Task Name_scaffold_cannot_read_is_named_in_the_done_line_and_the_feature_is_written(
+    [InlineData("""[InternalCommandName(SharedNames.Send)]""", "[InternalCommandName(SharedNames.Send)]")]
+    [InlineData(
+        """[InternalCommandName(MailNames.Schedules.Weekly)]""",
+        "[InternalCommandName(MailNames.Schedules.Weekly)]")]
+    public async Task Name_scaffold_cannot_read_is_named_in_a_note_after_the_done_line_and_the_feature_is_written(
         String attributes,
         String unread)
     {
@@ -254,8 +279,9 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
 
         exitCode.ShouldBe(0, _error.ToString());
         output.ShouldBe(
-            $"scaffold: done; it did not compare send-digest with {unread} ({ModulesFolder}/{MailDigestCommand}:5), "
-            + $"{NamesItReads}; {SendDigestTestFails}");
+            SendDigestDone
+            + $"scaffold: note: it did not compare send-digest with {unread} ({ModulesFolder}/{MailDigestCommand}:5), "
+            + $"{NamesItReads}\n");
 
         status.ShouldBe(
             [
@@ -264,6 +290,25 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
                 $"?? {NotesTests}/SendDigestTests.cs",
             ],
             ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task New_test_is_read_from_the_done_line_as_check_scaffold_reads_it_when_a_note_follows()
+    {
+        _app.Write(
+            $"{ModulesFolder}/{MailDigestCommand}",
+            BuildInternalCommand("""[InternalCommandName(SharedNames.Digest)]"""));
+
+        _app.Commit();
+
+        var exitCode = await RunAsync(SendDigestCommand);
+
+        var output = _output.ToString();
+        var newTest = await ReadNewTestAsCheckScaffoldDoesAsync(output);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        newTest.ShouldBe("SendDigestTests.Send_digest_runs_when_the_queues_run\n");
+        output.ShouldContain("\nscaffold: note: it did not compare send-digest with ", Case.Sensitive);
     }
 
     [Fact]
@@ -399,6 +444,28 @@ public sealed class InternalCommandCommandTests : IAsyncLifetime
     private Task<Int32> RunAsync(IFileSystem fileSystem, String commandLine) =>
         new ScaffoldTool(fileSystem, FakeProcessRunner.Succeeding(), _output, _error)
             .RunAsync(commandLine.Split(' '), CancellationToken);
+
+    private static async Task<String> ReadNewTestAsCheckScaffoldDoesAsync(String output)
+    {
+        var startInfo = new ProcessStartInfo("sed", ["-nE", ReadNewTestExpression()])
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+        };
+
+        using var sed = Process.Start(startInfo) ?? throw new InvalidOperationException("cannot start sed");
+        await sed.StandardInput.WriteAsync(output.AsMemory(), CancellationToken);
+        sed.StandardInput.Close();
+        var newTest = await sed.StandardOutput.ReadToEndAsync(CancellationToken);
+        await sed.WaitForExitAsync(CancellationToken);
+        return newTest;
+    }
+
+    private static String ReadNewTestExpression() =>
+        File
+            .ReadLines(Path.Combine(TemplateFolder.Root, CheckScaffold))
+            .Single(line => line.Contains(NewTestReader, StringComparison.Ordinal))
+            .Split('\'')[1];
 
     private String[] ReadStatus() =>
         _app

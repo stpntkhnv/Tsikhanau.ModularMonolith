@@ -13,6 +13,10 @@ internal sealed record SourceProject(String ModuleName, Boolean IsContracts, IRe
         GetNodes<T>(name)
             .Where(declaration => declaration.IsTopLevel);
 
+    public Boolean DeclaresType(String typeName) =>
+        GetDeclarations<BaseTypeDeclarationSyntax>(typeName)
+            .Any(declaration => declaration.Name == typeName);
+
     public Optional<T> FindDeclaration<T>(String name)
         where T : BaseTypeDeclarationSyntax =>
         GetDeclarations<T>(name)

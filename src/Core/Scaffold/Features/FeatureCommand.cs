@@ -71,7 +71,8 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
                     facadeChange,
                     referenceEdits,
                     featureFiles,
-                    BuildNextStep(feature, testTemplate, nameNote)));
+                    BuildNextStep(feature, testTemplate),
+                    nameNote));
     }
 
     private static Result<ScaffoldPlan> CombinePlan(
@@ -79,10 +80,14 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         FacadeChange facadeChange,
         IReadOnlyList<FileEdit> referenceEdits,
         IReadOnlyList<NewFile> featureFiles,
-        String nextStep) =>
+        String nextStep,
+        Optional<String> nameNote) =>
         CodeLayout
             .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], feature.ChosenNames)
-            .Map(newFiles => new ScaffoldPlan(newFiles, [.. facadeChange.FileEdits, .. referenceEdits], [], nextStep));
+            .Map(newFiles => new ScaffoldPlan(newFiles, [.. facadeChange.FileEdits, .. referenceEdits], [], nextStep)
+            {
+                Note = nameNote,
+            });
 
     private static Result<Unit> EnsureNoSuchFeature(
         ScaffoldedFeature feature,
@@ -119,15 +124,7 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
                 .GetFileName(folder)
                 .Equals(feature.Name, StringComparison.OrdinalIgnoreCase));
 
-    private static String BuildNextStep(
-        ScaffoldedFeature feature,
-        FeatureTestTemplate testTemplate,
-        Optional<String> nameNote)
-    {
-        var testFails =
-            $"the new test {feature.TestClass}.{testTemplate.TestMethod} fails with "
-            + $"\"{feature.NotImplementedMessage}\" until the handler does its work; next, run ./gate.sh";
-
-        return nameNote.Match(note => $"{note}; {testFails}", () => testFails);
-    }
+    private static String BuildNextStep(ScaffoldedFeature feature, FeatureTestTemplate testTemplate) =>
+        $"the new test {feature.TestClass}.{testTemplate.TestMethod} fails with "
+        + $"\"{feature.NotImplementedMessage}\" until the handler does its work; next, run ./gate.sh";
 }

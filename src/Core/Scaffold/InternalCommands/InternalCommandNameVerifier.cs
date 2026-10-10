@@ -77,11 +77,25 @@ internal sealed class InternalCommandNameVerifier(String moduleName, IReadOnlyLi
             ? initializer
             : Optional<ExpressionSyntax>.None();
 
-    private static Optional<String> FindConstantName(ExpressionSyntax expression) =>
+    private Optional<String> FindConstantName(ExpressionSyntax expression) =>
         expression switch
         {
             IdentifierNameSyntax constant => constant.Identifier.Text,
-            MemberAccessExpressionSyntax constant => constant.Name.Identifier.Text,
+            MemberAccessExpressionSyntax constant when IsModuleType(constant.Expression) =>
+                constant.Name.Identifier.Text,
+            _ => Optional<String>.None(),
+        };
+
+    private Boolean IsModuleType(ExpressionSyntax qualifier) =>
+        FindTypeName(qualifier)
+            .Where(typeName => moduleProjects.Any(project => project.DeclaresType(typeName)))
+            .HasValue;
+
+    private static Optional<String> FindTypeName(ExpressionSyntax qualifier) =>
+        qualifier switch
+        {
+            IdentifierNameSyntax typeName => typeName.Identifier.Text,
+            MemberAccessExpressionSyntax qualifiedTypeName => qualifiedTypeName.Name.Identifier.Text,
             _ => Optional<String>.None(),
         };
 
