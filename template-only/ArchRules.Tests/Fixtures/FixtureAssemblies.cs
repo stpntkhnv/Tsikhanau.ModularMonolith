@@ -25,6 +25,7 @@ internal static class FixtureAssemblies
         new("Acme.Modules.Peer", ["Acme.Modules.Peer.Contracts"]),
         new("Acme.Modules.Bad", ["Acme.Modules.Bad.Contracts", "Acme.Modules.Peer.Contracts", "Acme.Modules.Peer"]),
         new("Acme.Bootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
+        new("Tsikhanau.Monolith.Shared.Fixture", []),
     ];
 
     private static readonly Lazy<IReadOnlyDictionary<String, Assembly>> Compiled = new(CompileAll);

@@ -5,7 +5,7 @@ namespace Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 
 internal static class FixtureModules
 {
-    private const String RootNamespace = "Acme";
+    public const String RootNamespace = "Acme";
 
     public static readonly ArchModule Good = Create("Good");
 

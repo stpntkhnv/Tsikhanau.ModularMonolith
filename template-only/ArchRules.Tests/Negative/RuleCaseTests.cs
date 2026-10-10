@@ -1,5 +1,4 @@
 using System.Reflection;
-using Tsikhanau.Monolith.ArchRules.Modules;
 using Tsikhanau.Monolith.ArchRules.Rules;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 
@@ -35,24 +34,23 @@ public sealed class RuleCaseTests
     }
 
     [Fact]
-    public void Every_module_rule_function_has_a_case_and_every_module_rule_case_a_function()
+    public void Every_rule_function_has_a_case_and_every_case_a_rule_function()
     {
-        IReadOnlyList<String> ruleFunctions = [.. GetModuleRuleFunctions()];
-        IReadOnlyList<String> ruleCases = [.. GetModuleRuleCases()];
+        IReadOnlyList<String> ruleFunctions = [.. GetRuleFunctions()];
+        IReadOnlyList<String> ruleCases = [.. RuleCases.All.Keys];
 
         ruleFunctions
             .Except(ruleCases)
-            .ShouldBeEmpty("module rule functions without a case");
+            .ShouldBeEmpty("rule functions without a case");
 
         ruleCases
             .Except(ruleFunctions)
-            .ShouldBeEmpty("module rule cases without a rule function");
+            .ShouldBeEmpty("cases without a rule function");
     }
 
-    private static IEnumerable<String> GetModuleRuleFunctions() =>
+    private static IEnumerable<String> GetRuleFunctions() =>
         typeof(RuleEvaluation).Assembly
             .GetExportedTypes()
-            .Where(IsModuleRuleSet)
             .SelectMany(GetRuleFunctions);
 
     private static IEnumerable<String> GetRuleFunctions(Type ruleSetType) =>
@@ -60,12 +58,4 @@ public sealed class RuleCaseTests
             .GetMethods(DeclaredPublicStaticMembers)
             .Where(method => method.ReturnType == typeof(RuleEvaluation))
             .Select(method => $"{ruleSetType.Name}.{method.Name}");
-
-    private static IEnumerable<String> GetModuleRuleCases() =>
-        RuleCases.All.Values
-            .Where(ruleCase => IsModuleRuleSet(ruleCase.RuleSetType))
-            .Select(ruleCase => ruleCase.Key);
-
-    private static Boolean IsModuleRuleSet(Type ruleSetType) =>
-        ruleSetType.Namespace == typeof(DomainRules).Namespace;
 }
