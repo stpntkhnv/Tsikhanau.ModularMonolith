@@ -1,4 +1,5 @@
 using Acme.Modules.Good.Domain.Widgets;
+using Acme.SharedKernel;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Railway;
 
@@ -11,8 +12,13 @@ internal sealed class CreateWidgetCommandHandler(IWidgetRepository widgetReposit
         Task.FromResult(
             WidgetLabel
                 .Create(command.Label, nameof(command.Label))
-                .Bind(label => Widget.Create(WidgetId.From(command.WidgetId), label, timeProvider.GetUtcNow()))
+                .Bind(label => CreateWidget(command, label))
                 .Map(Add));
+
+    private Result<Widget> CreateWidget(CreateWidgetCommand command, WidgetLabel label) =>
+        Money
+            .Create(command.Price, nameof(command.Price))
+            .Bind(price => Widget.Create(WidgetId.From(command.WidgetId), label, price, timeProvider.GetUtcNow()));
 
     private Guid Add(Widget widget)
     {

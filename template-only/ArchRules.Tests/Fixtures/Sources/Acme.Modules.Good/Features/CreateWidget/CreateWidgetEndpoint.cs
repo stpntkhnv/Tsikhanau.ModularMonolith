@@ -17,7 +17,7 @@ internal sealed class CreateWidgetEndpoint : IEndpoint
     {
         var widgetId = request.WidgetId.GetValueOrDefault(() => Guid.CreateVersion7(timeProvider.GetUtcNow()));
         var created = await goodModule.ExecuteCommandAsync(
-            new CreateWidgetCommand(widgetId, request.Label),
+            new CreateWidgetCommand(widgetId, request.Label, request.Price),
             cancellationToken);
 
         return created.IsSuccess ? Results.Ok(created.Value) : Results.BadRequest();

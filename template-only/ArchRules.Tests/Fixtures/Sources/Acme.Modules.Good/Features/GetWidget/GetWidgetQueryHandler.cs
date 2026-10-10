@@ -1,5 +1,6 @@
 using Acme.Modules.Good.Contracts.Queries.GetWidget;
 using Acme.Modules.Good.Domain.Widgets;
+using Acme.SharedKernel;
 using Dapper;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Railway;
@@ -10,7 +11,7 @@ internal sealed class GetWidgetQueryHandler(ISqlConnectionFactory<IGoodModule> s
     : IQueryHandler<GetWidgetQuery, WidgetDto>
 {
     private const String Sql = """
-        SELECT id AS "Id", label AS "Label"
+        SELECT id AS "Id", label AS "Label", price AS "Price"
         FROM good.widgets
         WHERE id = @WidgetId
         """;
@@ -18,9 +19,18 @@ internal sealed class GetWidgetQueryHandler(ISqlConnectionFactory<IGoodModule> s
     public async Task<Result<WidgetDto>> Handle(GetWidgetQuery query, CancellationToken cancellationToken)
     {
         await using var connection = await sqlConnectionFactory.OpenConnectionAsync(cancellationToken);
-        Optional<WidgetDto> foundWidget = await connection.QuerySingleOrDefaultAsync<WidgetDto>(
+        Optional<WidgetRow> foundWidget = await connection.QuerySingleOrDefaultAsync<WidgetRow>(
             new CommandDefinition(Sql, new { query.WidgetId }, cancellationToken: cancellationToken));
 
-        return foundWidget.ToResult(WidgetErrors.NotFound);
+        return foundWidget
+            .ToResult(WidgetErrors.NotFound)
+            .Bind(ToDto);
     }
+
+    private static Result<WidgetDto> ToDto(WidgetRow widgetRow) =>
+        Money
+            .Create(widgetRow.Price, nameof(widgetRow.Price))
+            .Map(price => new WidgetDto(widgetRow.Id, widgetRow.Label, price));
+
+    private sealed record WidgetRow(Guid Id, String Label, Decimal Price);
 }

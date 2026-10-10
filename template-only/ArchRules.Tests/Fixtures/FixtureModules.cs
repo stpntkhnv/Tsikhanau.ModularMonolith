@@ -13,9 +13,11 @@ internal static class FixtureModules
 
     public static readonly ArchModule Bad = Create("Bad");
 
-    public static readonly ArchModules Clean = new([Good, Peer]);
+    public static readonly ArchModules Clean = new([Good, Peer], [Kernel]);
 
-    public static readonly ArchModules Dirty = new([Good, Peer, Bad]);
+    public static readonly ArchModules Dirty = new([Good, Peer, Bad], [Kernel]);
+
+    public static Assembly Kernel => FixtureAssemblies.Get($"{RootNamespace}.SharedKernel");
 
     public static Assembly Host => FixtureAssemblies.Get($"{RootNamespace}.Bootstrapper");
 

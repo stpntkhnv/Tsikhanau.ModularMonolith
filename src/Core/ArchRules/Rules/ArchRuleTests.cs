@@ -13,7 +13,7 @@ public abstract class ArchRuleTests<TInputs>
             ? [ProductionModules.Placeholder]
             : [.. Modules.All.Select(module => module.Name)];
 
-    protected static ArchModules Modules { get; } = new(TInputs.Modules);
+    protected static ArchModules Modules { get; } = new(TInputs.Modules, TInputs.SharedKernelAssemblies);
 
     protected static ArchSolution Solution { get; } = new(TInputs.SolutionRoot, TInputs.RootNamespace);
 

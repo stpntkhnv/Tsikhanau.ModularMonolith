@@ -19,6 +19,8 @@ internal static class ProjectRuleCases
 
     private const String IntegrationEventTypeName = "Tsikhanau.Monolith.Contracts.IntegrationEvents.IntegrationEvent";
 
+    private const String MoneyTypeName = "Acme.SharedKernel.Money";
+
     public static IEnumerable<RuleCase> All =>
     [
         new(
@@ -55,9 +57,12 @@ internal static class ProjectRuleCases
             typeof(ProjectGraphRules),
             nameof(ProjectGraphRules.ProjectReferencesFollowTheLayerRules),
             () => Evaluate(
-                tree => tree.AddReference(GoodContracts, CoreDomain),
+                AddReferencesAgainstTheLayers,
                 solution => ProjectGraphRules.ProjectReferencesFollowTheLayerRules(solution, Clean, Good)),
-            ["Acme.Modules.Good.Contracts references Tsikhanau.Monolith.Domain"],
+            [
+                "Acme.Modules.Good.Contracts references Tsikhanau.Monolith.Domain",
+                "Acme.Modules.Good references Acme.Modules.Peer",
+            ],
             () => Evaluate(solution => ProjectGraphRules.ProjectReferencesFollowTheLayerRules(solution, Clean, Good))),
         new(
             typeof(CoreRules),
@@ -87,9 +92,18 @@ internal static class ProjectRuleCases
             typeof(SharedRules),
             nameof(SharedRules.SharedCodeDoesNotDependOnTheRestOfTheApp),
             () => Evaluate(solution => SharedRules.SharedCodeDoesNotDependOnTheRestOfTheApp(solution, SharedFixture)),
-            [$"{SharedFixtureName}.EventNames does depend on \"{IntegrationEventTypeName}\""],
+            [
+                $"{SharedFixtureName}.EventNames does depend on \"{IntegrationEventTypeName}\"",
+                $"{SharedFixtureName}.MoneyFormats does depend on \"{MoneyTypeName}\"",
+            ],
             () => Evaluate(SharedRules.SharedCodeDoesNotDependOnTheRestOfTheApp)),
     ];
 
     private static Assembly SharedFixture => FixtureAssemblies.Get(SharedFixtureName);
+
+    private static void AddReferencesAgainstTheLayers(ScratchTree tree)
+    {
+        tree.AddReference(GoodContracts, CoreDomain);
+        tree.AddReference(GoodProject, PeerProject);
+    }
 }

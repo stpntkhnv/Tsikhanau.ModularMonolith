@@ -15,6 +15,8 @@ internal static class ModuleRuleCases
 
     private const String ConfigurationTypeName = "Microsoft.Extensions.Configuration.IConfiguration";
 
+    private const String LoggerTypeName = "Microsoft.Extensions.Logging.ILogger";
+
     private const String CommandHandlerTypeName = "Tsikhanau.Monolith.Application.Commands.ICommandHandler`2";
 
     private const String UnitTypeName = "Tsikhanau.Railway.Unit";
@@ -180,13 +182,16 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.DomainDependsOnlyOnItselfTheDomainBuildingBlocksAndRailway),
             () => LayerDependencyRules.DomainDependsOnlyOnItselfTheDomainBuildingBlocksAndRailway(Dirty, Bad),
-            [$"{BadRoot}.Domain.Leaks.EventLeak does depend on {IntegrationEventTypeName}"],
+            [
+                $"{BadRoot}.Domain.Leaks.EventLeak does depend on \"{IntegrationEventTypeName}\"",
+                $"{BadRoot}.Domain.Journals.CrateJournal does depend on \"{LoggerTypeName}\"",
+            ],
             () => LayerDependencyRules.DomainDependsOnlyOnItselfTheDomainBuildingBlocksAndRailway(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.DomainDoesNotDependOnFrameworksOutsideSystem),
             () => LayerDependencyRules.DomainDoesNotDependOnFrameworksOutsideSystem(Dirty, Bad),
-            [$"{BadRoot}.Domain.Journals.CrateJournal does depend on \"Microsoft.Extensions.Logging.ILogger\""],
+            [$"{BadRoot}.Domain.Journals.CrateJournal does depend on \"{LoggerTypeName}\""],
             () => LayerDependencyRules.DomainDoesNotDependOnFrameworksOutsideSystem(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
@@ -222,7 +227,7 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway),
             () => LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway(Dirty, Bad),
-            [$"{BadRoot}.Contracts.Queries.CrateHistory.CrateHistoryDto does depend on {DomainEventTypeName}"],
+            [$"{BadRoot}.Contracts.Queries.CrateHistory.CrateHistoryDto does depend on \"{DomainEventTypeName}\""],
             () => LayerDependencyRules.ContractsDependOnlyOnTheContractBuildingBlocksAndRailway(Clean, Good)),
         new(
             typeof(LayerDependencyRules),

@@ -39,17 +39,20 @@ public static class LayerDependencyRules
         ArchModule module)
     {
         var allowedNamespaces = NamespacePatterns.Build(
-            "System",
-            $"{module.RootNamespace}.Domain",
-            "Tsikhanau.Monolith.Domain",
-            "Tsikhanau.Railway");
+            [
+                "System",
+                $"{module.RootNamespace}.Domain",
+                "Tsikhanau.Monolith.Domain",
+                "Tsikhanau.Railway",
+                .. modules.SharedKernelNamespaces,
+            ]);
 
         var rule = Types()
             .That()
             .ResideInNamespaceMatching(module.BuildLayerPattern("Domain"))
             .Should()
-            .OnlyDependOnTypesThat()
-            .ResideInNamespaceMatching(allowedNamespaces);
+            .NotDependOnAnyTypesThat()
+            .DoNotResideInNamespaceMatching(allowedNamespaces);
 
         return Evaluate(modules, module.GetTypesIn("Domain"), rule);
     }
@@ -147,17 +150,20 @@ public static class LayerDependencyRules
         ArchModule module)
     {
         var allowedNamespaces = NamespacePatterns.Build(
-            "System",
-            $"{module.RootNamespace}.Contracts",
-            "Tsikhanau.Monolith.Contracts",
-            "Tsikhanau.Railway");
+            [
+                "System",
+                $"{module.RootNamespace}.Contracts",
+                "Tsikhanau.Monolith.Contracts",
+                "Tsikhanau.Railway",
+                .. modules.SharedKernelNamespaces,
+            ]);
 
         var rule = Types()
             .That()
             .ResideInNamespaceMatching(module.BuildLayerPattern("Contracts"))
             .Should()
-            .OnlyDependOnTypesThat()
-            .ResideInNamespaceMatching(allowedNamespaces);
+            .NotDependOnAnyTypesThat()
+            .DoNotResideInNamespaceMatching(allowedNamespaces);
 
         return Evaluate(modules, module.GetTypesIn("Contracts"), rule);
     }

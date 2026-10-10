@@ -18,19 +18,37 @@ internal static class FixtureAssemblies
 
     private static readonly IReadOnlyList<FixtureProject> Projects =
     [
-        new("Acme.Modules.Good.Contracts", []),
+        new("Acme.SharedKernel", []),
+        new("Acme.Modules.Good.Contracts", ["Acme.SharedKernel"]),
         new("Acme.Modules.Peer.Contracts", []),
         new("Acme.Modules.Bad.Contracts", []),
-        new("Acme.Modules.Good", ["Acme.Modules.Good.Contracts", "Acme.Modules.Peer.Contracts"]),
+        new("Acme.Modules.Good", ["Acme.Modules.Good.Contracts", "Acme.Modules.Peer.Contracts", "Acme.SharedKernel"]),
         new("Acme.Modules.Peer", ["Acme.Modules.Peer.Contracts"]),
         new("Acme.Modules.Bad", ["Acme.Modules.Bad.Contracts", "Acme.Modules.Peer.Contracts", "Acme.Modules.Peer"]),
         new("Acme.Bootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
-        new("Tsikhanau.Monolith.Shared.Fixture", []),
+        new("Tsikhanau.Monolith.Shared.Fixture", ["Acme.SharedKernel"]),
     ];
 
     private static readonly Lazy<IReadOnlyDictionary<String, Assembly>> Compiled = new(CompileAll);
 
     public static Assembly Get(String assemblyName) => Compiled.Value[assemblyName];
+
+    public static Assembly CompileWithout(String assemblyName, String removedText)
+    {
+        var project = Projects.Single(project => project.Name == assemblyName);
+        IReadOnlyList<FixtureSource> sources = [.. ReadSources(project)];
+
+        sources
+            .Count(source => source.Contains(removedText))
+            .ShouldBe(1, $"exactly one source of {assemblyName} holds the removed text");
+
+        var image = FixtureCompiler.Compile(
+            $"{assemblyName}.Edited",
+            Parse(sources.Select(source => source.Without(removedText))),
+            [.. FixtureCompiler.RuntimeReferences, .. project.References.Select(CreateCompiledReference)]);
+
+        return Assembly.Load(image);
+    }
 
     private static IReadOnlyDictionary<String, Assembly> CompileAll()
     {
@@ -42,7 +60,7 @@ internal static class FixtureAssemblies
         {
             var image = FixtureCompiler.Compile(
                 project.Name,
-                ReadSyntaxTrees(project),
+                Parse(ReadSources(project)),
                 [.. FixtureCompiler.RuntimeReferences, .. project.References.Select(name => images[name])]);
 
             File.WriteAllBytes(BuildPath(folder, project.Name), image);
@@ -55,25 +73,31 @@ internal static class FixtureAssemblies
             StringComparer.Ordinal);
     }
 
-    private static IEnumerable<SyntaxTree> ReadSyntaxTrees(FixtureProject project)
-    {
-        var resourceNames = typeof(FixtureAssemblies).Assembly
+    private static IEnumerable<FixtureSource> ReadSources(FixtureProject project) =>
+        typeof(FixtureAssemblies).Assembly
             .GetManifestResourceNames()
-            .Where(resourceName => IsSourceOf(project, resourceName));
+            .Where(resourceName => IsSourceOf(project, resourceName))
+            .Select(ReadSource);
 
-        return [CSharpSyntaxTree.ParseText(ImplicitUsings), .. resourceNames.Select(ReadSyntaxTree)];
-    }
+    private static IEnumerable<SyntaxTree> Parse(IEnumerable<FixtureSource> sources) =>
+    [
+        CSharpSyntaxTree.ParseText(ImplicitUsings),
+        .. sources.Select(source => CSharpSyntaxTree.ParseText(source.Text, path: source.Path)),
+    ];
 
     private static Boolean IsSourceOf(FixtureProject project, String resourceName) =>
         ToPath(resourceName)
             .StartsWith($"{ResourcePrefix}{project.Name}/", StringComparison.Ordinal);
 
-    private static SyntaxTree ReadSyntaxTree(String resourceName)
+    private static FixtureSource ReadSource(String resourceName)
     {
         using var stream = typeof(FixtureAssemblies).Assembly.GetManifestResourceStream(resourceName)!;
         using var reader = new StreamReader(stream);
-        return CSharpSyntaxTree.ParseText(reader.ReadToEnd(), path: ToPath(resourceName));
+        return new FixtureSource(ToPath(resourceName), reader.ReadToEnd());
     }
+
+    private static MetadataReference CreateCompiledReference(String assemblyName) =>
+        MetadataReference.CreateFromFile(Get(assemblyName).Location);
 
     private static String ToPath(String resourceName) => resourceName.Replace('\\', '/');
 
@@ -94,4 +118,12 @@ internal static class FixtureAssemblies
     }
 
     private sealed record FixtureProject(String Name, IReadOnlyList<String> References);
+
+    private sealed record FixtureSource(String Path, String Text)
+    {
+        public Boolean Contains(String text) => Text.Contains(text, StringComparison.Ordinal);
+
+        public FixtureSource Without(String text) =>
+            this with { Text = Text.Replace(text, String.Empty, StringComparison.Ordinal) };
+    }
 }

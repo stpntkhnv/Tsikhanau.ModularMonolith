@@ -20,6 +20,8 @@ internal sealed class ScratchTree : IDisposable
 
     public const String CoreContracts = "src/Core/Contracts/Tsikhanau.Monolith.Contracts.csproj";
 
+    public const String KernelProject = "src/SharedKernel/Acme.SharedKernel/Acme.SharedKernel.csproj";
+
     public const String AppPackages = "App.Packages.props";
 
     public const String AspireVersion = "13.0.0";
@@ -36,13 +38,14 @@ internal sealed class ScratchTree : IDisposable
 
     private ScratchTree()
     {
-        AddProject(GoodProject, GoodContracts, PeerContracts, CoreDomain);
-        AddProject(GoodContracts, CoreContracts);
+        AddProject(GoodProject, GoodContracts, PeerContracts, CoreDomain, KernelProject);
+        AddProject(GoodContracts, CoreContracts, KernelProject);
         AddProject(PeerProject, PeerContracts);
         AddProject(PeerContracts, CoreContracts);
         AddProject(CoreDomain);
         AddProject(CoreContracts, Railway);
         AddProject(Railway);
+        AddProject(KernelProject, CoreDomain);
         AddDocument(AppHost, BuildAppHost());
         AddPackageFile(RootPackages);
         AddPackageFile(CorePackages);
@@ -51,7 +54,9 @@ internal sealed class ScratchTree : IDisposable
         AddFile("Directory.Build.props", "<Project />");
         AddFile("Directory.Build.targets", "<Project />");
         AddFile(".editorconfig");
-        AddDocument("Acme.slnx", BuildSolution(GoodProject, GoodContracts, PeerProject, PeerContracts, AppHost));
+        AddDocument(
+            "Acme.slnx",
+            BuildSolution(GoodProject, GoodContracts, PeerProject, PeerContracts, KernelProject, AppHost));
     }
 
     private ArchSolution Solution => new(_folder.FullName, FixtureModules.RootNamespace);

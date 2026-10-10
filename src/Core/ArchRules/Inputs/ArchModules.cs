@@ -9,12 +9,29 @@ public sealed class ArchModules
     private readonly Lazy<Architecture> _architecture;
 
     public ArchModules(IReadOnlyList<ArchModule> modules)
+        : this(modules, [])
+    {
+    }
+
+    public ArchModules(IReadOnlyList<ArchModule> modules, IReadOnlyList<Assembly> sharedKernelAssemblies)
     {
         All = modules;
+        SharedKernelAssemblies = sharedKernelAssemblies;
         _architecture = new Lazy<Architecture>(LoadArchitecture);
     }
 
     public IReadOnlyList<ArchModule> All { get; }
+
+    internal IReadOnlyList<Assembly> SharedKernelAssemblies { get; }
+
+    internal IEnumerable<String> SharedKernelNames => SharedKernelAssemblies.Select(assembly => assembly.Name);
+
+    internal IEnumerable<String> SharedKernelNamespaces =>
+        SharedKernelAssemblies
+            .SelectMany(assembly => assembly.GetExportedTypes())
+            .Select(type => type.Namespace)
+            .OfType<String>()
+            .Distinct();
 
     internal IEnumerable<Assembly> Assemblies =>
         All

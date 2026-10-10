@@ -44,6 +44,8 @@ public static class ProjectGraphRules
                 .Select(solution.ToSolutionPath),
         ];
 
+        String[] allowedContractsReferences = [.. AllowedContractsReferences, .. modules.SharedKernelNames];
+
         String[] allowedModuleReferences =
         [
             module.ContractsName,
@@ -51,13 +53,14 @@ public static class ProjectGraphRules
             .. modules
                 .GetOthers(module)
                 .Select(otherModule => otherModule.ContractsName),
+            .. modules.SharedKernelNames,
         ];
 
         return RuleEvaluation.Create(
             subject,
             () =>
             [
-                .. GetDisallowedReferences(contractsPath, AllowedContractsReferences),
+                .. GetDisallowedReferences(contractsPath, allowedContractsReferences),
                 .. GetDisallowedReferences(projectPath, allowedModuleReferences),
             ]);
     }
