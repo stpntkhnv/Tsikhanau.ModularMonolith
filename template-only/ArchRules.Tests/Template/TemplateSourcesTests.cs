@@ -9,7 +9,7 @@ public sealed class TemplateSourcesTests
     private static readonly String[] NeverShipped =
     [
         "template-only/**/*",
-        ".template.config/**/*",
+        "**/.template.config/**",
         ".github/workflows/template.yml",
         "docs/**/*",
         ".superpowers/**/*",
@@ -22,6 +22,12 @@ public sealed class TemplateSourcesTests
         "**/[Bb]in/**",
         "**/[Oo]bj/**",
         ".nuget/**/*",
+        "**/*.filelist",
+        "**/*.user",
+        "**/*.lock.json",
+        "**/.vs/**",
+        "**/.idea/**",
+        "**/*.swp",
     ];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;

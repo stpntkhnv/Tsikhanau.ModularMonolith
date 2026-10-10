@@ -135,6 +135,11 @@ commit_all() {
   git -C "$1" commit -q --no-verify -m app
 }
 
+snapshot_repository() {
+  find "$1" -printf '%y %s %p\n' | sort
+  cat "$1/.git/config"
+}
+
 core_budget() {
   local budget
   budget=$(sed -nE 's/.*\[StringLength\(([0-9]+),.*/\1/p' "$template_root/$database_settings")
@@ -240,6 +245,66 @@ case_file_in_place_of_a_link() {
   [[ ! -s "$(dotnet_calls "$app")" ]] || fail "a refusal must stop before the build"
 }
 
+case_file_in_place_of_a_folder() {
+  local app
+  app=$(new_app docs-file acme_shop)
+  printf 'mine\n' > "$app/docs"
+  run_init "$app"
+  expect_refused 'a file where a folder for the rules links belongs, left as it is: docs; move it away'
+  [[ "$(< "$app/docs")" == mine ]] || fail "init changed docs"
+  [[ ! -L "$app/AGENTS.md" ]] || fail "a refusal must come before the first link"
+  [[ ! -s "$(dotnet_calls "$app")" ]] || fail "a refusal must stop before the build"
+}
+
+case_unwritable_exclude() {
+  local app
+  app=$(new_app read-only acme_shop)
+  run_init "$app" --no-rules
+  expect_success
+  mkdir -p "$app/.git/info"
+  touch "$app/.git/info/exclude"
+  chmod a-w "$app/.git/info/exclude"
+  run_init "$app" --rules-only
+  expect_refused 'cannot add /AGENTS.md to .*info/exclude'
+  expect_no_rule_links "$app"
+}
+
+case_inherited_git_dir() {
+  local app linked other=$work/cases/routed/other
+  git init -q "$other"
+  snapshot_repository "$other" > "$work/other-before"
+  app=$(new_app routed acme_shop)
+  GIT_DIR=$other/.git GIT_INDEX_FILE=$other/.git/index run_init "$app"
+  expect_success
+  [[ "$(git -C "$app" rev-parse --show-toplevel)" == "$app" ]] || fail "no repository at the app root"
+  [[ "$(git -C "$app" config --local --get core.hooksPath)" == .githooks ]] \
+    || fail "core.hooksPath is not set in the app"
+  expect_rule_links "$app"
+  expect_excluded_in "$app/.git/info/exclude"
+  linked=$(new_app routed-rules acme_shop)
+  run_init "$linked" --no-rules
+  expect_success
+  GIT_DIR=$other/.git GIT_WORK_TREE=$other GIT_INDEX_FILE=$other/.git/index GIT_COMMON_DIR=$other/.git \
+    run_init "$linked" --rules-only
+  expect_success
+  expect_rule_links "$linked"
+  expect_excluded_in "$linked/.git/info/exclude"
+  snapshot_repository "$other" > "$work/other-after"
+  diff -- "$work/other-before" "$work/other-after" || fail "init changed the repository GIT_DIR pointed at"
+}
+
+case_rules_only_outside_own_repository() {
+  local app outer=$work/cases/nested
+  app=$(new_app nested acme_shop)
+  run_init "$app" --rules-only
+  expect_refused "$app is not a git repository; run bash scripts/init.sh to create it"
+  git init -q "$outer"
+  run_init "$app" --rules-only
+  expect_refused "$app is inside the git repository $outer; the app must be the root of its own repository"
+  expect_no_rule_links "$app"
+  ! grep -qF /AGENTS.md "$outer/.git/info/exclude" || fail "init wrote the exclude file of the outer repository"
+}
+
 case_no_rules() {
   local app
   app=$(new_app no-rules acme_shop)
@@ -303,6 +368,10 @@ run_case "a second run changes nothing" case_repeat_run
 run_case "in a git worktree the links are made there from the default rulebook beside the app and the exclude lines go to the shared exclude file" case_worktree
 run_case "a dangling link is made again" case_dangling_link
 run_case "a file or folder where a link belongs is refused, named and left as it is" case_file_in_place_of_a_link
+run_case "a file where a folder of the links belongs is refused before any link" case_file_in_place_of_a_folder
+run_case "an exclude file init cannot write fails init before any link" case_unwritable_exclude
+run_case "GIT_DIR and friends inherited from another repository do not route init there" case_inherited_git_dir
+run_case "--rules-only outside the app's own repository is refused" case_rules_only_outside_own_repository
 run_case "--no-rules skips the links with a message and needs no rulebook" case_no_rules
 run_case "a missing rulebook at RULEBOOK_PATH or at the default path beside the app is refused with a message" case_missing_rulebook
 run_case "the post-checkout hook links the rules in a new worktree and does not fail the checkout without a rulebook" case_post_checkout

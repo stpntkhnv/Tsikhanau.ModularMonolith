@@ -201,7 +201,7 @@
       ],
       "exclude": [
         "template-only/**/*",
-        ".template.config/**/*",
+        "**/.template.config/**",
         ".github/workflows/template.yml",
         "docs/**/*",
         ".superpowers/**/*",
@@ -213,7 +213,13 @@
         ".git/**/*",
         "**/[Bb]in/**",
         "**/[Oo]bj/**",
-        ".nuget/**/*"
+        ".nuget/**/*",
+        "**/*.filelist",
+        "**/*.user",
+        "**/*.lock.json",
+        "**/.vs/**",
+        "**/.idea/**",
+        "**/*.swp"
       ],
       "copyOnly": [
         ".config/dotnet-tools.json",

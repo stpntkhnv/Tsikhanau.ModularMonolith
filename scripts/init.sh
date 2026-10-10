@@ -16,9 +16,11 @@ usage="usage: bash scripts/init.sh [--no-rules | --rules-only]"
 
 main() {
   read_options "$@"
+  clear_git_routing
   root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
   cd "$root"
   if [[ $mode == rules-only ]]; then
+    require_repository
     link_rules
     return
   fi
@@ -49,6 +51,13 @@ read_options() {
       exit 2
       ;;
   esac
+}
+
+clear_git_routing() {
+  local names variables
+  names=$(git rev-parse --local-env-vars)
+  mapfile -t variables <<< "$names"
+  unset -- "${variables[@]}"
 }
 
 check_app_name() {
@@ -102,11 +111,24 @@ create_repository() {
     echo "init: created a git repository on branch main"
     return
   fi
-  if [[ "$(CDPATH='' cd -- "$top" && pwd -P)" != "$root" ]]; then
-    echo "init: $root is inside the git repository $top; the app must be the root of its own repository" >&2
+  check_repository_root "$top"
+  echo "init: the git repository exists"
+}
+
+require_repository() {
+  local top
+  if ! top=$(git rev-parse --show-toplevel 2> /dev/null); then
+    echo "init: $root is not a git repository; run bash scripts/init.sh to create it" >&2
     exit 1
   fi
-  echo "init: the git repository exists"
+  check_repository_root "$top"
+}
+
+check_repository_root() {
+  if [[ "$(CDPATH='' cd -- "$1" && pwd -P)" != "$root" ]]; then
+    echo "init: $root is inside the git repository $1; the app must be the root of its own repository" >&2
+    exit 1
+  fi
 }
 
 set_hooks_path() {
@@ -139,14 +161,12 @@ link_rules() {
   check_rule_sources "$rulebook"
   check_link_places
   exclude=$(git rev-parse --git-path info/exclude)
-  mkdir -p -- "$(dirname -- "$exclude")"
+  mkdir -p -- "$(dirname -- "$exclude")" || cannot "make the folder of $exclude"
   for pair in "${rule_links[@]}"; do
-    if link_rule "${pair%%=*}" "$rulebook/${pair#*=}"; then
-      linked+=("${pair%%=*}")
-    fi
-    if exclude_rule "/${pair%%=*}" "$exclude"; then
-      excluded+=("/${pair%%=*}")
-    fi
+    exclude_rule "/${pair%%=*}" "$exclude"
+  done
+  for pair in "${rule_links[@]}"; do
+    link_rule "${pair%%=*}" "$rulebook/${pair#*=}"
   done
   report_rules "$rulebook" "$exclude"
 }
@@ -181,37 +201,66 @@ check_rule_sources() {
 }
 
 check_link_places() {
-  local pair path blocked=()
+  local pair path folder blocked=() folders=()
   for pair in "${rule_links[@]}"; do
     path=${pair%%=*}
-    if [[ -e "$path" && ! -L "$path" ]]; then
+    folder=$(file_in_folder_place "$path")
+    if [[ -n "$folder" && " ${folders[*]} " != *" $folder "* ]]; then
+      folders+=("$folder")
+    elif [[ -z "$folder" && -e "$path" && ! -L "$path" ]]; then
       blocked+=("$path")
     fi
   done
-  if [[ ${#blocked[@]} -gt 0 ]]; then
-    echo "init: not a link to the rulebook, left as it is: ${blocked[*]}; move it away and run init again" >&2
+  report_blocked "a file where a folder for the rules links belongs" "${folders[@]}"
+  report_blocked "not a link to the rulebook" "${blocked[@]}"
+  if [[ ${#folders[@]} -gt 0 || ${#blocked[@]} -gt 0 ]]; then
     exit 1
+  fi
+}
+
+file_in_folder_place() {
+  local folder
+  folder=$(dirname -- "$1")
+  while [[ $folder != . ]]; do
+    if [[ (-e "$folder" || -L "$folder") && ! -d "$folder" ]]; then
+      printf '%s\n' "$folder"
+      return
+    fi
+    folder=$(dirname -- "$folder")
+  done
+}
+
+report_blocked() {
+  if [[ $# -gt 1 ]]; then
+    echo "init: $1, left as it is: ${*:2}; move it away and run init again" >&2
   fi
 }
 
 link_rule() {
   local path=$1 target=$2
   if [[ -L "$path" && "$(readlink -- "$path")" == "$target" ]]; then
-    return 1
+    return
   fi
-  mkdir -p -- "$(dirname -- "$path")"
-  ln -sfn -- "$target" "$path"
+  mkdir -p -- "$(dirname -- "$path")" || cannot "make the folder of $path"
+  ln -sfn -- "$target" "$path" || cannot "link $path to $target"
+  linked+=("$path")
 }
 
 exclude_rule() {
-  local line=$1 file=$2
+  local line=$1 file=$2 separator=""
   if [[ -f "$file" ]] && grep -qxF -- "$line" "$file"; then
-    return 1
+    return
   fi
   if [[ -s "$file" && -n "$(tail -c 1 -- "$file")" ]]; then
-    echo >> "$file"
+    separator=$'\n'
   fi
-  echo "$line" >> "$file"
+  printf '%s%s\n' "$separator" "$line" >> "$file" || cannot "add $line to $file"
+  excluded+=("$line")
+}
+
+cannot() {
+  echo "init: cannot $1" >&2
+  exit 1
 }
 
 report_rules() {

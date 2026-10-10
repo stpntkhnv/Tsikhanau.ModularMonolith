@@ -14,6 +14,7 @@ generated_lines=('localhost:[0-9]' '<UserSecretsId>')
 postgres_image=postgres:17-alpine
 postgres_password=check-template
 patience=300
+settle=3
 
 main() {
   read_arguments "$@"
@@ -89,14 +90,16 @@ working_set() {
 litter() {
   local host=$1/src/Bootstrapper/ModularMonolith.Bootstrapper rulebook=$work/rulebook
   mkdir -p "$rulebook/playbooks" "$host/bin/Release" "$host/obj" "$1/.nuget/packages/stray" "$1/.claude" \
-    "$1/.worktrees/other" "$1/.superpowers"
+    "$1/.worktrees/other" "$1/.superpowers" "$1/src/.vs/ModularMonolith" "$host/.idea"
   printf 'rules\n' | tee "$rulebook/AGENTS.md" "$rulebook/STYLE.md" "$rulebook/engineering-principles.md" \
     "$rulebook/playbooks/stray.md" > /dev/null
   git init -q "$1"
   logged 1-rules env RULEBOOK_PATH="$rulebook" bash "$1/scripts/init.sh" --rules-only
   touch "$host/bin/Release/stray.dll" "$host/obj/project.assets.json" "$1/.nuget/packages/stray/stray.nupkg" \
     "$1/.claude/settings.local.json" "$1/.worktrees/other/stray.cs" "$1/.superpowers/stray.md" "$1/stray.txt" \
-    "$1/template-only/stray.txt" "$1/docs/stray.md"
+    "$1/template-only/stray.txt" "$1/docs/stray.md" "$host/ModularMonolith.Bootstrapper.csproj.user" \
+    "$1/src/.vs/ModularMonolith/stray.suo" "$host/.idea/workspace.xml" "$1/scripts/.init.sh.swp" \
+    "$host/packages.lock.json" "$host/stray.filelist"
 }
 
 install_and_create() {
@@ -119,9 +122,31 @@ compare_installs() {
     sed 's/^/  /' "$work/installs.diff" >&2
     fail "Tripown from the littered working copy differs from Tripown from the clean export"
   fi
-  summary="Tripown from the clean export and from a copy with rules links, .git, bin/obj, caches and stray files:"
-  summary+=" the same $(find "$work/clean-app" -type f | wc -l) files, equal but for the generated ports"
-  summary+=" and UserSecretsId"
+  check_secrets_ids "$work/clean-app" "$work/dirty-app"
+  summary="Tripown from the clean export and from a copy with rules links, .git, bin/obj, caches, editor and user"
+  summary+=" files and stray files: the same $(find "$work/clean-app" -type f | wc -l) files, equal but for the"
+  summary+=" generated ports and UserSecretsId; each UserSecretsId is a new GUID"
+}
+
+check_secrets_ids() {
+  local original app id ids=()
+  original=$(secrets_id "$template_root")
+  for app in "$@"; do
+    id=$(secrets_id "$app")
+    [[ $id =~ ^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$ ]] || fail "the UserSecretsId of $app, $id, is not a GUID"
+    [[ $id != "$original" ]] || fail "$app kept the UserSecretsId of the template, $original"
+    ids+=("$id")
+  done
+  [[ $(printf '%s\n' "${ids[@]}" | sort -u | wc -l) -eq $# ]] || fail "the apps share a UserSecretsId: ${ids[*]}"
+}
+
+secrets_id() {
+  local projects=("$1"/src/Aspire/*.AppHost/*.AppHost.csproj) ids
+  [[ ${#projects[@]} -eq 1 ]] || fail "expected one AppHost project in $1, found ${#projects[@]}"
+  mapfile -t ids < <(sed -n -E 's|^[[:space:]]*<UserSecretsId>([^<]*)</UserSecretsId>[[:space:]]*$|\1|p' \
+    "${projects[0]}")
+  [[ ${#ids[@]} -eq 1 ]] || fail "expected one UserSecretsId in ${projects[0]}, found ${#ids[@]}"
+  printf '%s\n' "${ids[0],,}"
 }
 
 refuse_name() {
@@ -161,17 +186,34 @@ start_postgres() {
   done
 }
 
+app_file_name() {
+  local name=${1##*/}
+  printf '%s\n' "${name//-/_}"
+}
+
 http_port() {
   sed -n -E 's|^ *"applicationUrl": "http://localhost:([0-9]+)".*$|\1|p' "$1" | head -n 1
 }
 
+read_ports() {
+  local app file_name port
+  ports=()
+  for app in "${apps[@]}"; do
+    file_name=$(app_file_name "$app")
+    port=$(http_port "$app/src/Bootstrapper/$file_name.Bootstrapper/Properties/launchSettings.json" || true)
+    [[ $port =~ ^[0-9]+$ ]] || fail "$app has no http applicationUrl in its Bootstrapper launchSettings.json"
+    ports+=("$port")
+  done
+  [[ $(printf '%s\n' "${ports[@]}" | sort -u | wc -l) -eq ${#ports[@]} ]] \
+    || fail "the apps got the same http port: ${ports[*]}"
+}
+
 start_app() {
-  local mode=$1 app=$2 file_name=${2##*/} database log connection
-  file_name=${file_name//-/_}
+  local mode=$1 app=$2 file_name database log connection
+  file_name=$(app_file_name "$app")
   database=${file_name,,}
   database=${database//./_}
   log=$work/logs/$number-$file_name.log
-  ports+=("$(http_port "$app/src/Bootstrapper/$file_name.Bootstrapper/Properties/launchSettings.json")")
   if [[ $mode == aspire ]]; then
     ASPIRE_ALLOW_UNSECURED_TRANSPORT=true setsid dotnet run --project "$app/src/Aspire/$file_name.AppHost" \
       -c Release --no-build --launch-profile http > "$log" 2>&1 &
@@ -186,13 +228,27 @@ start_app() {
   logs+=("$log")
 }
 
+healthy() {
+  [[ "$(curl -s -m 2 "http://localhost:${ports[$1]}/health" || true)" == Healthy ]]
+}
+
+expect_running() {
+  kill -0 "${groups[$1]}" 2> /dev/null || fail_with_log "${logs[$1]}" "$2"
+}
+
 await_health() {
   local begun=$SECONDS
-  until [[ "$(curl -s -m 2 "http://localhost:${ports[$1]}/health" || true)" == Healthy ]]; do
-    kill -0 "${groups[$1]}" 2> /dev/null || fail_with_log "${logs[$1]}" "the app stopped before /health said Healthy"
+  until healthy "$1"; do
+    expect_running "$1" "the app stopped before /health said Healthy"
     ((SECONDS - begun < patience)) || fail_with_log "${logs[$1]}" "/health did not say Healthy in $patience s"
     sleep 1
   done
+  expect_running "$1" "the app is not running although /health on its port said Healthy"
+}
+
+expect_still_healthy() {
+  expect_running "$1" "the app stopped before the shutdown"
+  healthy "$1" || fail_with_log "${logs[$1]}" "/health stopped saying Healthy before the shutdown"
 }
 
 stop_apps() {
@@ -208,8 +264,8 @@ stop_apps() {
 
 run_apps() {
   local index
-  ports=()
   logs=()
+  read_ports
   if [[ $1 == project ]]; then
     start_postgres
   fi
@@ -219,9 +275,13 @@ run_apps() {
   for index in "${!apps[@]}"; do
     await_health "$index"
   done
+  sleep "$settle"
+  for index in "${!apps[@]}"; do
+    expect_still_healthy "$index"
+  done
   stop_apps
-  summary="${apps[*]##*/} answered Healthy on /health at the same time"
-  summary+=" on ports ${ports[*]} from their launchSettings.json"
+  summary="${apps[*]##*/} answered Healthy on /health at the same time and kept running"
+  summary+=" on distinct ports ${ports[*]} from their launchSettings.json"
 }
 
 finish() {
