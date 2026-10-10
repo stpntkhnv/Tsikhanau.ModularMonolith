@@ -9,13 +9,14 @@ namespace Tsikhanau.Monolith.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ClrTypeNameAnalyzer : DiagnosticAnalyzer
 {
-    public static readonly DiagnosticDescriptor Rule = new(
-        "TS0004",
-        "Use the CLR type name instead of the C# keyword",
-        "Use the CLR type name '{0}' instead of '{1}'",
-        "Style",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+    public static readonly DiagnosticDescriptor Rule = RuleLines.Explain(
+        new(
+            "TS0004",
+            "Use the CLR type name instead of the C# keyword",
+            "Use the CLR type name '{0}' instead of '{1}'",
+            "Style",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true));
 
     private static readonly ImmutableDictionary<SyntaxKind, String> ClrNames =
         ImmutableDictionary.CreateRange(

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Shouldly;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.Testing.Modules;
@@ -20,19 +21,15 @@ public abstract class ArchRuleTests<TInputs>
     protected static ArchModule GetModule(String name) =>
         name == ProductionModules.Placeholder ? new ArchModule(name, name, () => []) : Modules.Get(name);
 
-    protected static void Check(RuleEvaluation evaluation, String noSubjectReason)
+    protected static void Check(
+        RuleEvaluation evaluation,
+        String noSubjectReason,
+        String fix,
+        [CallerMemberName] String test = "")
     {
         if (HasSubjectToCheck(evaluation, noSubjectReason))
         {
-            evaluation.Violations.ShouldBeEmpty();
-        }
-    }
-
-    protected static void Check(RuleEvaluation evaluation, String noSubjectReason, String advice)
-    {
-        if (HasSubjectToCheck(evaluation, noSubjectReason))
-        {
-            evaluation.Violations.ShouldBeEmpty(advice);
+            evaluation.Violations.ShouldBeEmpty(RuleLines.Explain(test, fix));
         }
     }
 

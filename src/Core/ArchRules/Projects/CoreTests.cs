@@ -14,7 +14,10 @@ public abstract class CoreTests<TInputs> : ArchRuleTests<TInputs>
 
     [Fact]
     public void Core_projects_reference_only_core_and_package_projects() =>
-        Check(CoreRules.CoreProjectsReferenceOnlyCoreAndPackageProjects(Solution), "src/Core has no projects");
+        Check(
+            CoreRules.CoreProjectsReferenceOnlyCoreAndPackageProjects(Solution),
+            "src/Core has no projects",
+            "Reference only core and package projects from the core");
 
     [Fact]
     public void Only_the_core_has_build_and_analyzer_config_files() =>

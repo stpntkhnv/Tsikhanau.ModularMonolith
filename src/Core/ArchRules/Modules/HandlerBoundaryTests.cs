@@ -10,14 +10,18 @@ public abstract class HandlerBoundaryTests<TInputs> : ArchRuleTests<TInputs>
     [Theory]
     [EveryModule]
     public void Module_takes_no_handler_in_a_constructor(String name) =>
-        Check(HandlerBoundaryRules.ModuleTakesNoHandlerInAConstructor(GetModule(name)), $"{name} has no types");
+        Check(
+            HandlerBoundaryRules.ModuleTakesNoHandlerInAConstructor(GetModule(name)),
+            $"{name} has no types",
+            "Send the command or query through the module facade instead of taking its handler");
 
     [Theory]
     [EveryModule]
     public void Query_marker_is_implemented_only_inside_its_module(String name) =>
         Check(
             HandlerBoundaryRules.QueryMarkerIsImplementedOnlyInsideItsModule(Modules, GetModule(name)),
-            $"{name} has no types");
+            $"{name} has no types",
+            "Declare the query in the module that answers it; other modules ask through its query facade");
 
     [Theory]
     [EveryModule]

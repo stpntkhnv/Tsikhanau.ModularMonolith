@@ -11,5 +11,6 @@ public abstract class InternalCommandNameTests<TInputs> : ArchRuleTests<TInputs>
     public void Every_internal_command_has_a_stable_name_unique_in_its_module() =>
         Check(
             InternalCommandNameRules.EveryInternalCommandHasAStableNameUniqueInItsModule(Modules),
-            "No module has internal commands");
+            "No module has internal commands",
+            "Give the command an [InternalCommandName] unique in its module, and keep it once stored");
 }

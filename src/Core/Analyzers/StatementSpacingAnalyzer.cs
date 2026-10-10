@@ -9,13 +9,14 @@ namespace Tsikhanau.Monolith.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StatementSpacingAnalyzer : DiagnosticAnalyzer
 {
-    public static readonly DiagnosticDescriptor Rule = new(
-        "TS0002",
-        "Leave a blank line after a multi-line statement",
-        "Leave a blank line after the multi-line statement above",
-        "Style",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+    public static readonly DiagnosticDescriptor Rule = RuleLines.Explain(
+        new(
+            "TS0002",
+            "Leave a blank line after a multi-line statement",
+            "Leave a blank line after the multi-line statement above",
+            "Style",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true));
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 

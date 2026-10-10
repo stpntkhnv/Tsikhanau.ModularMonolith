@@ -11,5 +11,6 @@ public abstract class IntegrationEventNameTests<TInputs> : ArchRuleTests<TInputs
     public void Every_integration_event_has_a_unique_stable_name() =>
         Check(
             IntegrationEventNameRules.EveryIntegrationEventHasAUniqueStableName(Modules),
-            "No module has integration events");
+            "No module has integration events",
+            "Give the event an [IntegrationEventName] no other event uses, and keep it once published");
 }

@@ -9,5 +9,8 @@ public abstract class BootstrapperTests<TInputs> : ArchRuleTests<TInputs>
 {
     [Fact]
     public void Host_adds_every_module_folder() =>
-        Check(HostRules.HostAddsEveryModuleFolder(TInputs.HostAssembly, Modules), "There are no production modules");
+        Check(
+            HostRules.HostAddsEveryModuleFolder(TInputs.HostAssembly, Modules),
+            "There are no production modules",
+            "Add each module of src/Modules to the host once with AddModule, and nothing else");
 }

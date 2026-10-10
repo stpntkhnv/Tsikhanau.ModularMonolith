@@ -11,11 +11,13 @@ public abstract class ModuleGraphTests<TInputs> : ArchRuleTests<TInputs>
     public void Modules_do_not_reference_each_other_in_a_cycle() =>
         Check(
             ModuleGraphRules.ModulesDoNotReferenceEachOtherInACycle(Solution, Modules),
-            "There are no production modules");
+            "There are no production modules",
+            "Break the cycle: let one module handle the other's integration event instead of calling it");
 
     [Fact]
     public void Modules_reference_only_contracts_of_known_modules() =>
         Check(
             ModuleGraphRules.ModulesReferenceOnlyContractsOfKnownModules(Solution, Modules),
-            "There are no production modules");
+            "There are no production modules",
+            "Reference only the Contracts project of a module in src/Modules");
 }

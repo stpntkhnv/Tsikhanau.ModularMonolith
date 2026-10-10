@@ -2,6 +2,30 @@ namespace Tsikhanau.Monolith.Analyzers.Tests;
 
 public sealed class ErrorsAsValuesAnalyzerTests
 {
+    private const String ThrowInDomainMessage =
+        "Return an Error instead of throwing in 'App.Modules.Notes.Domain.Notes'. Rule in AGENTS.md: Errors are "
+        + "values: Domain and Features return an `Error` for an expected failure and never throw. Playbook: "
+        + "docs/playbooks/add-feature.md";
+
+    [Fact]
+    public async Task Diagnostic_states_the_fix_the_rule_line_and_the_playbook()
+    {
+        var messages = await AnalyzerRunner.GetReportedMessagesAsync(
+            new ErrorsAsValuesAnalyzer(),
+            """
+            using System;
+
+            namespace App.Modules.Notes.Domain.Notes;
+
+            class Note
+            {
+                void Rename(String title) => throw new ArgumentException(title);
+            }
+            """);
+
+        messages.ShouldBe([ThrowInDomainMessage]);
+    }
+
     [Fact]
     public async Task Throw_statement_in_domain_is_reported()
     {

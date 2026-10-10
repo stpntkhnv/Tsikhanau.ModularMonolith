@@ -7,13 +7,14 @@ namespace Tsikhanau.Monolith.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyNameAnalyzer : DiagnosticAnalyzer
 {
-    public static readonly DiagnosticDescriptor Rule = new(
-        "TS0003",
-        "Name the dependency after its type",
-        "Name the dependency after its type: '{0}'",
-        "Style",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+    public static readonly DiagnosticDescriptor Rule = RuleLines.Explain(
+        new(
+            "TS0003",
+            "Name the dependency after its type",
+            "Name the dependency after its type: '{0}'",
+            "Style",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true));
 
     private static readonly ImmutableHashSet<(String TypeName, String ParameterName)> FrameworkNames =
         ImmutableHashSet.Create(

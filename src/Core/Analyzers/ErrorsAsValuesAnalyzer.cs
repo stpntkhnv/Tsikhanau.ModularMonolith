@@ -8,13 +8,14 @@ namespace Tsikhanau.Monolith.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ErrorsAsValuesAnalyzer : DiagnosticAnalyzer
 {
-    public static readonly DiagnosticDescriptor Rule = new(
-        "TS0005",
-        "Return an Error instead of throwing in Domain and Features",
-        "Return an Error instead of throwing in '{0}'",
-        "Design",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+    public static readonly DiagnosticDescriptor Rule = RuleLines.Explain(
+        new(
+            "TS0005",
+            "Return an Error instead of throwing in Domain and Features",
+            "Return an Error instead of throwing in '{0}'",
+            "Design",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true));
 
     private static readonly ImmutableHashSet<String> CheckedLayers = ImmutableHashSet.Create("Domain", "Features");
 

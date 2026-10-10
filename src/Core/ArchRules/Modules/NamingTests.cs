@@ -10,5 +10,8 @@ public abstract class NamingTests<TInputs> : ArchRuleTests<TInputs>
     [Theory]
     [EveryModule]
     public void Types_carry_the_suffix_of_their_role(String name) =>
-        Check(NamingRules.TypesCarryTheSuffixOfTheirRole(GetModule(name)), $"{name} has no concrete types");
+        Check(
+            NamingRules.TypesCarryTheSuffixOfTheirRole(GetModule(name)),
+            $"{name} has no concrete types",
+            "Rename the type to end with the suffix of its role");
 }

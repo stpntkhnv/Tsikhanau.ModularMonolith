@@ -9,5 +9,8 @@ public abstract class SharedTests<TInputs> : ArchRuleTests<TInputs>
 {
     [Fact]
     public void Shared_code_does_not_depend_on_the_rest_of_the_app() =>
-        Check(SharedRules.SharedCodeDoesNotDependOnTheRestOfTheApp(Solution), "Tsikhanau.Monolith.Shared has no types");
+        Check(
+            SharedRules.SharedCodeDoesNotDependOnTheRestOfTheApp(Solution),
+            "Tsikhanau.Monolith.Shared has no types",
+            "Drop the dependency; Shared code depends on nothing else in the app");
 }
