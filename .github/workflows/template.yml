@@ -36,3 +36,39 @@ jobs:
 
       - name: Template check (two installs, three apps, part 3 path, update-core, two apps running, Aspire)
         run: bash template-only/scripts/check-template.sh --aspire
+
+  rule-markers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: app
+
+      - uses: actions/checkout@v5
+        with:
+          repository: stpntkhnv/Tsikhanau.Rulebook
+          ssh-key: ${{ secrets.RULEBOOK_DEPLOY_KEY }}
+          path: Tsikhanau.Rulebook
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: app/global.json
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('app/global.json', 'app/**/*.props', 'app/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Link the rulebook that sits beside the app
+        run: bash scripts/init.sh --rules-only
+
+      - name: Build for the test listing
+        run: dotnet build ModularMonolith.slnx -c Release
+
+      - name: Rule markers
+        run: dotnet run --file ../Tsikhanau.Rulebook/check-markers.cs -- .
