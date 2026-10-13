@@ -35,7 +35,7 @@ internal static class RuleLines
 
     private const String ModuleSql =
         "Module SQL names its columns and never another module's schema; module code opens no database connection "
-        + "of its own.";
+        + "of its own. SQL passed to Dapper or EF Core raw SQL is a constant, values go in parameters.";
 
     private const String Visibility =
         "Handlers and endpoints are `internal sealed`; outside its Contracts a module exposes only its module class.";

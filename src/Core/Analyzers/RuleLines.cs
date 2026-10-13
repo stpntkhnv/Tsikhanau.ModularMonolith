@@ -18,12 +18,17 @@ internal static class RuleLines
         "A constructor dependency is named after its type: `INoteRepository noteRepository`, "
         + "`TimeProvider timeProvider`.";
 
+    private const String ModuleSql =
+        "Module SQL names its columns and never another module's schema; module code opens no database connection "
+        + "of its own. SQL passed to Dapper or EF Core raw SQL is a constant, values go in parameters.";
+
     private static readonly RuleLine[] All =
     [
         new(ErrorsAsValues, "add-feature", "TS0005"),
         new(ClrTypeNames, "", "TS0004"),
         new(LinesAndStatements, "", "TS0001", "TS0002"),
         new(DependencyNames, "", "TS0003"),
+        new(ModuleSql, "add-feature", "TS0006"),
     ];
 
     public static DiagnosticDescriptor Explain(DiagnosticDescriptor descriptor) =>

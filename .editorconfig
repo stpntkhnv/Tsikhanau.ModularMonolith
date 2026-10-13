@@ -45,3 +45,7 @@ dotnet_diagnostic.CA1849.severity = none
 dotnet_diagnostic.VSTHRD002.severity = none
 dotnet_diagnostic.VSTHRD103.severity = none
 dotnet_diagnostic.TS0005.severity = none
+dotnet_diagnostic.TS0006.severity = none
+
+[{src/Core/**.cs,template-only/perf/**.cs}]
+dotnet_diagnostic.TS0006.severity = none
