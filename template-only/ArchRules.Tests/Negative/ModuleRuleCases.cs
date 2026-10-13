@@ -21,9 +21,7 @@ internal static class ModuleRuleCases
 
     private const String HttpContextTypeName = "Microsoft.AspNetCore.Http.HttpContext";
 
-    private const String PeerModuleTypeName = "Acme.Modules.Peer.IPeerModule";
-
-    private const String NeighbourServiceName = $"{BadRoot}.Features.NeighbourCrate.NeighbourDispatchService";
+    private const String StrayServiceName = $"{BadRoot}.Features.StrayCrate.StrayDispatchService";
 
     private const String ModuleDispatcherTypeName = "Tsikhanau.Monolith.Infrastructure.Dispatching.ModuleDispatcher`1";
 
@@ -220,7 +218,7 @@ internal static class ModuleRuleCases
             [
                 $"{BadRoot}.Features.ReadRequest.RequestReader does depend on \"{HttpContextTypeName}\"",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService does depend on \"{ModuleDispatcherTypeName}\"",
-                $"{NeighbourServiceName} does depend on \"{ModuleDispatcherTypeName}\"",
+                $"{StrayServiceName} does depend on \"{ModuleDispatcherTypeName}\"",
             ],
             () => LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks(Clean, Good)),
         new(
@@ -254,10 +252,7 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts),
             () => LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts(Dirty, Bad),
-            [
-                $"{BadRoot}.Infrastructure.Neighbours.PeerProbe does depend on \"Acme.Modules.Peer.PeerModule\"",
-                $"{NeighbourServiceName} does depend on \"{PeerModuleTypeName}\"",
-            ],
+            [$"{BadRoot}.Infrastructure.Neighbours.PeerProbe does depend on \"Acme.Modules.Peer.PeerModule\""],
             () => LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
@@ -305,8 +300,8 @@ internal static class ModuleRuleCases
                 $"{BadRoot}.Features.LoopBack.LoopBackService holds IBadModule <badModule>P",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService takes ModuleDispatcher`1 moduleDispatcher",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService holds ModuleDispatcher`1 <moduleDispatcher>P",
-                $"{NeighbourServiceName} takes ModuleDispatcher`1 neighbourDispatcher",
-                $"{NeighbourServiceName} holds ModuleDispatcher`1 <neighbourDispatcher>P",
+                $"{StrayServiceName} takes ModuleDispatcher`1 strayDispatcher",
+                $"{StrayServiceName} holds ModuleDispatcher`1 <strayDispatcher>P",
                 $"{BadRoot}.Features.KeyCrate.CrateKeyService takes Keyed`1 keyedModule",
                 $"{BadRoot}.Features.KeyCrate.CrateKeyService holds Keyed`1 <keyedModule>P",
             ],

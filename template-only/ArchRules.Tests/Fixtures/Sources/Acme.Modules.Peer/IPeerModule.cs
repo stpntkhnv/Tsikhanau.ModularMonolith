@@ -3,4 +3,4 @@ using Tsikhanau.Monolith.Application.Modules;
 
 namespace Acme.Modules.Peer;
 
-public interface IPeerModule : IPeerQueryFacade, IModuleFacade;
+internal interface IPeerModule : IPeerQueryFacade, IModuleFacade;
