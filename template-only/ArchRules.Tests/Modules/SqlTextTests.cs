@@ -128,6 +128,9 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT E'\\'', * FROM t")]
     [InlineData("SELECT a IS DISTINCT FROM b, t.* FROM t")]
     [InlineData("SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY a), t.* FROM t")]
+    [InlineData("SELECT t.order, t.* FROM t")]
+    [InlineData("SELECT t.from, t.* FROM t")]
+    [InlineData("SELECT id AS order, t.* FROM t")]
     public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
         SqlScanner
             .ReadsEveryColumn(sql)
@@ -159,6 +162,8 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT E'\\' , * --'")]
     [InlineData("SELECT $$ , * --$$")]
     [InlineData("SELECT $q$ , * --$q$")]
+    [InlineData("SELECT t.order FROM t")]
+    [InlineData("SELECT id AS order FROM t")]
     public void Sql_that_names_its_columns_is_not_a_star_column(String text) =>
         SqlScanner
             .ReadsEveryColumn(text)

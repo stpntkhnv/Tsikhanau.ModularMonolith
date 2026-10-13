@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
+using Tsikhanau.Monolith.ArchRules.Rules;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.FixtureModules;
 
@@ -127,13 +128,13 @@ internal static class ModuleRuleCases
             nameof(VisibilityRules.ModuleExposesAtMostItsModuleClassOutsideItsContracts),
             () => VisibilityRules.ModuleExposesAtMostItsModuleClassOutsideItsContracts(Bad),
             [$"{BadRoot}.Features.ExposeCrate.CrateExporter"],
-            () => VisibilityRules.ModuleExposesAtMostItsModuleClassOutsideItsContracts(Good)),
+            () => EvaluateEveryCleanModule(VisibilityRules.ModuleExposesAtMostItsModuleClassOutsideItsContracts)),
         new(
             typeof(VisibilityRules),
             nameof(VisibilityRules.ModuleAssemblyExposesOnlyItsModuleClass),
             () => VisibilityRules.ModuleAssemblyExposesOnlyItsModuleClass(Bad),
             [$"{BadRoot}.Features.ExposeCrate.CrateExporter"],
-            () => VisibilityRules.ModuleAssemblyExposesOnlyItsModuleClass(Good)),
+            () => EvaluateEveryCleanModule(VisibilityRules.ModuleAssemblyExposesOnlyItsModuleClass)),
         new(
             typeof(VisibilityRules),
             nameof(VisibilityRules.ContractsArePublic),
@@ -367,4 +368,13 @@ internal static class ModuleRuleCases
 
     private static ArchModule BadWithoutItsContracts =>
         new(Bad.Name, Bad.RootNamespace, () => [FixtureAssemblies.Get(Bad.RootNamespace)]);
+
+    private static RuleEvaluation EvaluateEveryCleanModule(Func<ArchModule, RuleEvaluation> rule)
+    {
+        IReadOnlyList<RuleEvaluation> evaluations = [.. Clean.All.Select(rule)];
+
+        return new(
+            [.. evaluations.SelectMany(evaluation => evaluation.Subject)],
+            [.. evaluations.SelectMany(evaluation => evaluation.Violations)]);
+    }
 }

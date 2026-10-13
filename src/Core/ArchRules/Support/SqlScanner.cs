@@ -109,5 +109,10 @@ internal static class SqlScanner
         token.IsOneOf(ColumnListEnds) && !ContinuesColumn(token, previousToken);
 
     private static Boolean ContinuesColumn(SqlToken token, SqlToken previousToken) =>
-        (token.Is("FROM") && previousToken.Is("DISTINCT")) || (token.Is("GROUP") && previousToken.Is("WITHIN"));
+        IntroducesName(previousToken)
+            || (token.Is("FROM") && previousToken.Is("DISTINCT"))
+            || (token.Is("GROUP") && previousToken.Is("WITHIN"));
+
+    private static Boolean IntroducesName(SqlToken token) =>
+        token.Is(".") || token.Is("AS");
 }

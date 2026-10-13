@@ -4,7 +4,7 @@ namespace Tsikhanau.Monolith.Analyzers.Tests;
 
 public sealed class SqlConstantAnalyzerTests
 {
-    private const Int32 SinkLine = 31;
+    private const Int32 SinkLine = 34;
 
     private const String InterpolationWithVariableHoleMessage =
         "SQL passed to Dapper or EF Core raw SQL must be a constant: put values in parameters (@Name), never into the "
@@ -36,6 +36,9 @@ public sealed class SqlConstantAnalyzerTests
                 "sql",
                 "$\"SELECT id FROM notes.notes WHERE id = {id}\"",
                 "\"SELECT id FROM notes.notes WHERE id = \" + id",
+                "ReadSql()",
+                "StaticSql",
+                "flag ? Sql : Columns",
             ]);
 
     public static MatrixTheoryData<String, String> ConstantSql =>
@@ -144,17 +147,22 @@ public sealed class SqlConstantAnalyzerTests
 
                 private const String Columns = "SELECT id";
 
+                private static readonly String StaticSql = "SELECT id FROM notes.notes";
+
                 void Read(
                     IDbConnection connection,
                     DatabaseFacade database,
                     DbSet<Note> notes,
                     Object parameters,
                     String sql,
-                    Int32 id)
+                    Int32 id,
+                    Boolean flag)
                 {
                     var query = "SELECT id FROM notes.notes";
                     {{statement}}
                 }
+
+                private static String ReadSql() => Sql;
             }
             """);
     }

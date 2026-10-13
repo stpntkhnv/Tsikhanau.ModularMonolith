@@ -75,13 +75,12 @@ public sealed class SqlConstantAnalyzer : DiagnosticAnalyzer
         OperationAnalysisContext context,
         ImmutableHashSet<IParameterSymbol> sqlParameters)
     {
-        var variableSqlArguments = GetArguments(context.Operation)
-            .Where(argument => IsSqlArgument(argument, sqlParameters))
-            .Where(argument => !IsConstant(argument.Value));
-
-        foreach (var variableSqlArgument in variableSqlArguments)
+        foreach (var argument in GetArguments(context.Operation))
         {
-            context.ReportDiagnostic(Diagnostic.Create(Rule, variableSqlArgument.Value.Syntax.GetLocation()));
+            if (IsSqlArgument(argument, sqlParameters) && !IsConstant(argument.Value))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(Rule, argument.Value.Syntax.GetLocation()));
+            }
         }
     }
 
