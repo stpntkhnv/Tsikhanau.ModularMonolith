@@ -18,6 +18,7 @@ if ! work=$(mktemp -d) || [[ ! -d "$work" ]] || ! work=$(cd -- "$work" && pwd -P
 fi
 readonly work
 rulebook=$work/rulebook
+custom_rulebook=$work/custom-rulebook
 host_settings=src/Bootstrapper/ModularMonolith.Bootstrapper/appsettings.json
 database_settings=src/Core/Infrastructure/Database/DatabaseSettings.cs
 rule_links=(
@@ -37,6 +38,8 @@ printf 'rules\n' > "$rulebook/AGENTS.md"
 printf 'style\n' > "$rulebook/STYLE.md"
 printf 'principles\n' > "$rulebook/engineering-principles.md"
 printf 'module\n' > "$rulebook/playbooks/add-module.md"
+printf 'markers\n' > "$rulebook/check-markers.cs"
+cp -r -- "$rulebook" "$custom_rulebook"
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "${DOTNET_CALLS:?}"\n' > "$work/bin/dotnet"
 chmod +x "$work/bin/dotnet"
 export PATH=$work/bin:$PATH HOME=$work/home RULEBOOK_PATH=$rulebook
@@ -94,12 +97,17 @@ expect_said() {
 }
 
 expect_rule_links() {
-  local pair target
+  local pair
   for pair in "${rule_links[@]}"; do
-    target=$(readlink -- "$1/${pair%%=*}") || fail "${pair%%=*} is not a link"
-    [[ "$target" == "$rulebook/${pair#*=}" ]] || fail "${pair%%=*} points to $target, not $rulebook/${pair#*=}"
-    git -C "$1" check-ignore -q -- "${pair%%=*}" || fail "git sees ${pair%%=*}"
+    expect_link "$1" "${pair%%=*}" "${2:-$rulebook}/${pair#*=}"
   done
+}
+
+expect_link() {
+  local target
+  target=$(readlink -- "$1/$2") || fail "$2 is not a link"
+  [[ "$target" == "$3" ]] || fail "$2 points to $target, not $3"
+  git -C "$1" check-ignore -q -- "$2" || fail "git sees $2"
 }
 
 expect_no_rule_links() {
@@ -343,6 +351,53 @@ case_post_checkout() {
   expect_no_rule_links "$second"
 }
 
+app_with_custom_rules() {
+  local app
+  app=$(new_app "$1" acme_shop)
+  RULEBOOK_PATH=$custom_rulebook run_init "$app" > /dev/null
+  expect_success
+  expect_rule_links "$app" "$custom_rulebook"
+  commit_all "$app"
+  printf '%s\n' "$app"
+}
+
+case_custom_rulebook_kept() {
+  local app
+  app=$(app_with_custom_rules kept)
+  run_in "$app" env -u RULEBOOK_PATH git checkout -q -b without-default
+  expect_success
+  ! grep -qF 'post-checkout' "$work/out" || fail "the hook needed the default rulebook"
+  expect_rule_links "$app" "$custom_rulebook"
+  ln -s "$rulebook" "$work/cases/kept/Tsikhanau.Rulebook"
+  run_in "$app" env -u RULEBOOK_PATH git checkout -q -b with-default
+  expect_success
+  expect_rule_links "$app" "$custom_rulebook"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  expect_rule_links "$app" "$custom_rulebook"
+}
+
+case_dangling_link_without_rulebook_path() {
+  local app
+  app=$(app_with_custom_rules kept-dangling)
+  ln -s "$rulebook" "$work/cases/kept-dangling/Tsikhanau.Rulebook"
+  ln -sfn "$work/gone/AGENTS.md" "$app/AGENTS.md"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  expect_said "linked to the rulebook $rulebook: AGENTS.md$"
+  expect_link "$app" AGENTS.md "$rulebook/AGENTS.md"
+  expect_link "$app" STYLE.md "$custom_rulebook/STYLE.md"
+  expect_link "$app" docs/playbooks "$custom_rulebook/playbooks"
+}
+
+case_explicit_rulebook_path_wins() {
+  local app
+  app=$(app_with_custom_rules explicit)
+  RULEBOOK_PATH=$rulebook run_init "$app" --rules-only
+  expect_success
+  expect_rule_links "$app"
+}
+
 run_case() {
   local name=$1
   local log=$work/logs/$((passes + failures + 1)).log
@@ -375,6 +430,9 @@ run_case "--rules-only outside the app's own repository is refused" case_rules_o
 run_case "--no-rules skips the links with a message and needs no rulebook" case_no_rules
 run_case "a missing rulebook at RULEBOOK_PATH or at the default path beside the app is refused with a message" case_missing_rulebook
 run_case "the post-checkout hook links the rules in a new worktree and does not fail the checkout without a rulebook" case_post_checkout
+run_case "links to a rulebook chosen with RULEBOOK_PATH stay through a checkout and --rules-only without it" case_custom_rulebook_kept
+run_case "without RULEBOOK_PATH a dangling link is made from the default rulebook and valid links stay" case_dangling_link_without_rulebook_path
+run_case "an explicit RULEBOOK_PATH replaces links to another rulebook" case_explicit_rulebook_path_wins
 
 echo "test-init: $passes passed, $failures failed"
 [[ $failures -eq 0 ]]

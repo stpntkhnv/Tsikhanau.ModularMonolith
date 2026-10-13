@@ -156,19 +156,43 @@ make_executable() {
 }
 
 link_rules() {
-  local rulebook exclude pair linked=() excluded=()
-  rulebook=$(find_rulebook)
-  check_rule_sources "$rulebook"
+  local rulebook='' exclude pair book linked=() excluded=() pending=() kept_books=()
+  for pair in "${rule_links[@]}"; do
+    if [[ -z ${RULEBOOK_PATH-} ]] && book=$(kept_rulebook "${pair%%=*}" "${pair#*=}"); then
+      if [[ " ${kept_books[*]} " != *" $book "* ]]; then
+        kept_books+=("$book")
+      fi
+    else
+      pending+=("$pair")
+    fi
+  done
+  if [[ ${#pending[@]} -gt 0 ]]; then
+    rulebook=$(find_rulebook)
+    check_rule_sources "$rulebook"
+  fi
   check_link_places
   exclude=$(git rev-parse --git-path info/exclude)
   mkdir -p -- "$(dirname -- "$exclude")" || cannot "make the folder of $exclude"
   for pair in "${rule_links[@]}"; do
     exclude_rule "/${pair%%=*}" "$exclude"
   done
-  for pair in "${rule_links[@]}"; do
+  for pair in "${pending[@]}"; do
     link_rule "${pair%%=*}" "$rulebook/${pair#*=}"
   done
-  report_rules "$rulebook" "$exclude"
+  report_rules "${rulebook:-${kept_books[*]}}" "$exclude"
+}
+
+kept_rulebook() {
+  local path=$1 source=$2 target book
+  [[ -L "$path" ]] || return 1
+  target=$(readlink -- "$path")
+  if [[ $target != /* ]]; then
+    target=$(dirname -- "$path")/$target
+  fi
+  [[ $target == */"$source" ]] || return 1
+  book=${target%/"$source"}
+  [[ -f "$book/check-markers.cs" && -z "$(missing_rule_sources "$book")" ]] || return 1
+  printf '%s\n' "$book"
 }
 
 find_rulebook() {
@@ -188,16 +212,21 @@ default_rulebook() {
 }
 
 check_rule_sources() {
-  local pair missing=()
-  for pair in "${rule_links[@]}"; do
-    if [[ ! -e "$1/${pair#*=}" ]]; then
-      missing+=("${pair#*=}")
-    fi
-  done
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "init: the rulebook $1 has no ${missing[*]}" >&2
+  local missing
+  missing=$(missing_rule_sources "$1")
+  if [[ -n "$missing" ]]; then
+    echo "init: the rulebook $1 has no ${missing//$'\n'/ }" >&2
     exit 1
   fi
+}
+
+missing_rule_sources() {
+  local pair
+  for pair in "${rule_links[@]}"; do
+    if [[ ! -e "$1/${pair#*=}" ]]; then
+      printf '%s\n' "${pair#*=}"
+    fi
+  done
 }
 
 check_link_places() {
