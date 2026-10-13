@@ -60,6 +60,13 @@ verdict() {
   awk -v base="$1" -v head="$2" -v limit="$threshold_percent" 'BEGIN { exit !(head * 100 >= base * limit) }'
 }
 
+clear_git_routing() {
+  local names variables
+  names=$(git rev-parse --local-env-vars)
+  mapfile -t variables <<< "$names"
+  unset -- "${variables[@]}"
+}
+
 load_now() {
   cut -d ' ' -f 1 /proc/loadavg
 }
@@ -168,6 +175,7 @@ main() {
   local base_commit head_commit round label start load output scenario failed=0 inconclusive=0 code=0
   declare -gA command_samples=() queue_samples=()
 
+  clear_git_routing
   repo_root=$(git rev-parse --show-toplevel)
   base_commit=$(git -C "$repo_root" rev-parse --verify "$base_ref^{commit}")
   head_commit=$(git -C "$repo_root" rev-parse --verify "HEAD^{commit}")

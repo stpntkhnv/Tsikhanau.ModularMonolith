@@ -104,14 +104,34 @@ expect_contains "inconclusive names the scenario, the side and the spread" \
 expect_contains "the verdict prints min and max next to the median" \
   "$(judge command "1000 1050 1100" "1000 1020 1080" 2>&1)" "base median 1050 (min 1000, max 1100)"
 
+clear_routing() {
+  local names variables
+  if ! names=$(git rev-parse --local-env-vars) || [[ -z $names ]]; then
+    echo "test-check-perf: cannot list the git routing variables" >&2
+    exit 1
+  fi
+  mapfile -t variables <<< "$names"
+  unset -- "${variables[@]}"
+}
+
+repository_state() {
+  git -C "$1" rev-parse HEAD
+  cksum < "$1/.git/index"
+  cat "$1/.git/config"
+}
+
 scratch=$(mktemp -d)
 trap 'rm -rf -- "${scratch:?}"' EXIT
-mkdir -p "$scratch/repo" "$scratch/bin" "$scratch/state" "$scratch/tmp"
+clear_routing
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com
 export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
-git -C "$scratch/repo" init -q
-git -C "$scratch/repo" commit -q --allow-empty -m first
+mkdir -p "$scratch/repo" "$scratch/other" "$scratch/bin" "$scratch/state" "$scratch/tmp"
+git -C "$scratch/other" init -q
+printf 'other\n' > "$scratch/other/file"
+git -C "$scratch/other" add file
+git -C "$scratch/other" commit -q -m other
+other_before=$(repository_state "$scratch/other")
 cat > "$scratch/bin/dotnet" <<'FAKE'
 #!/usr/bin/env bash
 if [[ $1 == build ]]; then
@@ -149,30 +169,51 @@ run_fake() {
     bash "$script_dir/check-perf.sh" HEAD 2>&1)
 }
 
+routed_to_other() {
+  GIT_DIR=$scratch/other/.git GIT_WORK_TREE=$scratch/other GIT_INDEX_FILE=$scratch/other/.git/index "$@"
+}
+
 worktree_lines() {
   git -C "$scratch/repo" worktree list | wc -l
 }
 
-output=$(run_fake)
-code=$?
-expect_equal "a clean fake run exits 0" "$code" "0"
-expect_contains "the warm-up run is discarded" "$output" "head command ops/s 1 (load"
-expect_contains "the warm-up spike does not reach the medians" "$output" "command: base median 100 (min 100, max 100)"
-expect_equal "worktrees are removed after a clean run" "$(worktree_lines)" "1"
-expect_equal "the temp folder is emptied after a clean run" "$(ls -A "$scratch/tmp" | wc -l)" "0"
+scratch_cases() {
+  clear_routing
+  git -C "$scratch/repo" init -q
+  git -C "$scratch/repo" commit -q --allow-empty -m first
 
-output=$(FAKE_NOISY=1 run_fake)
-code=$?
-expect_equal "a noisy head exits 3" "$code" "3"
-expect_contains "a noisy head says inconclusive" "$output" "inconclusive: command head spread 50.0%"
-expect_equal "worktrees are removed after an inconclusive run" "$(worktree_lines)" "1"
+  output=$(run_fake)
+  code=$?
+  expect_equal "a clean fake run exits 0" "$code" "0"
+  expect_contains "the warm-up run is discarded" "$output" "head command ops/s 1 (load"
+  expect_contains "the warm-up spike does not reach the medians" "$output" "command: base median 100 (min 100, max 100)"
+  expect_equal "worktrees are removed after a clean run" "$(worktree_lines)" "1"
+  expect_equal "the temp folder is emptied after a clean run" "$(ls -A "$scratch/tmp" | wc -l)" "0"
 
-output=$(FAKE_BUILD_FAIL=1 run_fake)
-code=$?
-expect_equal "a failed build exits 1" "$code" "1"
-expect_contains "a failed build prints the build output" "$output" "error CS1234: fake compile failure"
-expect_equal "worktrees are removed after a failed build" "$(worktree_lines)" "1"
-expect_equal "the temp folder is emptied after a failed build" "$(ls -A "$scratch/tmp" | wc -l)" "0"
+  output=$(FAKE_NOISY=1 run_fake)
+  code=$?
+  expect_equal "a noisy head exits 3" "$code" "3"
+  expect_contains "a noisy head says inconclusive" "$output" "inconclusive: command head spread 50.0%"
+  expect_equal "worktrees are removed after an inconclusive run" "$(worktree_lines)" "1"
+
+  output=$(FAKE_BUILD_FAIL=1 run_fake)
+  code=$?
+  expect_equal "a failed build exits 1" "$code" "1"
+  expect_contains "a failed build prints the build output" "$output" "error CS1234: fake compile failure"
+  expect_equal "worktrees are removed after a failed build" "$(worktree_lines)" "1"
+  expect_equal "the temp folder is emptied after a failed build" "$(ls -A "$scratch/tmp" | wc -l)" "0"
+
+  output=$(routed_to_other run_fake)
+  code=$?
+  expect_equal "a run with another repository's GIT_DIR exits 0" "$code" "0"
+  expect_contains "a run with another repository's GIT_DIR measures the repository it runs in" "$output" \
+    "head $(git -C "$scratch/repo" rev-parse HEAD)"
+  expect_equal "worktrees are removed after a run with another repository's GIT_DIR" "$(worktree_lines)" "1"
+}
+
+routed_to_other scratch_cases
+expect_equal "GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE from a hook leave their repository's HEAD, index and config" \
+  "$(repository_state "$scratch/other")" "$other_before"
 
 output=$(cd "$scratch/tmp" && PERF_PG=host=elsewhere main main 2>&1)
 code=$?
