@@ -1,10 +1,8 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
-using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Shared.Collections;
@@ -41,29 +39,33 @@ public sealed class QuietIdleTests(PostgresFixture postgresFixture)
                 CountPolls<IPongsModule>(builder.Services, pongsPollCounter);
             });
 
-        using var npgsqlActivities = new NpgsqlActivities();
+        using var npgsqlCommandRecorder = new NpgsqlCommandRecorder();
+        npgsqlCommandRecorder.Start();
         capturingLoggerProvider.Clear();
         pollCounters.ForEach(pollCounter => pollCounter.Reset());
 
         await AdvanceUntilPolledAsync(testModulesHost, pollCounters);
+        npgsqlCommandRecorder.Stop();
 
         var entriesAtInformationOrAbove = capturingLoggerProvider.Entries
             .Where(entry => entry.Level >= LogLevel.Information)
             .ToList();
 
         entriesAtInformationOrAbove.ShouldBeEmpty();
-        npgsqlActivities.Unparented.ShouldBeEmpty();
+        npgsqlCommandRecorder.Unparented.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task Database_command_within_an_activity_is_still_traced()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
-        using var npgsqlActivities = new NpgsqlActivities();
+        using var npgsqlCommandRecorder = new NpgsqlCommandRecorder();
+        npgsqlCommandRecorder.Start();
 
         await testModulesHost.CreatePingAsync("traced");
+        npgsqlCommandRecorder.Stop();
 
-        npgsqlActivities.Parented.ShouldNotBeEmpty();
+        npgsqlCommandRecorder.Parented.ShouldNotBeEmpty();
     }
 
     private static void CountPolls<TModule>(IServiceCollection services, PollCounter pollCounter)
@@ -107,49 +109,6 @@ public sealed class QuietIdleTests(PostgresFixture postgresFixture)
             var processedCount = await queuePump.RunOnceAsync(cancellationToken);
             pollCounter.Add();
             return processedCount;
-        }
-    }
-
-    private sealed class NpgsqlActivities : IDisposable
-    {
-        private const String NpgsqlSourceName = "Npgsql";
-
-        private readonly ConcurrentQueue<Activity> _activities = new();
-        private readonly ActivityListener _activityListener;
-
-        public NpgsqlActivities()
-        {
-            _activityListener = new ActivityListener
-            {
-                ShouldListenTo = activitySource => activitySource.Name is NpgsqlSourceName or AppDiagnostics.SourceName,
-                Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
-                    ActivitySamplingResult.AllDataAndRecorded,
-                ActivityStarted = Record,
-            };
-
-            ActivitySource.AddActivityListener(_activityListener);
-        }
-
-        public IReadOnlyList<String> Unparented =>
-            _activities
-                .Where(activity => activity.ParentId is null)
-                .Select(activity => activity.DisplayName)
-                .ToList();
-
-        public IReadOnlyList<String> Parented =>
-            _activities
-                .Where(activity => activity.ParentId is not null)
-                .Select(activity => activity.DisplayName)
-                .ToList();
-
-        public void Dispose() => _activityListener.Dispose();
-
-        private void Record(Activity activity)
-        {
-            if (activity.Source.Name == NpgsqlSourceName)
-            {
-                _activities.Enqueue(activity);
-            }
         }
     }
 }
