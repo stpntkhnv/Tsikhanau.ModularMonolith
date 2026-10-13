@@ -8,10 +8,10 @@ namespace Tsikhanau.Monolith.Scaffold.Events;
 internal sealed class MemberSamples(SourceProject project)
 {
     public const String SupportedTypes =
-        "supported member types: DateTimeOffset, Guid, String, Int32, Int64, Decimal, Double, Boolean, an array, "
-        + "IReadOnlyList<T>, IReadOnlyCollection<T>, an enum, a typed id (ITypedId<T>) or a value object "
+        "supported member types: DateTimeOffset, DateOnly, Guid, String, Int32, Int64, Decimal, Double, Boolean, "
+        + "an array, IReadOnlyList<T>, IReadOnlyCollection<T>, an enum, a typed id (ITypedId<T>) or a value object "
         + "(IValueObject<T, TValue>) declared in the event's project, and Optional<T> whose T is one of the first "
-        + "eight or declared there";
+        + "nine or declared there";
 
     private const String Clock = "App.Time.GetUtcNow()";
 
@@ -25,7 +25,8 @@ internal sealed class MemberSamples(SourceProject project)
 
     private static readonly String[] Numbers = ["Int32", "Int64", "Decimal", "Double"];
 
-    private static readonly String[] Primitives = ["DateTimeOffset", "Guid", "String", "Boolean", .. Numbers];
+    private static readonly String[] Primitives =
+        ["DateTimeOffset", "DateOnly", "Guid", "String", "Boolean", .. Numbers];
 
     public Optional<MemberSample> Build(ParameterSyntax parameter) =>
         parameter.Type is { } type ? BuildSample(type, parameter.Identifier.Text) : Optional<MemberSample>.None();
@@ -53,6 +54,7 @@ internal sealed class MemberSamples(SourceProject project)
         typeName switch
         {
             "DateTimeOffset" => MemberSample.Of(Clock),
+            "DateOnly" => MemberSample.Of($"DateOnly.FromDateTime({Clock}.UtcDateTime)"),
             "Guid" => MemberSample.Of($"Guid.CreateVersion7({Clock})"),
             "String" => MemberSample.Of($"\"{memberName.ToKebabCase()}\""),
             "Boolean" => MemberSample.Of("true"),

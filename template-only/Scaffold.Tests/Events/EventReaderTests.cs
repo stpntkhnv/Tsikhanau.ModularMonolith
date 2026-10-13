@@ -11,10 +11,10 @@ public sealed class EventReaderTests
     private const String TagsEvents = "Acme.Shop.Modules.Tags.Contracts.IntegrationEvents";
 
     private const String SupportedTypes =
-        "supported member types: DateTimeOffset, Guid, String, Int32, Int64, Decimal, Double, Boolean, an array, "
-        + "IReadOnlyList<T>, IReadOnlyCollection<T>, an enum, a typed id (ITypedId<T>) or a value object "
+        "supported member types: DateTimeOffset, DateOnly, Guid, String, Int32, Int64, Decimal, Double, Boolean, "
+        + "an array, IReadOnlyList<T>, IReadOnlyCollection<T>, an enum, a typed id (ITypedId<T>) or a value object "
         + "(IValueObject<T, TValue>) declared in the event's project, and Optional<T> whose T is one of the first "
-        + "eight or declared there";
+        + "nine or declared there";
 
     private const String NotesDomain =
         """
@@ -60,7 +60,9 @@ public sealed class EventReaderTests
             Boolean IsPinned,
             Guid AuthorId,
             String DisplayName,
-            NoteCode Code)
+            NoteCode Code,
+            DateOnly DueOn,
+            Optional<DateOnly> RemindOn)
             : DomainEvent(OccurredOn);
         """;
 
@@ -123,6 +125,8 @@ public sealed class EventReaderTests
                 "Guid.CreateVersion7(App.Time.GetUtcNow())",
                 "\"display-name\"",
                 "ValueObjectFactory<NoteCode, Guid>.Create(Guid.CreateVersion7(App.Time.GetUtcNow()))",
+                "DateOnly.FromDateTime(App.Time.GetUtcNow().UtcDateTime)",
+                "Optional<DateOnly>.None()",
             ]);
 
         handledEvent.Usings.ShouldBe(

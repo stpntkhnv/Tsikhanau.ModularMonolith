@@ -227,6 +227,7 @@ internal sealed record NoteCreatedDomainEvent(
     Int64 Size,
     Boolean IsPinned,
     Guid AuthorId,
+    DateOnly DueOn,
     String DisplayName)
     : DomainEvent(OccurredOn);
 EOF
