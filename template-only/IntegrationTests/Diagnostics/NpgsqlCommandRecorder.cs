@@ -50,13 +50,13 @@ internal sealed class NpgsqlCommandRecorder : IDisposable
     public void Dispose() => _activityListener.Dispose();
 
     private static Boolean IsCommandOrBatch(Activity activity) =>
-        activity.Source.Name == NpgsqlSourceName && ReadQueryText(activity).Length > 0;
+        activity.Source.Name == NpgsqlSourceName && GetQueryText(activity).Length > 0;
 
-    private static String ReadQueryText(Activity activity) =>
+    private static String GetQueryText(Activity activity) =>
         activity.GetTagItem(QueryTextTag) as String ?? activity.GetTagItem(StatementTag) as String ?? String.Empty;
 
     private static RecordedCommand CreateRecordedCommand(Activity activity) =>
-        new(activity.DisplayName, ReadQueryText(activity), HasParent: activity.ParentId is not null);
+        new(activity.DisplayName, GetQueryText(activity), HasParent: activity.ParentId is not null);
 
     private void Record(Activity activity)
     {

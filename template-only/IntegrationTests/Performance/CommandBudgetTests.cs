@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.IntegrationTests.Diagnostics;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
@@ -16,6 +17,7 @@ public sealed partial class CommandBudgetTests(PostgresFixture postgresFixture)
     private const Int32 MaxCreatePingCommandExecutions = 1;
     private const Int32 MaxDrainCommandExecutions = 656;
     private const String ExtraCommandSql = "SELECT 1";
+    private const String CreatePingSqlStart = "INSERT INTO pings.outbox_messages";
 
     private static readonly ActivitySource MeasuredActivitySource =
         new("Tsikhanau.Monolith.IntegrationTests.CommandBudget");
@@ -36,10 +38,10 @@ public sealed partial class CommandBudgetTests(PostgresFixture postgresFixture)
             npgsqlCommandRecorder,
             () => testModulesHost.CreatePingAsync("measured"));
 
-        var commandList = BuildCommandList(commands);
+        var commandReport = BuildCommandReport(commands);
 
-        commands.ShouldNotBeEmpty(commandList);
-        commands.Count.ShouldBeLessThanOrEqualTo(MaxCreatePingCommandExecutions, commandList);
+        commands.ShouldNotBeEmpty(commandReport);
+        commands.Count.ShouldBeLessThanOrEqualTo(MaxCreatePingCommandExecutions, commandReport);
     }
 
     [Fact]
@@ -51,11 +53,11 @@ public sealed partial class CommandBudgetTests(PostgresFixture postgresFixture)
 
         var commands = await RecordCommandsAsync(npgsqlCommandRecorder, testModulesHost.ProcessQueuesAsync);
         var pongCount = await testModulesHost.CountPongsAsync();
-        var commandList = BuildCommandList(commands);
+        var commandReport = BuildCommandReport(commands);
 
         pongCount.ShouldBe(PingEventCount);
-        commands.ShouldNotBeEmpty(commandList);
-        commands.Count.ShouldBeLessThanOrEqualTo(MaxDrainCommandExecutions, commandList);
+        commands.ShouldNotBeEmpty(commandReport);
+        commands.Count.ShouldBeLessThanOrEqualTo(MaxDrainCommandExecutions, commandReport);
     }
 
     [Fact]
@@ -74,10 +76,32 @@ public sealed partial class CommandBudgetTests(PostgresFixture postgresFixture)
                 await RunExtraCommandAsync(sqlConnectionFactory);
             });
 
-        var commandList = BuildCommandList(commands);
+        var commandReport = BuildCommandReport(commands);
 
-        commands.Count.ShouldBe(MaxCreatePingCommandExecutions + 1, commandList);
-        commands.ShouldContain(command => command.Text == ExtraCommandSql, commandList);
+        commands.Count.ShouldBe(MaxCreatePingCommandExecutions + 1, commandReport);
+        commands.ShouldContain(command => command.Text == ExtraCommandSql, commandReport);
+    }
+
+    [Fact]
+    public async Task A_connection_open_inside_the_measured_call_is_not_counted()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture, writesLogs: false);
+        using var npgsqlCommandRecorder = new NpgsqlCommandRecorder(MeasuredActivitySource.Name);
+        await CreatePingsAsync(testModulesHost, "warmup", WarmupCommands);
+        testModulesHost.Services
+            .GetRequiredKeyedService<NpgsqlDataSource>(typeof(IPingsModule))
+            .Clear();
+
+        var commands = await RecordCommandsAsync(
+            npgsqlCommandRecorder,
+            () => testModulesHost.CreatePingAsync("measured"));
+
+        var commandReport = BuildCommandReport(commands);
+
+        commands.Count.ShouldBe(MaxCreatePingCommandExecutions, commandReport);
+        commands.ShouldAllBe(
+            command => command.Text.StartsWith(CreatePingSqlStart, StringComparison.Ordinal),
+            commandReport);
     }
 
     private static async Task CreatePingsAsync(TestModulesHost testModulesHost, String labelPrefix, Int32 count)
@@ -110,6 +134,6 @@ public sealed partial class CommandBudgetTests(PostgresFixture postgresFixture)
             new CommandDefinition(ExtraCommandSql, cancellationToken: CancellationToken));
     }
 
-    private static String BuildCommandList(IReadOnlyList<RecordedCommand> commands) =>
+    private static String BuildCommandReport(IReadOnlyList<RecordedCommand> commands) =>
         String.Join(Environment.NewLine, commands.Select(command => WhitespacePattern.Replace(command.Text, " ")));
 }
