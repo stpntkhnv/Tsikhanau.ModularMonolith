@@ -265,6 +265,147 @@ public sealed class EndpointBranchingAnalyzerTests
     }
 
     [Fact]
+    public async Task Branching_in_classes_nested_in_an_endpoint_is_reported_once()
+    {
+        var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
+            new EndpointBranchingAnalyzer(),
+            """
+            using System;
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Http.HttpResults;
+            using Microsoft.AspNetCore.Routing;
+            using Tsikhanau.Monolith.Api.Endpoints;
+
+            namespace App.Modules.Notes.Features.GetNote;
+
+            internal sealed class GetNoteEndpoint : IEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{title}", Get);
+
+                private static Ok<String> Get(String title) => TypedResults.Ok(TitleFormatter.Format(title));
+
+                private static class TitleFormatter
+                {
+                    public static String Format(String title)
+                    {
+                        if (title.Length == 0)
+                        {
+                            return "untitled";
+                        }
+
+                        return TitleTrimmer.Trim(title);
+                    }
+
+                    private static class TitleTrimmer
+                    {
+                        public static String Trim(String title) => title.Length > 100 ? title.Substring(0, 100) : title;
+                    }
+                }
+            }
+            """);
+
+        lines.ShouldBe([20, 30]);
+    }
+
+    [Fact]
+    public async Task Branching_in_an_endpoint_nested_in_an_endpoint_is_reported_once_each()
+    {
+        var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
+            new EndpointBranchingAnalyzer(),
+            """
+            using System;
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Http.HttpResults;
+            using Microsoft.AspNetCore.Routing;
+            using Tsikhanau.Monolith.Api.Endpoints;
+
+            namespace App.Modules.Notes.Features.GetNote;
+
+            internal sealed class GetNoteEndpoint : IEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{id}", Get);
+
+                private static Ok<Int32> Get(Int32 id) => TypedResults.Ok(id > 0 ? id : 0);
+
+                internal sealed class GetNoteTitleEndpoint : IEndpoint
+                {
+                    public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{title}/title", Get);
+
+                    private static Ok<String> Get(String title) => TypedResults.Ok(title ?? "untitled");
+                }
+            }
+            """);
+
+        lines.ShouldBe([14, 20]);
+    }
+
+    [Fact]
+    public async Task Branching_in_an_endpoint_that_implements_the_interface_through_a_base_class_is_reported()
+    {
+        var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
+            new EndpointBranchingAnalyzer(),
+            """
+            using System;
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Http.HttpResults;
+            using Microsoft.AspNetCore.Routing;
+            using Tsikhanau.Monolith.Api.Endpoints;
+
+            namespace App.Modules.Notes.Features.GetNote;
+
+            internal abstract class NoteEndpoint : IEndpoint
+            {
+                public abstract void Map(IEndpointRouteBuilder endpoints);
+            }
+
+            internal sealed class GetNoteEndpoint : NoteEndpoint
+            {
+                public override void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{id}", Get);
+
+                private static Ok<Int32> Get(Int32 id) => TypedResults.Ok(id > 0 ? id : 0);
+            }
+            """);
+
+        lines.ShouldBe([19]);
+    }
+
+    [Fact]
+    public async Task Branching_in_field_and_property_initializers_of_an_endpoint_is_reported()
+    {
+        var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
+            new EndpointBranchingAnalyzer(),
+            """
+            using System;
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Http.HttpResults;
+            using Microsoft.AspNetCore.Routing;
+            using Tsikhanau.Monolith.Api.Endpoints;
+
+            namespace App.Modules.Notes.Features.GetNote;
+
+            internal sealed class GetNoteEndpoint : IEndpoint
+            {
+                private static readonly String Route = Environment.Is64BitProcess ? "/{id}" : "/notes/{id}";
+
+                private static String Name { get; } = Environment.UserName ?? "Notes.GetNote";
+
+                public void Map(IEndpointRouteBuilder endpoints) =>
+                    endpoints
+                        .MapGet(Route, Get)
+                        .WithName(Name);
+
+                private static Ok<Int32> Get(Int32 id) => TypedResults.Ok(id);
+            }
+            """);
+
+        lines.ShouldBe([12, 14]);
+    }
+
+    [Fact]
     public async Task Endpoint_that_maps_the_request_to_a_command_and_the_result_to_http_passes()
     {
         var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
@@ -418,6 +559,30 @@ public sealed class EndpointBranchingAnalyzerTests
                     }
 
                     return title;
+                }
+            }
+            """);
+
+        lines.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Branching_in_a_class_nested_in_a_class_that_is_no_endpoint_passes()
+    {
+        var lines = await AnalyzerRunner.GetReportedLinesOfValidSourceAsync(
+            new EndpointBranchingAnalyzer(),
+            """
+            using System;
+
+            namespace App.Modules.Notes.Features.GetNote;
+
+            internal sealed class NoteFormatting
+            {
+                public static String Format(String title) => TitleFormatter.Format(title);
+
+                private static class TitleFormatter
+                {
+                    public static String Format(String title) => title.Length == 0 ? "untitled" : title;
                 }
             }
             """);

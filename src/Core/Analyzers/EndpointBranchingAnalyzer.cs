@@ -62,15 +62,24 @@ public sealed class EndpointBranchingAnalyzer : DiagnosticAnalyzer
 
     private static void RegisterBranchingAction(SymbolStartAnalysisContext context, INamedTypeSymbol endpointInterface)
     {
-        if (IsEndpoint((INamedTypeSymbol)context.Symbol, endpointInterface))
+        if (IsInEndpoint((INamedTypeSymbol)context.Symbol, endpointInterface))
         {
             context.RegisterSyntaxNodeAction(ReportBranching, BranchingKinds);
         }
     }
 
+    private static Boolean IsInEndpoint(INamedTypeSymbol type, INamedTypeSymbol endpointInterface) =>
+        IsEndpoint(type, endpointInterface) || IsNestedInEndpoint(type, endpointInterface);
+
+    private static Boolean IsNestedInEndpoint(INamedTypeSymbol type, INamedTypeSymbol endpointInterface) =>
+        type.ContainingType is { } containingType && IsInEndpoint(containingType, endpointInterface);
+
     private static Boolean IsEndpoint(INamedTypeSymbol type, INamedTypeSymbol endpointInterface) =>
         type.AllInterfaces.Contains(endpointInterface, SymbolEqualityComparer.Default);
 
-    private static void ReportBranching(SyntaxNodeAnalysisContext context) =>
-        context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetFirstToken().GetLocation()));
+    private static void ReportBranching(SyntaxNodeAnalysisContext context)
+    {
+        var firstToken = context.Node.GetFirstToken();
+        context.ReportDiagnostic(Diagnostic.Create(Rule, firstToken.GetLocation()));
+    }
 }
