@@ -55,12 +55,12 @@ internal static class SqlScanner
 
     private static void SkipSetQuantifier(ref SqlTokenizer tokens)
     {
-        if (tokens.Skip("ALL"))
+        if (tokens.TrySkip("ALL"))
         {
             return;
         }
 
-        if (tokens.Skip("DISTINCT") && tokens.Skip("ON"))
+        if (tokens.TrySkip("DISTINCT") && tokens.TrySkip("ON"))
         {
             SkipGroup(ref tokens);
         }
@@ -83,12 +83,12 @@ internal static class SqlScanner
     {
         var depth = 0;
         var isStar = false;
-        var starMayFollow = true;
+        SqlToken previousToken = default;
         while (tokens.MoveNext())
         {
             var token = tokens.Current;
             depth += token.DepthChange;
-            if (depth < 0 || (depth == 0 && token.IsOneOf(ColumnListEnds)))
+            if (depth < 0 || (depth == 0 && EndsColumnList(token, previousToken)))
             {
                 return (isStar, EndsList: true);
             }
@@ -98,10 +98,16 @@ internal static class SqlScanner
                 return (isStar, EndsList: false);
             }
 
-            isStar = starMayFollow && token.Is("*");
-            starMayFollow = token.Is(".");
+            isStar = token.Is("*") && (previousToken.IsEmpty || previousToken.Is("."));
+            previousToken = token;
         }
 
         return (isStar, EndsList: true);
     }
+
+    private static Boolean EndsColumnList(SqlToken token, SqlToken previousToken) =>
+        token.IsOneOf(ColumnListEnds) && !ContinuesColumn(token, previousToken);
+
+    private static Boolean ContinuesColumn(SqlToken token, SqlToken previousToken) =>
+        (token.Is("FROM") && previousToken.Is("DISTINCT")) || (token.Is("GROUP") && previousToken.Is("WITHIN"));
 }

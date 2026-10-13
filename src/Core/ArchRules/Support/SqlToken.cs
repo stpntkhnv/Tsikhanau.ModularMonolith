@@ -12,6 +12,8 @@ internal readonly ref struct SqlToken(ReadOnlySpan<Char> text)
             _ => 0,
         };
 
+    public Boolean IsEmpty => _text.IsEmpty;
+
     public Boolean Is(String value) =>
         _text.Equals(value, StringComparison.OrdinalIgnoreCase);
 

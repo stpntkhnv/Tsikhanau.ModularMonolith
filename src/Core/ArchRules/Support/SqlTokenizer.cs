@@ -15,7 +15,7 @@ internal ref struct SqlTokenizer(ReadOnlySpan<Char> sql)
         return length > 0;
     }
 
-    public Boolean Skip(String word)
+    public Boolean TrySkip(String word)
     {
         var following = this;
         if (!following.MoveNext() || !following.Current.Is(word))
@@ -49,13 +49,26 @@ internal ref struct SqlTokenizer(ReadOnlySpan<Char> sql)
 
     private static Int32 MeasureBlockComment(ReadOnlySpan<Char> text)
     {
-        var length = 2;
-        while (length < text.Length && text[length..] is not ['*', '/', ..])
+        var depth = 0;
+        var length = 0;
+        while (length < text.Length)
         {
-            length += text[length..] is ['/', '*', ..] ? MeasureBlockComment(text[length..]) : 1;
+            var depthChange = text[length..] switch
+            {
+                ['/', '*', ..] => 1,
+                ['*', '/', ..] => -1,
+                _ => 0,
+            };
+
+            depth += depthChange;
+            length += depthChange == 0 ? 1 : 2;
+            if (depth == 0)
+            {
+                return length;
+            }
         }
 
-        return Math.Min(length + 2, text.Length);
+        return text.Length;
     }
 
     private static Int32 MeasureToken(ReadOnlySpan<Char> text) =>

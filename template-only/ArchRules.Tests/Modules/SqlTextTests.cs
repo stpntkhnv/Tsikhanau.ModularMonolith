@@ -13,6 +13,7 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     private const String SampleNamespace = "Tsikhanau.Monolith.ArchRules.Tests.Modules";
     private const String LiteralOwnerName = $"{SampleNamespace}.SqlTextTests+LiteralOwner";
     private const String SampleQueryHandlerName = $"{SampleNamespace}.SqlTextTests+SampleQueryHandler";
+    private const Int32 SmallStackSize = 256 * 1024;
 
     private static ArchModule SampleModule => new("Samples", SampleNamespace, () => [typeof(SqlTextTests).Assembly]);
 
@@ -123,6 +124,10 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT a FROM t UNION SELECT * FROM u")]
     [InlineData("SELECT extract(year FROM d), t.* FROM t")]
     [InlineData("SELECT (SELECT max(b) FROM u), t.* FROM t")]
+    [InlineData("SELECT /* a /* b */ c */ * FROM t")]
+    [InlineData("SELECT E'\\'', * FROM t")]
+    [InlineData("SELECT a IS DISTINCT FROM b, t.* FROM t")]
+    [InlineData("SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY a), t.* FROM t")]
     public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
         SqlScanner
             .ReadsEveryColumn(sql)
@@ -148,10 +153,29 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT $q$select *$q$")]
     [InlineData("SELECT E'it\\'s *'")]
     [InlineData("SELECT 'it''s *'")]
+    [InlineData("SELECT 'a, * --' FROM t")]
+    [InlineData("SELECT \"a, * --\" FROM t")]
+    [InlineData("SELECT a /* , * -- */ FROM t")]
+    [InlineData("SELECT E'\\' , * --'")]
+    [InlineData("SELECT $$ , * --$$")]
+    [InlineData("SELECT $q$ , * --$q$")]
     public void Sql_that_names_its_columns_is_not_a_star_column(String text) =>
         SqlScanner
             .ReadsEveryColumn(text)
             .ShouldBeFalse();
+
+    [Fact]
+    public void Deeply_nested_unclosed_comments_are_read_without_overflowing_the_stack()
+    {
+        var sql = $"SELECT {String.Concat(Enumerable.Repeat("/*", 20000))} *";
+        var readsEveryColumn = true;
+        var thread = new Thread(() => readsEveryColumn = SqlScanner.ReadsEveryColumn(sql), SmallStackSize);
+
+        thread.Start();
+        thread.Join();
+
+        readsEveryColumn.ShouldBeFalse();
+    }
 
     private sealed class LiteralOwner
     {
