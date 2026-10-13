@@ -83,6 +83,7 @@ if [[ -f "$template_solution" ]]; then
   run_solution "$template_solution" template-only/.gate/skips
   bash template-only/scripts/test-update-core.sh
   bash template-only/scripts/test-init.sh
+  bash template-only/scripts/test-check-perf.sh
 fi
 
 check_rule_markers
