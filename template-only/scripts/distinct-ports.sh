@@ -49,10 +49,14 @@ shared_ports() {
 }
 
 read_listening() {
-  local port
+  local sockets port status=0
+  sockets=$(ss -ltn) || status=$?
+  if [[ $status -ne 0 ]]; then
+    fail "ss -ltn failed with exit code $status, so the listening ports are unknown"
+  fi
   while IFS= read -r port; do
     listening[$port]=1
-  done < <(ss -ltn | awk 'NR > 1 { n = split($4, parts, ":"); print parts[n] }')
+  done < <(awk 'NR > 1 { n = split($4, parts, ":"); print parts[n] }' <<< "$sockets")
 }
 
 next_free() {

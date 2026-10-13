@@ -163,5 +163,15 @@ output=$(PATH="$work/nobin" bash "$script_dir/distinct-ports.sh" "$work/h" "$wor
 expect_equal "a shared port without ss fails with a message" "$? $output" \
   "1 distinct-ports: ss is needed to see which ports are listening"
 
+printf '#!/usr/bin/env bash\necho "ss: cannot open netlink socket" >&2\nexit 1\n' > "$work/bin/ss"
+make_app "$work/k" 5200 15240 20120
+make_app "$work/l" 5200 15241 20121
+before_l=$(checksum "$work/l")
+output=$(bash "$script_dir/distinct-ports.sh" "$work/k" "$work/l" 2>&1)
+expect_equal "a failing ss fails with exit 1" "$?" "1"
+expect_equal "a failing ss is reported with its exit code" \
+  "$(grep -c '^distinct-ports: ss -ltn failed with exit code 1' <<< "$output")" "1"
+expect_equal "a failing ss leaves the second app untouched" "$(checksum "$work/l")" "$before_l"
+
 echo "test-distinct-ports: $passes passed, $failures failed"
 [[ $failures -eq 0 ]]
