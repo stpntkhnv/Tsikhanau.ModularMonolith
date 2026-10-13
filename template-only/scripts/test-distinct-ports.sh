@@ -85,6 +85,21 @@ bootstrapper_port() {
     "$1/src/Bootstrapper/X.Bootstrapper/Properties/launchSettings.json"
 }
 
+make_fake_ss() {
+  mkdir -p "$work/bin"
+  {
+    echo '#!/usr/bin/env bash'
+    echo "echo 'State Recv-Q Send-Q Local Address:Port Peer Address:Port'"
+    for port in "$@"; do
+      echo "echo 'LISTEN 0 4096 127.0.0.1:$port 0.0.0.0:*'"
+    done
+  } > "$work/bin/ss"
+  chmod +x "$work/bin/ss"
+}
+
+make_fake_ss
+PATH="$work/bin:$PATH"
+
 make_app "$work/a" 5180 15221 20105
 make_app "$work/b" 5181 15222 20106
 before_a=$(checksum "$work/a")
@@ -119,20 +134,8 @@ expect_equal "the ports the second app kept stay" \
 expect_equal "a second run on the resolved apps prints nothing" \
   "$(bash "$script_dir/distinct-ports.sh" "$work/a" "$work/c" 2>&1)" ""
 
-make_fake_ss() {
-  mkdir -p "$work/bin"
-  {
-    echo '#!/usr/bin/env bash'
-    echo "echo 'State Recv-Q Send-Q Local Address:Port Peer Address:Port'"
-    for port in "$@"; do
-      echo "echo 'LISTEN 0 4096 127.0.0.1:$port 0.0.0.0:*'"
-    done
-  } > "$work/bin/ss"
-  chmod +x "$work/bin/ss"
-}
-
 resolve_with_fake_ss() {
-  PATH="$work/bin:$PATH" bash "$script_dir/distinct-ports.sh" "$1" "$2" > /dev/null 2>&1
+  bash "$script_dir/distinct-ports.sh" "$1" "$2" > /dev/null 2>&1
 }
 
 make_fake_ss 5181
