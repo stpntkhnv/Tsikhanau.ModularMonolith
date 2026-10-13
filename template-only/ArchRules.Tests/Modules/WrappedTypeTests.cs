@@ -1,7 +1,10 @@
+using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Support;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
+using Tsikhanau.Monolith.Infrastructure.InternalCommands;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Modules;
 
@@ -28,9 +31,13 @@ public sealed class WrappedTypeTests
         typeof(ISqlConnectionFactory<ISampleModule>).WithWrappedTypes
             .ShouldBe([typeof(ISqlConnectionFactory<ISampleModule>)]);
 
-    [Fact]
-    public void Core_key_wrapper_drops_the_module_argument_only_for_listed_types() =>
-        typeof(ISqlConnectionFactory<ISampleModule>).WithWrappedTypes
+    [Theory]
+    [InlineData(typeof(ISqlConnectionFactory<ISampleModule>))]
+    [InlineData(typeof(IUnitOfWork<ISampleModule>))]
+    [InlineData(typeof(IInternalCommandScheduler<ISampleModule>))]
+    [InlineData(typeof(InternalCommandScheduler<ISampleModule>))]
+    public void Listed_core_key_types_do_not_expose_the_module_argument(Type type) =>
+        type.WithWrappedTypes
             .ShouldNotContain(typeof(ISampleModule));
 
     [Fact]

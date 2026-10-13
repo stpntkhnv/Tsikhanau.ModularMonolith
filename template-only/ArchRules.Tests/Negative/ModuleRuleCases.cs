@@ -19,6 +19,12 @@ internal static class ModuleRuleCases
 
     private const String UnlistedKernelTypeName = "Acme.SharedKernel.Weight";
 
+    private const String HttpContextTypeName = "Microsoft.AspNetCore.Http.HttpContext";
+
+    private const String PeerModuleTypeName = "Acme.Modules.Peer.IPeerModule";
+
+    private const String NeighbourServiceName = $"{BadRoot}.Features.NeighbourCrate.NeighbourDispatchService";
+
     private const String ModuleDispatcherTypeName = "Tsikhanau.Monolith.Infrastructure.Dispatching.ModuleDispatcher`1";
 
     private const String CommandHandlerTypeName = "Tsikhanau.Monolith.Application.Commands.ICommandHandler`2";
@@ -212,8 +218,9 @@ internal static class ModuleRuleCases
             nameof(LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks),
             () => LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks(Dirty, Bad),
             [
-                $"{BadRoot}.Features.ReadRequest.RequestReader does depend on \"Microsoft.AspNetCore.Http.HttpContext\"",
+                $"{BadRoot}.Features.ReadRequest.RequestReader does depend on \"{HttpContextTypeName}\"",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService does depend on \"{ModuleDispatcherTypeName}\"",
+                $"{NeighbourServiceName} does depend on \"{ModuleDispatcherTypeName}\"",
             ],
             () => LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks(Clean, Good)),
         new(
@@ -247,7 +254,10 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts),
             () => LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts(Dirty, Bad),
-            [$"{BadRoot}.Infrastructure.Neighbours.PeerProbe does depend on \"Acme.Modules.Peer.PeerModule\""],
+            [
+                $"{BadRoot}.Infrastructure.Neighbours.PeerProbe does depend on \"Acme.Modules.Peer.PeerModule\"",
+                $"{NeighbourServiceName} does depend on \"{PeerModuleTypeName}\"",
+            ],
             () => LayerDependencyRules.ModuleReachesOtherModulesOnlyThroughTheirContracts(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
@@ -295,6 +305,8 @@ internal static class ModuleRuleCases
                 $"{BadRoot}.Features.LoopBack.LoopBackService holds IBadModule <badModule>P",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService takes ModuleDispatcher`1 moduleDispatcher",
                 $"{BadRoot}.Features.DispatchCrate.CrateDispatchService holds ModuleDispatcher`1 <moduleDispatcher>P",
+                $"{NeighbourServiceName} takes ModuleDispatcher`1 neighbourDispatcher",
+                $"{NeighbourServiceName} holds ModuleDispatcher`1 <neighbourDispatcher>P",
                 $"{BadRoot}.Features.KeyCrate.CrateKeyService takes Keyed`1 keyedModule",
                 $"{BadRoot}.Features.KeyCrate.CrateKeyService holds Keyed`1 <keyedModule>P",
             ],

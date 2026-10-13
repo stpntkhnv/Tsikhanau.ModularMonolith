@@ -70,8 +70,12 @@ public static class HandlerBoundaryRules
 
         return facadeTypes.Count == 0
             ? [$"{module.Name} has no facade I{module.Name}Module"]
-            : subjectTypes.SelectMany(type => GetReferences(type, facadeTypes.Contains));
+            : subjectTypes.SelectMany(type => GetReferences(type, wrapped => IsFacade(wrapped, facadeTypes)));
     }
+
+    private static Boolean IsFacade(Type type, List<Type> facadeTypes) =>
+        facadeTypes.Contains(type)
+            || type.IsConstructedGenericType && ModuleKeyTypes.Facades.Contains(type.GetGenericTypeDefinition());
 
     private static List<Type> GetQueryHandlers(ArchModule module) =>
         module.Types

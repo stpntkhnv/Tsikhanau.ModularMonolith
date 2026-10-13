@@ -12,7 +12,8 @@ internal sealed class ScheduleWidgetCommandHandler(
     public Task<Result<Unit>> Handle(ScheduleWidgetCommand command, CancellationToken cancellationToken)
     {
         var createdOn = timeProvider.GetUtcNow();
-        internalCommandScheduler.Enqueue(new TouchWidgetInternalCommand(Guid.CreateVersion7(createdOn), command.WidgetId));
+        var touchWidget = new TouchWidgetInternalCommand(Guid.CreateVersion7(createdOn), command.WidgetId);
+        internalCommandScheduler.Enqueue(touchWidget);
 
         return Task.FromResult<Result<Unit>>(Unit.Value);
     }
