@@ -84,6 +84,7 @@ if [[ -f "$template_solution" ]]; then
   bash template-only/scripts/test-update-core.sh
   bash template-only/scripts/test-init.sh
   bash template-only/scripts/test-check-perf.sh
+  bash template-only/scripts/test-distinct-ports.sh
 fi
 
 check_rule_markers
