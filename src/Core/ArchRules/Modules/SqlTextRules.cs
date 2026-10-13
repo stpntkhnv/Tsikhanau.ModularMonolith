@@ -36,7 +36,7 @@ public static class SqlTextRules
         return RuleEvaluation.Create(
             Describe(literals),
             () => literals
-                .Where(literal => SqlPatterns.StarColumn.IsMatch(literal.Literal))
+                .Where(literal => SqlScanner.ReadsEveryColumn(literal.Literal))
                 .Select(literal => $"{literal.TypeName} reads every column: {literal.Literal}"));
     }
 

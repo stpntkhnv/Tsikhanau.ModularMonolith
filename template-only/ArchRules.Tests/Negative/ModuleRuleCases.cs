@@ -25,6 +25,8 @@ internal static class ModuleRuleCases
 
     private const String CrateRepositoryTypeName = $"{BadRoot}.Domain.Crates.ICrateRepository";
 
+    private const String CrateSqlTypeName = $"{BadRoot}.Infrastructure.Persistence.CrateSql";
+
     private const String RenameCrateCommandTypeName = $"{BadRoot}.Features.RenameCrate.RenameCrateCommand";
 
     private const String RenameCrateHandlerTypeName =
@@ -308,7 +310,10 @@ internal static class ModuleRuleCases
             typeof(SqlTextRules),
             nameof(SqlTextRules.ModuleSqlNamesItsColumns),
             () => SqlTextRules.ModuleSqlNamesItsColumns(Bad),
-            [$"{BadRoot}.Infrastructure.Persistence.CrateSql reads every column: SELECT * FROM bad.crates"],
+            [
+                $"{CrateSqlTypeName} reads every column: SELECT * FROM bad.crates",
+                $"{CrateSqlTypeName} reads every column: SELECT count(*), c.* FROM bad.crates c",
+            ],
             () => SqlTextRules.ModuleSqlNamesItsColumns(Good)),
     ];
 

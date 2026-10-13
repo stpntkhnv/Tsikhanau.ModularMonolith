@@ -111,9 +111,21 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("select * from pings.pings")]
     [InlineData("INSERT INTO pings.pings (id) VALUES (@Id) RETURNING *")]
     [InlineData("UPDATE pings.pings SET label = @Label RETURNING ping.*")]
+    [InlineData("SELECT count(*), t.* FROM t")]
+    [InlineData("select*from t")]
+    [InlineData("SELECT DISTINCT * FROM t")]
+    [InlineData("SELECT ALL * FROM t")]
+    [InlineData("SELECT DISTINCT ON (a) * FROM t")]
+    [InlineData("SELECT t. * FROM t")]
+    [InlineData("SELECT \"t\".* FROM t")]
+    [InlineData("INSERT INTO t (a) VALUES (1) RETURNING *")]
+    [InlineData("WITH x AS (INSERT INTO t (a) VALUES (1) RETURNING *) SELECT a FROM x")]
+    [InlineData("SELECT a FROM t UNION SELECT * FROM u")]
+    [InlineData("SELECT extract(year FROM d), t.* FROM t")]
+    [InlineData("SELECT (SELECT max(b) FROM u), t.* FROM t")]
     public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
-        SqlPatterns.StarColumn
-            .IsMatch(sql)
+        SqlScanner
+            .ReadsEveryColumn(sql)
             .ShouldBeTrue();
 
     [Theory]
@@ -126,9 +138,19 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("RETURNING id")]
     [InlineData("Select the star * to continue")]
     [InlineData("Returning visitor")]
+    [InlineData("SELECT count(*) FROM t")]
+    [InlineData("SELECT a * b AS c FROM t")]
+    [InlineData("SELECT extract(year FROM d) FROM t")]
+    [InlineData("SELECT '*' FROM t")]
+    [InlineData("SELECT a FROM t -- select *")]
+    [InlineData("SELECT a /* select * */ FROM t")]
+    [InlineData("SELECT $$select *$$")]
+    [InlineData("SELECT $q$select *$q$")]
+    [InlineData("SELECT E'it\\'s *'")]
+    [InlineData("SELECT 'it''s *'")]
     public void Sql_that_names_its_columns_is_not_a_star_column(String text) =>
-        SqlPatterns.StarColumn
-            .IsMatch(text)
+        SqlScanner
+            .ReadsEveryColumn(text)
             .ShouldBeFalse();
 
     private sealed class LiteralOwner
