@@ -35,11 +35,16 @@ internal static class AnalyzerRunner
             .ToList();
     }
 
-    public static async Task<IReadOnlyList<Int32>> GetReportedLinesOfValidSourceAsync(
+    public static Task<IReadOnlyList<Int32>> GetReportedLinesOfValidSourceAsync(
         DiagnosticAnalyzer analyzer,
-        String source)
+        String source) =>
+        GetReportedLinesOfValidSourcesAsync(analyzer, [source]);
+
+    public static async Task<IReadOnlyList<Int32>> GetReportedLinesOfValidSourcesAsync(
+        DiagnosticAnalyzer analyzer,
+        IReadOnlyList<String> sources)
     {
-        var diagnostics = await GetDiagnosticsOfValidSourceAsync(analyzer, source);
+        var diagnostics = await GetDiagnosticsOfValidSourcesAsync(analyzer, sources);
 
         return diagnostics
             .Select(GetLineNumber)
@@ -51,7 +56,7 @@ internal static class AnalyzerRunner
         DiagnosticAnalyzer analyzer,
         String source)
     {
-        var diagnostics = await GetDiagnosticsOfValidSourceAsync(analyzer, source);
+        var diagnostics = await GetDiagnosticsOfValidSourcesAsync(analyzer, [source]);
 
         return diagnostics
             .Select(diagnostic => diagnostic.GetMessage(CultureInfo.InvariantCulture))
@@ -64,13 +69,13 @@ internal static class AnalyzerRunner
             .WithAnalyzers([analyzer])
             .GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
 
-    private static Task<ImmutableArray<Diagnostic>> GetDiagnosticsOfValidSourceAsync(
+    private static Task<ImmutableArray<Diagnostic>> GetDiagnosticsOfValidSourcesAsync(
         DiagnosticAnalyzer analyzer,
-        String source)
+        IReadOnlyList<String> sources)
     {
         var compilation = CSharpCompilation.Create(
             "Sample",
-            [CSharpSyntaxTree.ParseText(source)],
+            sources.Select(source => CSharpSyntaxTree.ParseText(source)),
             RuntimeReferences,
             LibraryOptions);
 

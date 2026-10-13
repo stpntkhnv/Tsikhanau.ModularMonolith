@@ -18,6 +18,10 @@ internal static class RuleLines
         "A constructor dependency is named after its type: `INoteRepository noteRepository`, "
         + "`TimeProvider timeProvider`.";
 
+    private const String Layers =
+        "Domain depends only on itself and the domain building blocks; Features never depend on Infrastructure; "
+        + "endpoints go only through the facade; an endpoint holds no branching.";
+
     private const String ModuleSql =
         "Module SQL names its columns and never another module's schema; module code opens no database connection "
         + "of its own. SQL passed to Dapper or EF Core raw SQL is a constant, values go in parameters.";
@@ -28,6 +32,7 @@ internal static class RuleLines
         new(ClrTypeNames, "", "TS0004"),
         new(LinesAndStatements, "", "TS0001", "TS0002"),
         new(DependencyNames, "", "TS0003"),
+        new(Layers, "add-feature", "TS0007"),
         new(ModuleSql, "add-feature", "TS0006"),
     ];
 

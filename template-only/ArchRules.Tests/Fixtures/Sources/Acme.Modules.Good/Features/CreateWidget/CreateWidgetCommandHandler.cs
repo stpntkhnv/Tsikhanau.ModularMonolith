@@ -15,10 +15,15 @@ internal sealed class CreateWidgetCommandHandler(IWidgetRepository widgetReposit
                 .Bind(label => CreateWidget(command, label))
                 .Map(Add));
 
-    private Result<Widget> CreateWidget(CreateWidgetCommand command, WidgetLabel label) =>
-        Money
+    private Result<Widget> CreateWidget(CreateWidgetCommand command, WidgetLabel label)
+    {
+        var createdOn = timeProvider.GetUtcNow();
+        var widgetId = WidgetId.From(command.WidgetId.GetValueOrDefault(() => Guid.CreateVersion7(createdOn)));
+
+        return Money
             .Create(command.Price, nameof(command.Price))
-            .Bind(price => Widget.Create(WidgetId.From(command.WidgetId), label, price, timeProvider.GetUtcNow()));
+            .Bind(price => Widget.Create(widgetId, label, price, createdOn));
+    }
 
     private Guid Add(Widget widget)
     {

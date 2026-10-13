@@ -20,7 +20,7 @@ internal static class RuleLines
 
     private const String Layers =
         "Domain depends only on itself and the domain building blocks; Features never depend on Infrastructure; "
-        + "endpoints go only through the facade.";
+        + "endpoints go only through the facade; an endpoint holds no branching.";
 
     private const String Settings =
         "A module reads its settings as a validated record bound with `AddSettings<TSettings>`, never through "
