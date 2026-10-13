@@ -19,6 +19,8 @@ internal static class ModuleRuleCases
 
     private const String UnlistedKernelTypeName = "Acme.SharedKernel.Weight";
 
+    private const String ModuleDispatcherTypeName = "Tsikhanau.Monolith.Infrastructure.Dispatching.ModuleDispatcher`1";
+
     private const String CommandHandlerTypeName = "Tsikhanau.Monolith.Application.Commands.ICommandHandler`2";
 
     private const String UnitTypeName = "Tsikhanau.Railway.Unit";
@@ -209,7 +211,10 @@ internal static class ModuleRuleCases
             typeof(LayerDependencyRules),
             nameof(LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks),
             () => LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks(Dirty, Bad),
-            [$"{BadRoot}.Features.ReadRequest.RequestReader does depend on \"Microsoft.AspNetCore.Http.HttpContext\""],
+            [
+                $"{BadRoot}.Features.ReadRequest.RequestReader does depend on \"Microsoft.AspNetCore.Http.HttpContext\"",
+                $"{BadRoot}.Features.DispatchCrate.CrateDispatchService does depend on \"{ModuleDispatcherTypeName}\"",
+            ],
             () => LayerDependencyRules.FeaturesOtherThanEndpointsStayFreeOfWebAndDataFrameworks(Clean, Good)),
         new(
             typeof(LayerDependencyRules),
@@ -288,6 +293,10 @@ internal static class ModuleRuleCases
             [
                 $"{BadRoot}.Features.LoopBack.LoopBackService takes IBadModule badModule",
                 $"{BadRoot}.Features.LoopBack.LoopBackService holds IBadModule <badModule>P",
+                $"{BadRoot}.Features.DispatchCrate.CrateDispatchService takes ModuleDispatcher`1 moduleDispatcher",
+                $"{BadRoot}.Features.DispatchCrate.CrateDispatchService holds ModuleDispatcher`1 <moduleDispatcher>P",
+                $"{BadRoot}.Features.KeyCrate.CrateKeyService takes Keyed`1 keyedModule",
+                $"{BadRoot}.Features.KeyCrate.CrateKeyService holds Keyed`1 <keyedModule>P",
             ],
             () => HandlerBoundaryRules.OnlyEndpointsAndBackgroundJobsTakeTheModuleFacade(Good)),
     ];

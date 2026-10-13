@@ -27,7 +27,13 @@ internal static class FixtureAssemblies
         new("Acme.Modules.Peer", ["Acme.Modules.Peer.Contracts"]),
         new(
             "Acme.Modules.Bad",
-            ["Acme.Modules.Bad.Contracts", "Acme.Modules.Peer.Contracts", "Acme.Modules.Peer", "Acme.UnlistedKernel"]),
+            [
+                "Acme.Modules.Bad.Contracts",
+                "Acme.Modules.Peer.Contracts",
+                "Acme.Modules.Peer",
+                "Acme.UnlistedKernel",
+                "Acme.SharedKernel",
+            ]),
         new("Acme.Bootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
         new("Tsikhanau.Monolith.Shared.Fixture", ["Acme.SharedKernel"]),
     ];

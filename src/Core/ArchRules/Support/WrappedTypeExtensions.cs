@@ -22,9 +22,14 @@ internal static class WrappedTypeExtensions
             return [];
         }
 
-        var typeParameters = type
-            .GetGenericTypeDefinition()
-            .GetGenericArguments();
+        var typeDefinition = type.GetGenericTypeDefinition();
+
+        if (!ModuleKeyTypes.Keys.Contains(typeDefinition))
+        {
+            return type.GetGenericArguments();
+        }
+
+        var typeParameters = typeDefinition.GetGenericArguments();
 
         return type
             .GetGenericArguments()
