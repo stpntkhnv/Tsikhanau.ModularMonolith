@@ -219,6 +219,10 @@ output=$(cd "$scratch/tmp" && PERF_PG=host=elsewhere main main 2>&1)
 code=$?
 expect_equal "PERF_PG refuses with exit 1" "$code" "1"
 expect_contains "PERF_PG refusal says why" "$output" "PERF_PG is set"
+output=$(cd "$scratch/tmp" && PERF_PG='' main main 2>&1)
+code=$?
+expect_equal "an empty PERF_PG refuses with exit 1" "$code" "1"
+expect_contains "an empty PERF_PG refusal says why" "$output" "PERF_PG is set"
 expect_code "no base ref is a usage error" 2 main
 
 echo "test-check-perf: $passes passed, $failures failed"

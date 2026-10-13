@@ -166,7 +166,7 @@ main() {
     echo "usage: check-perf.sh <base-ref>" >&2
     return 2
   fi
-  if [[ -n ${PERF_PG-} ]]; then
+  if [[ -v PERF_PG ]]; then
     echo "check-perf: PERF_PG is set; the comparison would run on an external database, unset it" >&2
     return 1
   fi
