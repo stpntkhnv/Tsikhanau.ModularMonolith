@@ -119,5 +119,46 @@ expect_equal "the ports the second app kept stay" \
 expect_equal "a second run on the resolved apps prints nothing" \
   "$(bash "$script_dir/distinct-ports.sh" "$work/a" "$work/c" 2>&1)" ""
 
+make_fake_ss() {
+  mkdir -p "$work/bin"
+  {
+    echo '#!/usr/bin/env bash'
+    echo "echo 'State Recv-Q Send-Q Local Address:Port Peer Address:Port'"
+    for port in "$@"; do
+      echo "echo 'LISTEN 0 4096 127.0.0.1:$port 0.0.0.0:*'"
+    done
+  } > "$work/bin/ss"
+  chmod +x "$work/bin/ss"
+}
+
+resolve_with_fake_ss() {
+  PATH="$work/bin:$PATH" bash "$script_dir/distinct-ports.sh" "$1" "$2" > /dev/null 2>&1
+}
+
+make_fake_ss 5181
+make_app "$work/d" 5180 15230 20110
+make_app "$work/e" 5180 15231 20111
+resolve_with_fake_ss "$work/d" "$work/e"
+expect_equal "a listening port is skipped" "$(bootstrapper_port "$work/e")" "5182"
+
+make_fake_ss
+make_app "$work/f" 5300 15232 20112
+make_app "$work/g" 5300 15233 20113
+resolve_with_fake_ss "$work/f" "$work/g"
+expect_equal "the search wraps to the bottom of the range" "$(bootstrapper_port "$work/g")" "5000"
+
+mkdir -p "$work/nobin"
+for tool in bash env find sort grep sed awk comm cat; do
+  ln -s "$(command -v "$tool")" "$work/nobin/$tool"
+done
+make_app "$work/h" 5190 15234 20114
+make_app "$work/i" 5191 15235 20115
+output=$(PATH="$work/nobin" bash "$script_dir/distinct-ports.sh" "$work/h" "$work/i" 2>&1)
+expect_equal "without a shared port ss is not needed" "$? $output" "0 "
+make_app "$work/j" 5190 15236 20116
+output=$(PATH="$work/nobin" bash "$script_dir/distinct-ports.sh" "$work/h" "$work/j" 2>&1)
+expect_equal "a shared port without ss fails with a message" "$? $output" \
+  "1 distinct-ports: ss is needed to see which ports are listening"
+
 echo "test-distinct-ports: $passes passed, $failures failed"
 [[ $failures -eq 0 ]]

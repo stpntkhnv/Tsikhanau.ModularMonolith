@@ -29,6 +29,7 @@ main() {
   step 3 Tripown consumer Tripown --module Notes --keep
   step 4 trip-own consumer trip-own --module Notes --keep --no-update
   step 5 "Acme.Shop, the part 3 path" scaffold_path
+  current="distinct ports before step 6"
   bash "$scripts/distinct-ports.sh" "${apps[@]}"
   step 6 "two apps at once" run_apps project
   if [[ $aspire -eq 1 ]]; then

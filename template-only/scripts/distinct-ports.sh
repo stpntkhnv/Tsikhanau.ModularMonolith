@@ -10,15 +10,18 @@ main() {
     echo "usage: distinct-ports.sh <first app dir> <second app dir>" >&2
     exit 2
   fi
-  command -v ss > /dev/null || fail "ss is needed to see which ports are listening"
   local first=$1 second=$2 port replacement
   declare -gA taken=()
   declare -gA listening=()
-  read_listening
   for port in $(ports_of "$first") $(ports_of "$second"); do
     taken[$port]=1
   done
-  for port in $(shared_ports "$first" "$second"); do
+  local shared
+  shared=$(shared_ports "$first" "$second")
+  [[ -n $shared ]] || return 0
+  command -v ss > /dev/null || fail "ss is needed to see which ports are listening"
+  read_listening
+  for port in $shared; do
     replacement=$(next_free "$port")
     taken[$replacement]=1
     rewrite "$second" "$port" "$replacement"
