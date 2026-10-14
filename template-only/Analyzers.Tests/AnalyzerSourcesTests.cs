@@ -14,7 +14,11 @@ public sealed class AnalyzerSourcesTests
 
     private static readonly String[] SourceFolders = ["src/Core/Analyzers", "template-only/Analyzers.Tests"];
 
-    private static readonly ImmutableArray<DiagnosticAnalyzer> AnalyzersLeftOut = [new LineLengthAnalyzer()];
+    private static readonly ImmutableArray<DiagnosticAnalyzer> AnalyzersLeftOut =
+    [
+        new LineLengthAnalyzer(),
+        new TypePerFileAnalyzer(),
+    ];
 
     [Fact]
     public async Task Analyzer_projects_pass_the_core_analyzers_their_build_leaves_out()

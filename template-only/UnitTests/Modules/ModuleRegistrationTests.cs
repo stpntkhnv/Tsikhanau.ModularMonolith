@@ -291,12 +291,11 @@ public sealed class ModuleRegistrationTests
     [Fact]
     public void Rejects_two_internal_commands_with_one_name()
     {
-        var commandTypeNames =
-            $"{typeof(RemindInternalCommand).FullName} and {typeof(RemindAgainInternalCommand).FullName}";
-
         var exception = Should.Throw<InvalidOperationException>(() => Register("SharedInternalCommandName"));
 
-        exception.Message.ShouldContain($"Internal command name 'remind' is used by {commandTypeNames}");
+        exception.Message.ShouldContain("Internal command name 'remind' is used by");
+        exception.Message.ShouldContain(typeof(RemindInternalCommand).FullName!);
+        exception.Message.ShouldContain(typeof(RemindAgainInternalCommand).FullName!);
     }
 
     private static Error PongTaken => Error.Conflict("Pongs.Taken", "Pong taken");

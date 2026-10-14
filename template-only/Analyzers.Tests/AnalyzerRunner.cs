@@ -16,9 +16,12 @@ internal static class AnalyzerRunner
 
     private static readonly CSharpCompilationOptions LibraryOptions = new(OutputKind.DynamicallyLinkedLibrary);
 
-    public static async Task<IReadOnlyList<Int32>> GetReportedLinesAsync(DiagnosticAnalyzer analyzer, String source)
+    public static async Task<IReadOnlyList<Int32>> GetReportedLinesAsync(
+        DiagnosticAnalyzer analyzer,
+        String source,
+        String path = "")
     {
-        var diagnostics = await GetDiagnosticsAsync(analyzer, source);
+        var diagnostics = await GetDiagnosticsAsync(analyzer, source, path);
 
         return diagnostics
             .Select(GetLineNumber)
@@ -26,9 +29,12 @@ internal static class AnalyzerRunner
             .ToList();
     }
 
-    public static async Task<IReadOnlyList<String>> GetReportedMessagesAsync(DiagnosticAnalyzer analyzer, String source)
+    public static async Task<IReadOnlyList<String>> GetReportedMessagesAsync(
+        DiagnosticAnalyzer analyzer,
+        String source,
+        String path = "")
     {
-        var diagnostics = await GetDiagnosticsAsync(analyzer, source);
+        var diagnostics = await GetDiagnosticsAsync(analyzer, source, path);
 
         return diagnostics
             .Select(diagnostic => diagnostic.GetMessage(CultureInfo.InvariantCulture))
@@ -63,9 +69,12 @@ internal static class AnalyzerRunner
             .ToList();
     }
 
-    private static Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(DiagnosticAnalyzer analyzer, String source) =>
+    private static Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(
+        DiagnosticAnalyzer analyzer,
+        String source,
+        String path) =>
         CSharpCompilation
-            .Create("Sample", [CSharpSyntaxTree.ParseText(source)], RuntimeReferences)
+            .Create("Sample", [CSharpSyntaxTree.ParseText(source, path: path)], RuntimeReferences)
             .WithAnalyzers([analyzer])
             .GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
 

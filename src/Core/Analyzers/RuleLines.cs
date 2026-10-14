@@ -27,6 +27,9 @@ internal static class RuleLines
         "Module SQL names its columns and never another module's schema; module code opens no database connection "
         + "of its own. SQL passed to Dapper or EF Core raw SQL is a constant, values go in parameters.";
 
+    private const String TypePerFile =
+        "One type per file, named after the type; types of one name that differ only in type parameters share a file.";
+
     private static readonly RuleLine[] All =
     [
         new(ErrorsAsValues, "add-feature", "TS0005"),
@@ -35,6 +38,7 @@ internal static class RuleLines
         new(DependencyNames, "", "TS0003"),
         new(Layers, "add-feature", "TS0007"),
         new(ModuleSql, "add-feature", "TS0006"),
+        new(TypePerFile, "", "TS0009"),
     ];
 
     public static DiagnosticDescriptor Explain(DiagnosticDescriptor descriptor) =>
