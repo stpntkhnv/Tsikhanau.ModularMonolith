@@ -12,6 +12,11 @@ internal static class NameCasingExtensions
         public String ToKebabCase() => JsonNamingPolicy.KebabCaseLower.ConvertName(name);
 
         public String ToCamelCase() => JsonNamingPolicy.CamelCase.ConvertName(name);
+
+        public Boolean StartsWithWord(String word) =>
+            name.Length > word.Length
+            && name.StartsWith(word, StringComparison.Ordinal)
+            && Char.IsUpper(name[word.Length]);
     }
 
     private static String ToSnakeCasePart(String name, Char letter, Int32 index) =>

@@ -1,9 +1,12 @@
+using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Features;
 
 internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKind Kind, EndpointMethod Method)
 {
+    private const String ListVerb = "List";
+
     private const String CommandAnsweringGet =
         "a command answers POST, PUT or DELETE, not GET: a GET only reads, "
         + "so give it a query (--kind query --endpoint get)";
@@ -18,6 +21,14 @@ internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKin
         "an internal command has no endpoint: a handler of the module schedules it and the queue runs it";
 
     public Optional<String> EventType { get; init; } = Optional<String>.None();
+
+    public Optional<EndpointRoute> Route { get; init; } = Optional<EndpointRoute>.None();
+
+    public Boolean IsQuery => Kind is FeatureKind.Query or FeatureKind.PublicQuery;
+
+    private String QueryNamedList =>
+        $"feature name '{Name}' starts with {ListVerb}: a query reads one item or a collection with Get, "
+        + $"so name it Get{Name[ListVerb.Length..]}";
 
     private String PublicQueryWithEndpoint =>
         $"a public query has no endpoint: neighbours ask I{ModuleName}QueryFacade for it; "
@@ -41,8 +52,12 @@ internal sealed record FeatureRequest(String ModuleName, String Name, FeatureKin
     public Result<FeatureRequest> Validate() =>
         FeatureName
             .Validate(Name)
+            .Bind(_ => EnsureQueryIsNotNamedList())
             .Bind(_ => EnsureMethodFitsKind())
             .Bind(_ => EnsureEventFitsKind());
+
+    private Result<FeatureRequest> EnsureQueryIsNotNamedList() =>
+        IsQuery && Name.StartsWithWord(ListVerb) ? BuildError(QueryNamedList) : this;
 
     private Result<FeatureRequest> EnsureMethodFitsKind() =>
         (Kind, Method) switch

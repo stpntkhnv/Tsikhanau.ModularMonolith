@@ -15,9 +15,15 @@ public sealed class ScaffoldToolTests : IDisposable
 
     private const String FeatureSynopsis =
         "bash scripts/scaffold.sh feature <Module> <Name> --kind command|query|public-query|event-handler|"
-        + "internal-command [--endpoint none|get|post|put|delete] [--event <Type>]";
+        + "internal-command [--endpoint none|get|post|put|delete] [--route <path>] [--event <Type>]";
 
     private const String Usage = $"usage: {ModuleSynopsis}, or {FeatureSynopsis}";
+
+    private const String RouteWithoutEndpoint = "--route needs an endpoint: --endpoint get, post, put or delete";
+
+    private const String SegmentRule = "a segment is kebab-case words (archive, note-tags) or an id {name:guid}";
+
+    private const String GuidIdRule = "an id is a Guid v7, so its parameter is {name:guid}";
 
     private const String NewFilePath = "src/Modules/Notes/NotesModule.cs";
 
@@ -98,6 +104,8 @@ public sealed class ScaffoldToolTests : IDisposable
     [InlineData("feature Notes Pin --kind event-handler --event", "--event needs a value")]
     [InlineData("feature Notes Pin --event --kind event-handler", "--event needs a value")]
     [InlineData("feature Notes Pin --kind event-handler --event A --event B", "--event is given twice")]
+    [InlineData("feature Notes Pin --kind command --endpoint post --route", "--route needs a value")]
+    [InlineData("feature Notes Pin --kind command --endpoint post --route /a --route /b", "--route is given twice")]
     public async Task Feature_command_line_scaffold_cannot_read_is_refused_with_the_usage(
         String commandLine,
         String problem)
@@ -105,6 +113,47 @@ public sealed class ScaffoldToolTests : IDisposable
         var before = _app.TakeSnapshot();
 
         var exitCode = await Tool.RunAsync(commandLine.Split(' '), CancellationToken);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(2);
+        error.ShouldBe($"scaffold: {problem}; usage: {FeatureSynopsis}\n");
+        after.ShouldBe(before);
+    }
+
+    [Theory]
+    [InlineData("", "--kind query", RouteWithoutEndpoint)]
+    [InlineData("", "--kind command --endpoint none", RouteWithoutEndpoint)]
+    [InlineData("/archive", "--kind command", RouteWithoutEndpoint)]
+    [InlineData(
+        "notes",
+        "--kind query --endpoint get",
+        "route 'notes' must be empty, the collection of the module, or start with /")]
+    [InlineData("/notes/", "--kind command --endpoint post", "route '/notes/' must not end in /")]
+    [InlineData("/{id}", "--kind query --endpoint get", $"route '/{{id}}' has the parameter {{id}}: {GuidIdRule}")]
+    [InlineData(
+        "/{id:int}",
+        "--kind query --endpoint get",
+        $"route '/{{id:int}}' has the parameter {{id:int}}: {GuidIdRule}")]
+    [InlineData(
+        "/Bad_Segment",
+        "--kind command --endpoint put",
+        $"route '/Bad_Segment' has the segment 'Bad_Segment': {SegmentRule}")]
+    [InlineData(
+        "/{id:guid}/{id:guid}",
+        "--kind command --endpoint delete",
+        "route '/{id:guid}/{id:guid}' names the parameter id twice: each parameter needs its own name")]
+    public async Task Route_without_an_endpoint_or_that_breaks_a_route_rule_is_refused_with_the_usage(
+        String route,
+        String kindAndMethod,
+        String problem)
+    {
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await Tool.RunAsync(
+            ["feature", "Notes", "PinNote", .. kindAndMethod.Split(' '), "--route", route],
+            CancellationToken);
 
         var after = _app.TakeSnapshot();
         var error = _error.ToString();

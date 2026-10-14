@@ -10,15 +10,21 @@ internal static class FeatureCommandLine
 
     private const String KindSynopsis = "--kind command|query|public-query|event-handler|internal-command";
 
-    private const String OptionsSynopsis = $"[{EndpointOption} none|get|post|put|delete] [{EventOption} <Type>]";
+    private const String OptionsSynopsis =
+        $"[{EndpointOption} none|get|post|put|delete] [{RouteOption} <path>] [{EventOption} <Type>]";
 
     private const String KindOption = "--kind";
 
     private const String EndpointOption = "--endpoint";
 
+    private const String RouteOption = "--route";
+
     private const String EventOption = "--event";
 
-    private static readonly String[] Options = [KindOption, EndpointOption, EventOption];
+    private const String RouteWithoutEndpoint =
+        $"{RouteOption} needs an endpoint: {EndpointOption} get, post, put or delete";
+
+    private static readonly String[] Options = [KindOption, EndpointOption, RouteOption, EventOption];
 
     private static readonly Dictionary<String, FeatureKind> Kinds = new(StringComparer.Ordinal)
     {
@@ -74,8 +80,21 @@ internal static class FeatureCommandLine
         Result
             .Collect(ParseKind(options))
             .And(ParseMethod(options))
-            .Map(IScaffoldCommand (kind, method) => new FeatureCommand(
-                new FeatureRequest(moduleName, featureName, kind, method) { EventType = FindEvent(options) }));
+            .And(ParseRoute(options))
+            .Bind((kind, method, route) => CreateFeatureCommand(
+                new FeatureRequest(moduleName, featureName, kind, method)
+                {
+                    EventType = FindEvent(options),
+                    Route = route,
+                }));
+
+    private static Result<IScaffoldCommand> CreateFeatureCommand(FeatureRequest request) =>
+        HasRouteWithoutEndpoint(request)
+            ? BuildUsageError(RouteWithoutEndpoint)
+            : Result.Success<IScaffoldCommand>(new FeatureCommand(request));
+
+    private static Boolean HasRouteWithoutEndpoint(FeatureRequest request) =>
+        request.Route.HasValue && request.Method == EndpointMethod.None;
 
     private static Optional<String> FindEvent(IReadOnlyDictionary<String, String> options) =>
         options.TryGetValue(EventOption, out var eventType) ? eventType : Optional<String>.None();
@@ -89,6 +108,13 @@ internal static class FeatureCommandLine
         options.TryGetValue(EndpointOption, out var method)
             ? ParseValue(Methods, method, $"{EndpointOption} '{method}' is not an endpoint method")
             : EndpointMethod.None;
+
+    private static Result<Optional<EndpointRoute>> ParseRoute(IReadOnlyDictionary<String, String> options) =>
+        options.TryGetValue(RouteOption, out var route)
+            ? EndpointRoute
+                .Parse(route)
+                .Map(Optional<EndpointRoute>.Some)
+            : Optional<EndpointRoute>.None();
 
     private static Result<T> ParseValue<T>(IReadOnlyDictionary<String, T> values, String name, String unknown)
         where T : notnull =>

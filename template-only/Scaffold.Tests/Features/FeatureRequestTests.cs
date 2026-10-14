@@ -118,6 +118,53 @@ public sealed class FeatureRequestTests
         message.ShouldBe(problem);
     }
 
+    [Theory]
+    [InlineData("Query", "ListNotes", "GetNotes")]
+    [InlineData("PublicQuery", "ListNotes", "GetNotes")]
+    [InlineData("Query", "ListHTTPLogs", "GetHTTPLogs")]
+    public void Query_named_list_is_refused_with_its_get_name(String kind, String name, String getName)
+    {
+        var request = new FeatureRequest("Notes", name, Enum.Parse<FeatureKind>(kind), EndpointMethod.None);
+
+        var validated = request.Validate();
+
+        var message = validated.Match(_ => "valid", error => error.Message);
+
+        message.ShouldBe(
+            $"feature name '{name}' starts with List: a query reads one item or a collection with Get, "
+            + $"so name it {getName}");
+    }
+
+    [Theory]
+    [InlineData("Query", "Listen")]
+    [InlineData("Query", "Listings")]
+    [InlineData("PublicQuery", "List")]
+    [InlineData("Command", "ListProduct")]
+    [InlineData("InternalCommand", "ListItems")]
+    public void Query_whose_name_only_starts_with_the_letters_list_and_a_command_named_list_are_valid(
+        String kind,
+        String name)
+    {
+        var request = new FeatureRequest("Notes", name, Enum.Parse<FeatureKind>(kind), EndpointMethod.None);
+
+        var validated = request.Validate();
+
+        validated.ShouldBe(Result.Success(request));
+    }
+
+    [Fact]
+    public void Event_handler_named_list_is_valid()
+    {
+        var request = new FeatureRequest("Notes", "ListPriceChanged", FeatureKind.EventHandler, EndpointMethod.None)
+        {
+            EventType = "ListPriceChangedDomainEvent",
+        };
+
+        var validated = request.Validate();
+
+        validated.ShouldBe(Result.Success(request));
+    }
+
     [Fact]
     public void Internal_command_without_an_endpoint_is_valid()
     {

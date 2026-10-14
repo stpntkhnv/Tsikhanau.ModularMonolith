@@ -28,10 +28,12 @@ main() {
   scaffold feature Notes CreateNote --kind command --endpoint post
   scaffold feature Notes RenameNote --kind command --endpoint put
   scaffold feature Notes DeleteNote --kind command --endpoint delete
+  scaffold feature Notes AddNote --kind command --endpoint post --route ""
   declare_integration_event
   scaffold feature Tags NoteCreated --kind event-handler --event NoteCreatedIntegrationEvent
   scaffold feature Notes CountNotes --kind query
   scaffold feature Notes GetNoteSummary --kind query --endpoint get
+  scaffold feature Notes GetNote --kind query --endpoint get --route "/{noteId:guid}"
   scaffold feature Tags GetTag --kind public-query
   declare_domain_event
   scaffold feature Notes NoteCreated --kind event-handler --event NoteCreatedDomainEvent
@@ -115,12 +117,21 @@ make_app() {
   record "app $name from dotnet new (check-consumer.sh steps 1-3)" "" "" "gate green in $(seconds_since "$begun")"
 }
 
+describe() {
+  local argument words=()
+  for argument in "$@"; do
+    words+=("${argument:-\"\"}")
+  done
+  echo "${words[*]}"
+}
+
 scaffold() {
-  local begun scaffold_time gate_time new_test
-  next_step "$*"
+  local begun scaffold_time gate_time new_test label
+  label=$(describe "$@")
+  next_step "$label"
   begun=$EPOCHREALTIME
   if ! in_app bash scripts/scaffold.sh "$@" > "$step_log-scaffold.log" 2>&1; then
-    fail_with_log "$step_log-scaffold.log" "bash scripts/scaffold.sh $* failed"
+    fail_with_log "$step_log-scaffold.log" "bash scripts/scaffold.sh $label failed"
   fi
   scaffold_time=$(seconds_since "$begun")
   if [[ $1 == feature ]]; then
@@ -135,7 +146,7 @@ scaffold() {
   fi
   gate_time=$(seconds_since "$begun")
   check_skips_unchanged
-  record "$*" "$scaffold_time" "$gate_time" "$(gate_result)"
+  record "$label" "$scaffold_time" "$gate_time" "$(gate_result)"
 }
 
 gate_result() {
@@ -358,8 +369,8 @@ fail_feature_edit() {
 
 fail_public_query() {
   with_read_only "$tags_features" \
-    expect_refusal "cannot create the folder $tags_features/ListTags: " "$rolled_back" \
-    feature Tags ListTags --kind public-query
+    expect_refusal "cannot create the folder $tags_features/CountTags: " "$rolled_back" \
+    feature Tags CountTags --kind public-query
 }
 
 record() {

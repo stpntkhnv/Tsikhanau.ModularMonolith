@@ -310,6 +310,14 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         "feature Tags GetTag --kind public-query --endpoint get",
         "a public query has no endpoint: neighbours ask ITagsQueryFacade for it; "
         + "for HTTP add a query of the module (--kind query --endpoint get)")]
+    [InlineData(
+        "feature Notes ListNotes --kind query --endpoint get",
+        "feature name 'ListNotes' starts with List: a query reads one item or a collection with Get, "
+        + "so name it GetNotes")]
+    [InlineData(
+        "feature Tags ListTags --kind public-query",
+        "feature name 'ListTags' starts with List: a query reads one item or a collection with Get, "
+        + "so name it GetTags")]
     public async Task Unknown_module_bad_name_or_method_that_does_not_fit_the_kind_is_refused_before_any_write(
         String commandLine,
         String message)
@@ -709,6 +717,84 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         exitCode.ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("/{noteId:guid}", "/{id:guid}", "/notes/{id:guid}")]
+    [InlineData("/{noteId:guid}/tags", "/{id:guid}/tags", "/notes/{id:guid}/tags")]
+    [InlineData("", "", "/notes")]
+    public async Task Query_whose_route_the_module_maps_with_other_parameter_names_is_refused_before_any_write(
+        String first,
+        String second,
+        String path)
+    {
+        await RunAndCommitAsync("feature Notes GetNote --kind query --endpoint get", first);
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Notes ShowNote --kind query --endpoint get", second);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: feature ShowNote of Notes would answer GET {path}, which "
+            + $"{NotesProject}/Features/GetNote/GetNoteEndpoint.cs:12 maps already; choose another --route\n");
+
+        after.ShouldBe(before);
+    }
+
+    [Theory]
+    [InlineData("String.Empty")]
+    [InlineData("\"\"")]
+    public async Task Collection_route_that_a_hand_written_endpoint_maps_on_the_same_method_is_refused(
+        String mappedRoute)
+    {
+        WriteEndpoint("ImportNotes", $"endpoints.MapPost({mappedRoute}, Handle)");
+        _app.Commit();
+
+        var exitCode = await RunAsync("feature Notes AddNote --kind command --endpoint post", String.Empty);
+
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            "scaffold: feature AddNote of Notes would answer POST /notes, which "
+            + $"{NotesProject}/Features/ImportNotes/ImportNotesEndpoint.cs:5 maps already; choose another --route\n");
+    }
+
+    [Theory]
+    [InlineData("endpoints.MapGet(String.Empty, Handle)")]
+    [InlineData("endpoints.MapPut(\"\", Handle)")]
+    [InlineData("endpoints.MapPost(\"/{noteId:guid}\", Handle)")]
+    public async Task Collection_route_that_the_module_maps_only_on_another_method_or_path_is_written(String mapCall)
+    {
+        WriteEndpoint("ImportNotes", mapCall);
+        _app.Commit();
+
+        var exitCode = await RunAsync("feature Notes AddNote --kind command --endpoint post", String.Empty);
+
+        var error = _error.ToString();
+        var endpoint = _app.Read($"{NotesProject}/Features/AddNote/AddNoteEndpoint.cs");
+
+        error.ShouldBeEmpty();
+        exitCode.ShouldBe(0);
+        endpoint.ShouldContain("            .MapPost(String.Empty, AddNoteAsync)\n", Case.Sensitive);
+    }
+
+    [Fact]
+    public async Task Route_that_makes_a_line_longer_than_120_characters_is_refused_with_the_route()
+    {
+        const String Route = "/{noteId:guid}/tags/{tagId:guid}/history-of-every-change";
+
+        var exitCode = await RunAsync("feature Notes GetNote --kind query --endpoint get", Route);
+
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: feature name 'GetNote' with route '{Route}' makes {NotesTests}/GetNoteTests.cs:16 "
+            + "124 characters long, more than the 120 the build allows; choose a shorter name\n");
+    }
+
     [Fact]
     public async Task Public_query_that_exists_is_refused_with_both_its_folders_and_its_files()
     {
@@ -820,7 +906,32 @@ public sealed class FeatureCommandTests : IAsyncLifetime
             .Clear();
     }
 
+    private async Task RunAndCommitAsync(String commandLine, String route)
+    {
+        var exitCode = await RunAsync(commandLine, route);
+
+        exitCode.ShouldBe(0, _error.ToString());
+        _app.Commit();
+    }
+
     private Task<Int32> RunAsync(String commandLine) => RunAsync(_app.FileSystem, commandLine);
+
+    private Task<Int32> RunAsync(String commandLine, String route) =>
+        new ScaffoldTool(_app.FileSystem, FakeProcessRunner.Succeeding(), _output, _error)
+            .RunAsync([.. commandLine.Split(' '), "--route", route], CancellationToken);
+
+    private void WriteEndpoint(String name, String mapCall) =>
+        _app.Write(
+            $"{NotesProject}/Features/{name}/{name}Endpoint.cs",
+            $$"""
+            internal sealed class {{name}}Endpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints)
+                {
+                    {{mapCall}};
+                }
+            }
+            """);
 
     private Task<Int32> RunAsync(IFileSystem fileSystem, String commandLine) =>
         new ScaffoldTool(fileSystem, FakeProcessRunner.Succeeding(), _output, _error)

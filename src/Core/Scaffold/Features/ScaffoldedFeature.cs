@@ -18,7 +18,7 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public EndpointMethod Method => Request.Method;
 
-    public Boolean IsQuery => Kind is FeatureKind.Query or FeatureKind.PublicQuery;
+    public Boolean IsQuery => Request.IsQuery;
 
     public Boolean IsEventHandler => Kind == FeatureKind.EventHandler;
 
@@ -66,7 +66,7 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
     public String ChosenNames =>
         Event.Match(
             handledEvent => $"feature name '{Name}' with event {handledEvent.Name}",
-            () => $"feature name '{Name}'");
+            () => $"feature name '{Name}'{ChosenRoute}");
 
     public String HandlerResult => IsQuery ? Dto : "Unit";
 
@@ -76,11 +76,15 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String Endpoint => $"{Name}Endpoint";
 
-    public String Route => $"/{(IsQuery ? ReadNoun : Name).ToKebabCase()}";
+    public EndpointRoute Route => Request.Route.GetValueOrDefault(DefaultRoute);
+
+    public String RouteChoice => Request.Route.HasValue ? "--route" : "feature name";
 
     public String RouteName => $"{Module.Name}.{Name}";
 
-    public String HttpPath => $"/{Module.Route}{Route}";
+    public String HttpPath => $"/{Module.Route}{Route.Path}";
+
+    public String HttpPathWithSampleIds => $"/{Module.Route}{Route.PathWithSampleIds}";
 
     public String HttpMethod => $"{Method}".ToUpperInvariant();
 
@@ -100,12 +104,11 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String TestPath => $"{TestProjectFolder}/Modules/{Module.Name}/{TestClass}.cs";
 
-    private String ReadNoun => StartsWithReadVerb ? Name[ReadVerb.Length..] : Name;
+    private String ReadNoun => Name.StartsWithWord(ReadVerb) ? Name[ReadVerb.Length..] : Name;
 
-    private Boolean StartsWithReadVerb =>
-        Name.Length > ReadVerb.Length
-        && Name.StartsWith(ReadVerb, StringComparison.Ordinal)
-        && Char.IsUpper(Name[ReadVerb.Length]);
+    private EndpointRoute DefaultRoute => EndpointRoute.From($"/{(IsQuery ? ReadNoun : Name).ToKebabCase()}");
+
+    private String ChosenRoute => Request.Route.Match(route => $" with route '{route.Path}'", () => String.Empty);
 
     public String InFeature(String fileName) => $"{Folder}/{fileName}";
 

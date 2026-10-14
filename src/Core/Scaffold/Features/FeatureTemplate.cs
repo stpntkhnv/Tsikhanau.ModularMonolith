@@ -181,12 +181,14 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 
     private String MapCall =>
         FirstThatFits(
-            $"""            .Map{feature.Method}("{feature.Route}", {EndpointHandler})""",
+            $"""            .Map{feature.Method}({RouteArgument}, {EndpointHandler})""",
             $"""
                          .Map{feature.Method}(
-                             "{feature.Route}",
+                             {RouteArgument},
                              {EndpointHandler})
              """);
+
+    private String RouteArgument => feature.Route.IsCollection ? "String.Empty" : $"\"{feature.Route.Path}\"";
 
     private String EndpointHandler => $"{feature.Name}Async";
 

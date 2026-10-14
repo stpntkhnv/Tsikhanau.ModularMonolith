@@ -86,7 +86,9 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private String HttpCall => feature.HasRequestBody ? $"{feature.Method}AsJsonAsync" : $"{feature.Method}Async";
 
     private IEnumerable<String> HttpArguments =>
-        feature.HasRequestBody ? [$"\"{feature.HttpPath}\"", "new { }"] : [$"\"{feature.HttpPath}\""];
+        feature.HasRequestBody ? [RequestPath, "new { }"] : [RequestPath];
+
+    private String RequestPath => $"\"{feature.HttpPathWithSampleIds}\"";
 
     private EventDeclaration HandledEvent => feature.Event.Value;
 

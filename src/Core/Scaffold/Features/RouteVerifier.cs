@@ -21,10 +21,11 @@ internal sealed class RouteVerifier(IReadOnlyList<SourceProject> moduleProjects)
             : Error.Failure(
                 "scaffold.route",
                 $"feature {feature.Name} of {feature.Module.Name} would answer {feature.HttpMethod} "
-                + $"{feature.HttpPath}, which {String.Join(", ", mappings)} maps already; choose another feature name");
+                + $"{feature.HttpPath}, which {String.Join(", ", mappings)} maps already; "
+                + $"choose another {feature.RouteChoice}");
     }
 
-    private static Boolean Maps(InvocationExpressionSyntax invocation, String mapMethod, String route) =>
+    private static Boolean Maps(InvocationExpressionSyntax invocation, String mapMethod, EndpointRoute route) =>
         invocation is
             {
                 Expression: MemberAccessExpressionSyntax mapAccess,
@@ -32,7 +33,9 @@ internal sealed class RouteVerifier(IReadOnlyList<SourceProject> moduleProjects)
             }
         && mapAccess.Name.Identifier.Text == mapMethod
         && IsCalledOnAParameter(mapAccess)
-        && IsStringLiteral(routeArgument.Expression, route);
+        && FindMappedPath(routeArgument.Expression)
+            .Where(route.Matches)
+            .HasValue;
 
     private static Boolean IsCalledOnAParameter(MemberAccessExpressionSyntax mapAccess) =>
         mapAccess.Expression is IdentifierNameSyntax receiver
@@ -43,8 +46,19 @@ internal sealed class RouteVerifier(IReadOnlyList<SourceProject> moduleProjects)
             .Any(method => method.ParameterList.Parameters.Any(parameter =>
                 parameter.Identifier.Text == receiver.Identifier.Text));
 
-    private static Boolean IsStringLiteral(ExpressionSyntax expression, String text) =>
-        expression is LiteralExpressionSyntax literal
-        && literal.Kind() == SyntaxKind.StringLiteralExpression
-        && literal.Token.ValueText == text;
+    private static Optional<String> FindMappedPath(ExpressionSyntax expression) =>
+        expression switch
+        {
+            LiteralExpressionSyntax literal when literal.Kind() == SyntaxKind.StringLiteralExpression =>
+                literal.Token.ValueText,
+            MemberAccessExpressionSyntax memberAccess when IsStringEmpty(memberAccess) => String.Empty,
+            _ => Optional<String>.None(),
+        };
+
+    private static Boolean IsStringEmpty(MemberAccessExpressionSyntax memberAccess) =>
+        memberAccess is
+        {
+            Expression: IdentifierNameSyntax { Identifier.Text: nameof(String) },
+            Name.Identifier.Text: nameof(String.Empty),
+        };
 }

@@ -337,6 +337,141 @@ public sealed class FeatureTemplateTests
     }
 
     [Fact]
+    public void Collection_route_maps_the_module_group_itself_and_the_test_calls_the_group()
+    {
+        var feature = CreateFeature("Notes", "AddNote", FeatureKind.Command, EndpointMethod.Post, String.Empty);
+
+        var endpoint = ReadFile(new FeatureTemplate(feature).CreateFiles(), "AddNoteEndpoint.cs");
+        var test = new FeatureTestTemplate(feature)
+            .CreateFile()
+            .Content;
+
+        endpoint.ShouldEndWith(
+            """
+            internal sealed class AddNoteEndpoint : IEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints) =>
+                    endpoints
+                        .MapPost(String.Empty, AddNoteAsync)
+                        .WithName("Notes.AddNote");
+
+                private static Task<Results<NoContent, ValidationProblem, ProblemHttpResult>> AddNoteAsync(
+                    AddNoteRequest request,
+                    INotesModule notesModule,
+                    CancellationToken cancellationToken) =>
+                    notesModule
+                        .ExecuteCommandAsync(new AddNoteCommand(), cancellationToken)
+                        .ToNoContentAsync();
+            }
+
+            """,
+            Case.Sensitive);
+
+        test.ShouldEndWith(
+            """
+                [Fact]
+                public async Task Add_note_answers_no_content()
+                {
+                    using var httpClient = App.CreateClient();
+
+                    var response = await httpClient.PostAsJsonAsync("/notes", new { }, CancellationToken);
+                    var body = await response.Content.ReadAsStringAsync(CancellationToken);
+
+                    response.StatusCode.ShouldBe(HttpStatusCode.NoContent, body);
+                }
+            }
+
+            """,
+            Case.Sensitive);
+    }
+
+    [Fact]
+    public void Item_route_maps_its_guid_id_and_the_test_calls_it_with_a_sample_guid()
+    {
+        var feature = CreateFeature("Notes", "GetNote", FeatureKind.Query, EndpointMethod.Get, "/{noteId:guid}");
+
+        var endpoint = ReadFile(new FeatureTemplate(feature).CreateFiles(), "GetNoteEndpoint.cs");
+        var test = new FeatureTestTemplate(feature).CreateFile();
+
+        endpoint.ShouldEndWith(
+            """
+            internal sealed class GetNoteEndpoint : IEndpoint
+            {
+                public void Map(IEndpointRouteBuilder endpoints) =>
+                    endpoints
+                        .MapGet("/{noteId:guid}", GetNoteAsync)
+                        .WithName("Notes.GetNote");
+
+                private static Task<Results<Ok<NoteDto>, ValidationProblem, ProblemHttpResult>> GetNoteAsync(
+                    INotesModule notesModule,
+                    CancellationToken cancellationToken) =>
+                    notesModule
+                        .ExecuteQueryAsync(new GetNoteQuery(), cancellationToken)
+                        .ToOkAsync();
+            }
+
+            """,
+            Case.Sensitive);
+
+        test.ShouldBe(
+            new NewFile(
+                $"{NotesTests}/GetNoteTests.cs",
+                """
+                using System.Net;
+                using Acme.Shop.Testing.App;
+
+                namespace Acme.Shop.IntegrationTests.Modules.Notes;
+
+                public sealed class GetNoteTests(AppFixture appFixture) : AppTest(appFixture)
+                {
+                    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+                    [Fact]
+                    public async Task Get_note_answers_ok()
+                    {
+                        using var httpClient = App.CreateClient();
+
+                        var response = await httpClient.GetAsync("/notes/017f22e2-79b0-7cc3-98c4-dc0c0c07398f", CancellationToken);
+                        var body = await response.Content.ReadAsStringAsync(CancellationToken);
+
+                        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+                    }
+                }
+
+                """));
+    }
+
+    [Fact]
+    public void Test_of_a_route_with_two_ids_fills_each_with_the_sample_guid()
+    {
+        var feature = CreateFeature(
+            "Notes",
+            "MoveTag",
+            FeatureKind.Command,
+            EndpointMethod.Put,
+            "/{noteId:guid}/tags/{tagId:guid}");
+
+        var endpoint = ReadFile(new FeatureTemplate(feature).CreateFiles(), "MoveTagEndpoint.cs");
+        var test = new FeatureTestTemplate(feature)
+            .CreateFile()
+            .Content;
+
+        endpoint.ShouldContain(
+            "            .MapPut(\"/{noteId:guid}/tags/{tagId:guid}\", MoveTagAsync)\n",
+            Case.Sensitive);
+
+        test.ShouldContain(
+            """
+                    var response = await httpClient.PutAsJsonAsync(
+                        "/notes/017f22e2-79b0-7cc3-98c4-dc0c0c07398f/tags/017f22e2-79b0-7cc3-98c4-dc0c0c07398f",
+                        new { },
+                        CancellationToken);
+
+            """,
+            Case.Sensitive);
+    }
+
+    [Fact]
     public void Facade_parameter_of_a_module_with_an_acronym_is_camel_case()
     {
         var feature = CreateFeature("HTTPLogs", "PurgeLogs", EndpointMethod.Delete);
@@ -854,6 +989,16 @@ public sealed class FeatureTemplateTests
         FeatureKind kind,
         EndpointMethod method) =>
         new(SampleModules.Create(moduleName), new FeatureRequest(moduleName, name, kind, method));
+
+    private static ScaffoldedFeature CreateFeature(
+        String moduleName,
+        String name,
+        FeatureKind kind,
+        EndpointMethod method,
+        String route) =>
+        new(
+            SampleModules.Create(moduleName),
+            new FeatureRequest(moduleName, name, kind, method) { Route = EndpointRoute.Parse(route).Value });
 
     private static String ReadFile(IEnumerable<NewFile> files, String fileName) =>
         files
