@@ -19,6 +19,9 @@ main() {
   clear_git_routing
   root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
   cd "$root"
+  if [[ $mode != no-rules ]]; then
+    check_rulebook_conflict
+  fi
   if [[ $mode == rules-only ]]; then
     require_repository
     link_rules
@@ -156,18 +159,14 @@ make_executable() {
 }
 
 link_rules() {
-  local rulebook='' exclude pair book linked=() excluded=() pending=() kept_books=()
+  local rulebook exclude pair linked=() excluded=() pending=()
   for pair in "${rule_links[@]}"; do
-    if [[ -z ${RULEBOOK_PATH-} ]] && book=$(kept_rulebook "${pair%%=*}" "${pair#*=}"); then
-      if [[ " ${kept_books[*]} " != *" $book "* ]]; then
-        kept_books+=("$book")
-      fi
-    else
+    if [[ -n ${RULEBOOK_PATH-} ]] || ! kept_rulebook "${pair%%=*}" "${pair#*=}" > /dev/null; then
       pending+=("$pair")
     fi
   done
+  rulebook=$(select_rulebook)
   if [[ ${#pending[@]} -gt 0 ]]; then
-    rulebook=$(find_rulebook)
     check_rule_sources "$rulebook"
   fi
   check_link_places
@@ -179,7 +178,7 @@ link_rules() {
   for pair in "${pending[@]}"; do
     link_rule "${pair%%=*}" "$rulebook/${pair#*=}"
   done
-  report_rules "${rulebook:-${kept_books[*]}}" "$exclude"
+  report_rules "$rulebook" "$exclude"
 }
 
 kept_rulebook() {
@@ -192,7 +191,47 @@ kept_rulebook() {
   [[ $target == */"$source" ]] || return 1
   book=${target%/"$source"}
   [[ -f "$book/check-markers.cs" && -z "$(missing_rule_sources "$book")" ]] || return 1
-  printf '%s\n' "$book"
+  (CDPATH='' cd -- "$book" && pwd -P)
+}
+
+tree_rulebooks() {
+  local pair
+  for pair in "${rule_links[@]}"; do
+    kept_rulebook "$1${pair%%=*}" "${pair#*=}" || true
+  done | sort -u
+}
+
+check_rulebook_conflict() {
+  local books
+  if [[ -n ${RULEBOOK_PATH-} ]]; then
+    return
+  fi
+  mapfile -t books < <(tree_rulebooks '')
+  if [[ ${#books[@]} -gt 1 ]]; then
+    echo "init: the rules links point to different rulebooks: ${books[*]}; set RULEBOOK_PATH to the one to keep and run init again" >&2
+    exit 1
+  fi
+}
+
+select_rulebook() {
+  local books
+  if [[ -z ${RULEBOOK_PATH-} ]]; then
+    mapfile -t books < <(tree_rulebooks '')
+    if [[ ${#books[@]} -eq 0 ]]; then
+      mapfile -t books < <(tree_rulebooks "$(main_tree)/")
+    fi
+    if [[ ${#books[@]} -eq 1 ]]; then
+      printf '%s\n' "${books[0]}"
+      return
+    fi
+  fi
+  find_rulebook
+}
+
+main_tree() {
+  local common
+  common=$(git rev-parse --path-format=absolute --git-common-dir)
+  dirname -- "$common"
 }
 
 find_rulebook() {
@@ -206,9 +245,7 @@ find_rulebook() {
 }
 
 default_rulebook() {
-  local common
-  common=$(git rev-parse --path-format=absolute --git-common-dir)
-  printf '%s/Tsikhanau.Rulebook\n' "$(dirname -- "$(dirname -- "$common")")"
+  printf '%s/Tsikhanau.Rulebook\n' "$(dirname -- "$(main_tree)")"
 }
 
 check_rule_sources() {
