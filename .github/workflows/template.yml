@@ -37,6 +37,32 @@ jobs:
       - name: Template check (two installs, three apps, part 3 path, update-core, two apps running, Aspire)
         run: bash template-only/scripts/check-template.sh --aspire
 
+  harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/*.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Harness (54 mistakes planted one at a time, each caught as expected.txt says)
+        run: bash template-only/Harness/run-mutations.sh . "$RUNNER_TEMP/harness"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-results
+          path: ${{ runner.temp }}/harness/results
+          if-no-files-found: ignore
+
   rule-markers:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
