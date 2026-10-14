@@ -64,6 +64,13 @@ check_rule_markers() {
   dotnet run --file "$rulebook/check-markers.cs" -- .
 }
 
+run_harness_dry() {
+  local work
+  work=$(mktemp -d)
+  bash template-only/Harness/run-mutations.sh --dry-run . "$work"
+  rm -rf -- "$work"
+}
+
 linked_rulebook() {
   local agents
   [[ -L AGENTS.md ]] || return 1
@@ -85,6 +92,8 @@ if [[ -f "$template_solution" ]]; then
   bash template-only/scripts/test-init.sh
   bash template-only/scripts/test-check-perf.sh
   bash template-only/scripts/test-distinct-ports.sh
+  bash template-only/scripts/test-harness.sh
+  run_harness_dry
 fi
 
 check_rule_markers
