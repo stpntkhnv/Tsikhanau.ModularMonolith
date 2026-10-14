@@ -17,6 +17,7 @@ main() {
   read_failed_tests
   problems=()
   check_test_apps
+  check_skips
   if [[ ${#expected[@]} -eq 0 ]]; then
     check_green
   else
@@ -25,18 +26,20 @@ main() {
 }
 
 usage() {
-  echo "usage: template-only/scripts/check-feature-failures.sh <app folder> [<Test.Name> ...]" >&2
+  echo "usage: template-only/scripts/check-feature-failures.sh <app folder> <skips> [<Test.Name> ...]" >&2
   echo "runs the app's gate.sh once; passes when the build has no warnings, exactly the named tests fail," >&2
-  echo "each with '<Feature> in <Module> is not implemented', the run skips as many tests as .gate/skips holds," >&2
+  echo "each with '<Feature> in <Module> is not implemented', the run skips exactly <skips> tests," >&2
+  echo "the app's .gate/skips holds <skips>," >&2
   echo "and every test project of the app's *.slnx reports: passed, or failed with exactly its named tests;" >&2
   echo "a name matches a failed test by its full name or by its end after a dot (Tags.NoteCreatedTests.<Method>)" >&2
   exit 2
 }
 
 read_arguments() {
-  [[ $# -ge 1 && -f "$1/gate.sh" && -f "$1/.gate/skips" ]] || usage
+  [[ $# -ge 2 && -f "$1/gate.sh" && -f "$1/.gate/skips" && "$2" =~ ^[0-9]+$ ]] || usage
   app=$1
-  shift
+  expected_skips=$2
+  shift 2
   expected=("$@")
 }
 
@@ -124,6 +127,15 @@ crashed_test_apps() {
   ' "$log"
 }
 
+check_skips() {
+  local recorded
+  recorded=$(tr -d '[:space:]' < "$app/.gate/skips")
+  [[ "$recorded" == "$expected_skips" ]] \
+    || problems+=("skipped tests: .gate/skips holds $recorded, the step expects $expected_skips")
+  [[ "$skipped" == "$expected_skips" ]] \
+    || problems+=("skipped tests: the run skipped $skipped, the step expects $expected_skips")
+}
+
 report_problems() {
   if [[ ${#problems[@]} -gt 0 ]]; then
     printf 'check-feature-failures: %s\n' "${problems[@]}" >&2
@@ -136,14 +148,13 @@ check_green() {
   if [[ $gate_status -ne 0 || $failed_count -ne 0 ]]; then
     fail "no feature test is named, but the gate failed (exit $gate_status); failed tests: ${failed[*]:-none}"
   fi
-  echo "check-feature-failures: build without warnings; gate green, as expected with no test named"
+  echo "check-feature-failures: build without warnings; gate green, as expected with no test named;" \
+    "skipped $skipped as the step expects"
 }
 
 check_failures() {
-  local skips name
-  skips=$(tr -d '[:space:]' < "$app/.gate/skips")
+  local name
   [[ $gate_status -ne 0 ]] || fail "the gate is green, but these tests should fail: ${expected[*]}"
-  [[ "$skipped" == "$skips" ]] || problems+=("skipped tests: .gate/skips holds $skips, the run skipped $skipped")
   for name in "${failed[@]}"; do
     if expected_by_name "$name"; then
       check_text "$name"
@@ -158,7 +169,7 @@ check_failures() {
   echo "check-feature-failures: build without warnings; exactly the $failed_count named tests failed," \
     "each with its feature's '<Feature> in <Module> is not implemented':"
   printf '  %s\n' "${failed[@]}"
-  echo "check-feature-failures: skipped $skipped as .gate/skips records; every other test passed"
+  echo "check-feature-failures: skipped $skipped as the step expects and .gate/skips records; every other test passed"
 }
 
 matches() {

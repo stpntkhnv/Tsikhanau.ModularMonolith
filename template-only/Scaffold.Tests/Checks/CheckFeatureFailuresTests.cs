@@ -12,6 +12,8 @@ public sealed class CheckFeatureFailuresTests : IDisposable
 
     private const String Prefix = "check-feature-failures: ";
 
+    private const String RecordedSkips = "0";
+
     private const Int32 FailedGateExitCode = 2;
 
     private const String Tests = "Acme.Shop.IntegrationTests.Modules";
@@ -95,7 +97,7 @@ public sealed class CheckFeatureFailuresTests : IDisposable
             $"{Prefix}build without warnings; exactly the 10 named tests failed, each with its feature's "
             + "'<Feature> in <Module> is not implemented':\n"
             + String.Concat(failedTests)
-            + $"{Prefix}skipped 0 as .gate/skips records; every other test passed\n");
+            + $"{Prefix}skipped 0 as the step expects and .gate/skips records; every other test passed\n");
     }
 
     [Fact]
@@ -106,7 +108,9 @@ public sealed class CheckFeatureFailuresTests : IDisposable
         var check = await RunAsync([]);
 
         check.ExitCode.ShouldBe(0, check.Error);
-        check.Output.ShouldBe($"{Prefix}build without warnings; gate green, as expected with no test named\n");
+        check.Output.ShouldBe(
+            $"{Prefix}build without warnings; gate green, as expected with no test named; "
+            + "skipped 0 as the step expects\n");
     }
 
     [Fact]
@@ -205,13 +209,33 @@ public sealed class CheckFeatureFailuresTests : IDisposable
     }
 
     [Fact]
-    public async Task Skipped_count_that_differs_from_the_skip_file_is_refused()
+    public async Task Skipped_count_that_differs_from_the_step_is_refused()
+    {
+        WriteGate(FailedGate, FailedGateExitCode, skips: "1\n");
+
+        var check = await RunAsync(ScaffoldedTests, skips: "1");
+
+        ShouldBeRefused(check, "skipped tests: the run skipped 0, the step expects 1");
+    }
+
+    [Fact]
+    public async Task Skip_file_that_differs_from_the_step_is_refused()
     {
         WriteGate(FailedGate, FailedGateExitCode, skips: "1\n");
 
         var check = await RunAsync(ScaffoldedTests);
 
-        ShouldBeRefused(check, "skipped tests: .gate/skips holds 1, the run skipped 0");
+        ShouldBeRefused(check, "skipped tests: .gate/skips holds 1, the step expects 0");
+    }
+
+    [Fact]
+    public async Task Green_gate_is_refused_when_it_skips_another_count_than_the_step()
+    {
+        WriteGate(GreenGate, 0, skips: "1\n");
+
+        var check = await RunAsync([], skips: "1");
+
+        ShouldBeRefused(check, "skipped tests: the run skipped 0, the step expects 1");
     }
 
     [Fact]
@@ -328,7 +352,18 @@ public sealed class CheckFeatureFailuresTests : IDisposable
         var check = await RunScriptAsync(namesAFolder ? [_app.FullName] : []);
 
         check.ExitCode.ShouldBe(2);
-        check.ErrorLines[0].ShouldBe($"usage: {Script} <app folder> [<Test.Name> ...]");
+        check.ErrorLines[0].ShouldBe($"usage: {Script} <app folder> <skips> [<Test.Name> ...]");
+    }
+
+    [Fact]
+    public async Task Names_without_a_skip_count_get_the_usage()
+    {
+        WriteGate(FailedGate, FailedGateExitCode);
+
+        var check = await RunScriptAsync([_app.FullName, .. ScaffoldedTests]);
+
+        check.ExitCode.ShouldBe(2);
+        check.ErrorLines[0].ShouldBe($"usage: {Script} <app folder> <skips> [<Test.Name> ...]");
     }
 
     private static String ReadRecordedGate(String fileName) =>
@@ -365,7 +400,8 @@ public sealed class CheckFeatureFailuresTests : IDisposable
         check.ErrorLines[^1].ShouldStartWith($"{Prefix}the gate's output is kept in {_app.FullName}/", Case.Sensitive);
     }
 
-    private Task<CheckRun> RunAsync(IEnumerable<String> names) => RunScriptAsync([_app.FullName, .. names]);
+    private Task<CheckRun> RunAsync(IEnumerable<String> names, String skips = RecordedSkips) =>
+        RunScriptAsync([_app.FullName, skips, .. names]);
 
     private async Task<CheckRun> RunScriptAsync(IReadOnlyList<String> arguments)
     {

@@ -18,6 +18,8 @@ extra_type=$extra_folder/ExtraMarker.cs
 extra_assembly=Tsikhanau.Monolith.Extra.dll
 hook_mark='core-hash: the staged core matches the staged core.lock'
 rule_links=(AGENTS.md CLAUDE.md STYLE.md docs/engineering-principles.md docs/playbooks)
+new_app_skips=54
+one_module_skips=28
 
 main() {
   read_arguments "$@"
@@ -249,6 +251,8 @@ run_gate() {
   local log=$work/logs/$1.log warnings counts markers
   logged "$1" "${gate_command[@]}"
   grep -q '^gate: green' "$log" || fail "the gate did not end green; see $log"
+  grep -qxF "gate: green, skipped tests as recorded: $solution $skips" "$log" \
+    || fail "the gate did not skip exactly $skips tests, the number this step records; see $log"
   warnings=$(sed -n -E 's/^ +([0-9]+) Warning\(s\)$/\1/p' "$log" | paste -sd '+')
   counts=$(sed -n -E 's/^  (total|failed|succeeded|skipped): ([0-9]+)$/\1 \2/p' "$log" | paste -sd ',' | sed 's/,/, /g')
   markers=$(grep -m 1 -E '^(check-markers: green|gate: rule markers: skipped)' "$log" || true)
@@ -292,6 +296,7 @@ init_commit_gate() {
 
   git add -A
   commit_through_hook 3-commit initial
+  skips=$new_app_skips
   run_gate 3-gate
   restored_before=$(restored_versions)
   summary="init: $(paste -sd ';' "$work/logs/3-init.log" | sed 's/;init: /; /g; s/^init: //');"
@@ -301,6 +306,8 @@ init_commit_gate() {
 
 add_module() {
   logged 4-scaffold bash scripts/scaffold.sh module "$module" --settings
+  skips=$one_module_skips
+  printf '%s\n' "$skips" > .gate/skips
   git add -A
   commit_through_hook 4-commit "add the $module module"
   run_gate 4-gate
@@ -448,6 +455,7 @@ started=$SECONDS
 current=""
 keep=0
 work=""
+skips=""
 trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM

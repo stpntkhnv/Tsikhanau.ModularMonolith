@@ -3,6 +3,8 @@ set -euo pipefail
 shopt -s inherit_errexit nullglob
 
 export LC_ALL=C GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+export GIT_AUTHOR_NAME=scaffold GIT_AUTHOR_EMAIL=scaffold@example.com
+export GIT_COMMITTER_NAME=scaffold GIT_COMMITTER_EMAIL=scaffold@example.com
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 rolled_back='; files scaffold created are deleted, files it changed are back as they were'
@@ -21,26 +23,23 @@ main() {
   mkdir "$work/logs"
   echo "check-scaffold: $name, working folder $work"
 
-  make_app
-  scaffold module Notes --settings
-  scaffold module Tags
-  scaffold feature Notes ArchiveNote --kind command
-  scaffold feature Notes CreateNote --kind command --endpoint post
-  scaffold feature Notes RenameNote --kind command --endpoint put
-  scaffold feature Notes DeleteNote --kind command --endpoint delete
-  scaffold feature Notes AddNote --kind command --endpoint post --route ""
+  make_app 54
+  scaffold 28 module Notes --settings
+  scaffold 52 module Tags
+  scaffold 45 feature Notes ArchiveNote --kind command
+  scaffold 43 feature Notes CreateNote --kind command --endpoint post
+  scaffold 43 feature Notes RenameNote --kind command --endpoint put
+  scaffold 43 feature Notes DeleteNote --kind command --endpoint delete
+  scaffold 43 feature Notes AddNote --kind command --endpoint post --route ""
   declare_integration_event
-  scaffold feature Tags NoteCreated --kind event-handler --event NoteCreatedIntegrationEvent
-  scaffold feature Notes CountNotes --kind query
-  scaffold feature Notes GetNoteSummary --kind query --endpoint get
-  scaffold feature Notes GetNote --kind query --endpoint get --route "/{noteId:guid}"
-  scaffold feature Tags GetTag --kind public-query
+  scaffold 34 feature Tags NoteCreated --kind event-handler --event NoteCreatedIntegrationEvent
+  scaffold 31 feature Notes CountNotes --kind query
+  scaffold 31 feature Notes GetNoteSummary --kind query --endpoint get
+  scaffold 31 feature Notes GetNote --kind query --endpoint get --route "/{noteId:guid}"
+  scaffold 24 feature Tags GetTag --kind public-query
   declare_domain_event
-  scaffold feature Notes NoteCreated --kind event-handler --event NoteCreatedDomainEvent
-  scaffold feature Tags RecountTags --kind internal-command
-  next_step ".gate/skips"
-  check_skips_unchanged
-  record ".gate/skips after every step" "" "" "unchanged: $(< "$app/.gate/skips")"
+  scaffold 16 feature Notes NoteCreated --kind event-handler --event NoteCreatedDomainEvent
+  scaffold 14 feature Tags RecountTags --kind internal-command
 
   force_failures
   print_summary
@@ -109,12 +108,13 @@ make_app() {
   consumer=$(sed -n 's/^check-consumer: kept //p' "$log")
   app=$consumer/$name
   [[ -n "$consumer" && -d "$app/.git" ]] || fail_with_log "$log" "check-consumer.sh named no kept app"
-  cp -- "$app/.gate/skips" "$work/skips"
+  expect_committed_skips "$1"
   if [[ ! -L "$app/AGENTS.md" ]]; then
     export CI=true
     echo "check-scaffold: $name links no rules, so its gate runs with CI=true and skips the rule marker check"
   fi
-  record "app $name from dotnet new (check-consumer.sh steps 1-3)" "" "" "gate green in $(seconds_since "$begun")"
+  record "app $name from dotnet new (check-consumer.sh steps 1-3)" "" "" \
+    "gate green in $(seconds_since "$begun"), skipped $1"
 }
 
 describe() {
@@ -126,7 +126,8 @@ describe() {
 }
 
 scaffold() {
-  local begun scaffold_time gate_time new_test label
+  local skips=$1 begun scaffold_time gate_time new_test label
+  shift
   label=$(describe "$@")
   next_step "$label"
   begun=$EPOCHREALTIME
@@ -139,14 +140,15 @@ scaffold() {
     [[ -n "$new_test" ]] || fail_with_log "$step_log-scaffold.log" "scaffold named no new test"
     expected+=("$2.$new_test")
   fi
+  commit_step "$skips" "$label"
   begun=$EPOCHREALTIME
-  if ! bash "$scripts/check-feature-failures.sh" "$app" "${expected[@]}" > "$step_log-check.log" 2>&1; then
+  if ! bash "$scripts/check-feature-failures.sh" "$app" "$skips" "${expected[@]}" > "$step_log-check.log" 2>&1; then
     sed 's/^/  | /' "$step_log-check.log" >&2
     fail "check-feature-failures.sh failed"
   fi
   gate_time=$(seconds_since "$begun")
-  check_skips_unchanged
-  record "$label" "$scaffold_time" "$gate_time" "$(gate_result)"
+  expect_committed_skips "$skips"
+  record "$label" "$scaffold_time" "$gate_time" "$(gate_result), skipped $skips"
 }
 
 gate_result() {
@@ -157,8 +159,18 @@ gate_result() {
   fi
 }
 
-check_skips_unchanged() {
-  cmp -s -- "$work/skips" "$app/.gate/skips" || fail ".gate/skips changed: $(< "$app/.gate/skips")"
+commit_step() {
+  printf '%s\n' "$1" > "$app/.gate/skips"
+  git -C "$app" add -A
+  if ! git -C "$app" commit -q --no-verify -m "$2" > "$step_log-commit.log" 2>&1; then
+    fail_with_log "$step_log-commit.log" "cannot commit the step with $1 in .gate/skips"
+  fi
+}
+
+expect_committed_skips() {
+  local recorded
+  recorded=$(tr -d '[:space:]' < "$app/.gate/skips")
+  [[ "$recorded" == "$1" ]] || fail ".gate/skips holds $recorded, the step expects $1"
   [[ -z "$(git -C "$app" status --porcelain -- .gate/skips)" ]] || fail ".gate/skips differs from its committed text"
 }
 
