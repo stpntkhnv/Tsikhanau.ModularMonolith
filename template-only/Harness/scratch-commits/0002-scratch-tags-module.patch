@@ -1,0 +1,737 @@
+From 28db46c34b4032ea0421968bb2995df2ca999ed0 Mon Sep 17 00:00:00 2001
+From: scratch <scratch@local>
+Date: Wed, 7 Oct 2026 12:02:03 +0000
+Subject: [PATCH 2/4] scratch: tags module
+
+---
+ ModularMonolith.slnx                          |   4 +
+ .../ModularMonolith.Bootstrapper.csproj       |   1 +
+ .../ModularMonolith.Bootstrapper/Program.cs   |   2 +
+ ...ularMonolith.Modules.Tags.Contracts.csproj |   5 +
+ .../NoteCreatedIntegrationEventHandler.cs     |  22 ++
+ .../ITagsModule.cs                            |   5 +
+ .../20261004195248_Initial.Designer.cs        | 197 ++++++++++++++++++
+ .../Migrations/20261004195248_Initial.cs      | 119 +++++++++++
+ .../Migrations/TagsDbContextModelSnapshot.cs  | 194 +++++++++++++++++
+ .../Persistence/TagsDbContext.cs              |  10 +
+ .../TagsDbContextDesignTimeFactory.cs         |   5 +
+ .../Infrastructure/TagsModuleFacade.cs        |   7 +
+ .../ModularMonolith.Modules.Tags.csproj       |  13 ++
+ .../TagsModule.cs                             |  13 ++
+ 14 files changed, 597 insertions(+)
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Features/NoteCreated/NoteCreatedIntegrationEventHandler.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/ITagsModule.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.Designer.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/TagsDbContextModelSnapshot.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContext.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContextDesignTimeFactory.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/TagsModuleFacade.cs
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/ModularMonolith.Modules.Tags.csproj
+ create mode 100644 src/Modules/Tags/ModularMonolith.Modules.Tags/TagsModule.cs
+
+diff --git a/ModularMonolith.slnx b/ModularMonolith.slnx
+index 8ce65bd..dba3323 100644
+--- a/ModularMonolith.slnx
++++ b/ModularMonolith.slnx
+@@ -41,6 +41,10 @@
+     <Project Path="src/Core/Testing/Tsikhanau.Monolith.Testing.csproj" />
+   </Folder>
+   <Folder Name="/src/Modules/" />
++  <Folder Name="/src/Modules/Tags/">
++    <Project Path="src/Modules/Tags/ModularMonolith.Modules.Tags/ModularMonolith.Modules.Tags.csproj" />
++    <Project Path="src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj" />
++  </Folder>
+   <Folder Name="/src/Modules/Notes/">
+     <Project Path="src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj" />
+     <Project Path="src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj" />
+diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj b/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
+index 79eb23a..01a8253 100644
+--- a/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
++++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
+@@ -7,5 +7,6 @@
+     <ProjectReference Include="..\..\Core\Hosting\Tsikhanau.Monolith.Hosting.csproj" />
+     <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
+     <ProjectReference Include="..\..\Modules\Notes\ModularMonolith.Modules.Notes\ModularMonolith.Modules.Notes.csproj" />
++    <ProjectReference Include="..\..\Modules\Tags\ModularMonolith.Modules.Tags\ModularMonolith.Modules.Tags.csproj" />
+   </ItemGroup>
+ </Project>
+diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
+index 1b3951a..cf983d4 100644
+--- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
++++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
+@@ -1,5 +1,6 @@
+ using ModularMonolith.Bootstrapper.Platform;
+ using ModularMonolith.Modules.Notes;
++using ModularMonolith.Modules.Tags;
+ using Tsikhanau.Monolith.Api.Modules;
+ using Tsikhanau.Monolith.Hosting;
+ using Tsikhanau.Monolith.Infrastructure.Diagnostics;
+@@ -30,6 +31,7 @@ static WebApplication BuildApp(String[] args)
+         builder.AddServiceDefaults(AppDiagnostics.SourceName);
+         builder.AddPlatform();
+         builder.AddModule<NotesModule>();
++        builder.AddModule<TagsModule>();
+         return builder.Build();
+     }
+     catch (Exception exception) when (exception is not HostAbortedException)
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj b/src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj
+new file mode 100644
+index 0000000..6d93395
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj
+@@ -0,0 +1,5 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <ItemGroup>
++    <ProjectReference Include="..\..\..\Core\Contracts\Tsikhanau.Monolith.Contracts.csproj" />
++  </ItemGroup>
++</Project>
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Features/NoteCreated/NoteCreatedIntegrationEventHandler.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Features/NoteCreated/NoteCreatedIntegrationEventHandler.cs
+new file mode 100644
+index 0000000..45bf2a8
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Features/NoteCreated/NoteCreatedIntegrationEventHandler.cs
+@@ -0,0 +1,22 @@
++using ModularMonolith.Modules.Notes.Contracts;
++using ModularMonolith.Modules.Notes.Contracts.IntegrationEvents;
++using ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++using Tsikhanau.Monolith.Application.Events;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Tags.Features.NoteCreated;
++
++internal sealed class NoteCreatedIntegrationEventHandler(INotesQueryFacade notesQueryFacade)
++    : IIntegrationEventHandler<NoteCreatedIntegrationEvent>
++{
++    public async Task<Result<Unit>> Handle(
++        NoteCreatedIntegrationEvent integrationEvent,
++        CancellationToken cancellationToken)
++    {
++        var note = await notesQueryFacade.ExecuteQueryAsync(
++            new GetNoteQuery(integrationEvent.NoteId),
++            cancellationToken);
++
++        return note.Map(_ => Unit.Value);
++    }
++}
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/ITagsModule.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/ITagsModule.cs
+new file mode 100644
+index 0000000..c35149b
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/ITagsModule.cs
+@@ -0,0 +1,5 @@
++using Tsikhanau.Monolith.Application.Modules;
++
++namespace ModularMonolith.Modules.Tags;
++
++internal interface ITagsModule : IModuleFacade;
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.Designer.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.Designer.cs
+new file mode 100644
+index 0000000..ff648ab
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.Designer.cs
+@@ -0,0 +1,197 @@
++﻿// <auto-generated />
++using System;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using ModularMonolith.Modules.Tags.Infrastructure.Persistence;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Tags.Infrastructure.Migrations
++{
++    [DbContext(typeof(TagsDbContext))]
++    [Migration("20261004195248_Initial")]
++    partial class Initial
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasDefaultSchema("tags")
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Inbox.InboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<DateTimeOffset>("ReceivedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("received_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_inbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_inbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("inbox_messages", "tags");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.InternalCommands.InternalCommandMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset>("EnqueuedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("enqueued_on");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_internal_commands");
++
++                    b.HasIndex("NextAttemptOn", "EnqueuedOn", "Id")
++                        .HasDatabaseName("ix_internal_commands_next_attempt_on_enqueued_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("internal_commands", "tags");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Outbox.OutboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_outbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_outbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("outbox_messages", "tags");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.cs
+new file mode 100644
+index 0000000..ddd2f1c
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/20261004195248_Initial.cs
+@@ -0,0 +1,119 @@
++﻿using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Tags.Infrastructure.Migrations
++{
++    /// <inheritdoc />
++    public partial class Initial : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.EnsureSchema(
++                name: "tags");
++
++            migrationBuilder.CreateTable(
++                name: "inbox_messages",
++                schema: "tags",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    occurred_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    received_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_inbox_messages", x => x.id);
++                });
++
++            migrationBuilder.CreateTable(
++                name: "internal_commands",
++                schema: "tags",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    enqueued_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_internal_commands", x => x.id);
++                });
++
++            migrationBuilder.CreateTable(
++                name: "outbox_messages",
++                schema: "tags",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    occurred_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_outbox_messages", x => x.id);
++                });
++
++            migrationBuilder.CreateIndex(
++                name: "ix_inbox_messages_next_attempt_on_occurred_on_id",
++                schema: "tags",
++                table: "inbox_messages",
++                columns: new[] { "next_attempt_on", "occurred_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++
++            migrationBuilder.CreateIndex(
++                name: "ix_internal_commands_next_attempt_on_enqueued_on_id",
++                schema: "tags",
++                table: "internal_commands",
++                columns: new[] { "next_attempt_on", "enqueued_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++
++            migrationBuilder.CreateIndex(
++                name: "ix_outbox_messages_next_attempt_on_occurred_on_id",
++                schema: "tags",
++                table: "outbox_messages",
++                columns: new[] { "next_attempt_on", "occurred_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(
++                name: "inbox_messages",
++                schema: "tags");
++
++            migrationBuilder.DropTable(
++                name: "internal_commands",
++                schema: "tags");
++
++            migrationBuilder.DropTable(
++                name: "outbox_messages",
++                schema: "tags");
++        }
++    }
++}
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/TagsDbContextModelSnapshot.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/TagsDbContextModelSnapshot.cs
+new file mode 100644
+index 0000000..22a0792
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Migrations/TagsDbContextModelSnapshot.cs
+@@ -0,0 +1,194 @@
++﻿// <auto-generated />
++using System;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using ModularMonolith.Modules.Tags.Infrastructure.Persistence;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Tags.Infrastructure.Migrations
++{
++    [DbContext(typeof(TagsDbContext))]
++    partial class TagsDbContextModelSnapshot : ModelSnapshot
++    {
++        protected override void BuildModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasDefaultSchema("tags")
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Inbox.InboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<DateTimeOffset>("ReceivedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("received_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_inbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_inbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("inbox_messages", "tags");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.InternalCommands.InternalCommandMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset>("EnqueuedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("enqueued_on");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_internal_commands");
++
++                    b.HasIndex("NextAttemptOn", "EnqueuedOn", "Id")
++                        .HasDatabaseName("ix_internal_commands_next_attempt_on_enqueued_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("internal_commands", "tags");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Outbox.OutboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_outbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_outbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("outbox_messages", "tags");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContext.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContext.cs
+new file mode 100644
+index 0000000..a892606
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContext.cs
+@@ -0,0 +1,10 @@
++using Microsoft.EntityFrameworkCore;
++using Tsikhanau.Monolith.Infrastructure.Persistence;
++
++namespace ModularMonolith.Modules.Tags.Infrastructure.Persistence;
++
++internal sealed class TagsDbContext(DbContextOptions<TagsDbContext> dbContextOptions)
++    : ModuleDbContext(dbContextOptions)
++{
++    public const String SchemaName = "tags";
++}
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContextDesignTimeFactory.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContextDesignTimeFactory.cs
+new file mode 100644
+index 0000000..03584be
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/Persistence/TagsDbContextDesignTimeFactory.cs
+@@ -0,0 +1,5 @@
++using Tsikhanau.Monolith.Infrastructure.Persistence;
++
++namespace ModularMonolith.Modules.Tags.Infrastructure.Persistence;
++
++internal sealed class TagsDbContextDesignTimeFactory : ModuleDbContextDesignTimeFactory<TagsDbContext>;
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/TagsModuleFacade.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/TagsModuleFacade.cs
+new file mode 100644
+index 0000000..e9fdc87
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/Infrastructure/TagsModuleFacade.cs
+@@ -0,0 +1,7 @@
++using Microsoft.Extensions.DependencyInjection;
++using Tsikhanau.Monolith.Infrastructure.Dispatching;
++
++namespace ModularMonolith.Modules.Tags.Infrastructure;
++
++internal sealed class TagsModuleFacade(IServiceScopeFactory serviceScopeFactory)
++    : ModuleFacade<ITagsModule>(serviceScopeFactory), ITagsModule;
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/ModularMonolith.Modules.Tags.csproj b/src/Modules/Tags/ModularMonolith.Modules.Tags/ModularMonolith.Modules.Tags.csproj
+new file mode 100644
+index 0000000..b349377
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/ModularMonolith.Modules.Tags.csproj
+@@ -0,0 +1,13 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <ItemGroup>
++    <ProjectReference Include="..\ModularMonolith.Modules.Tags.Contracts\ModularMonolith.Modules.Tags.Contracts.csproj" />
++    <ProjectReference Include="..\..\Notes\ModularMonolith.Modules.Notes.Contracts\ModularMonolith.Modules.Notes.Contracts.csproj" />
++    <ProjectReference Include="..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj" />
++    <ProjectReference Include="..\..\..\Core\Application\Tsikhanau.Monolith.Application.csproj" />
++    <ProjectReference Include="..\..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
++    <ProjectReference Include="..\..\..\Core\Api\Tsikhanau.Monolith.Api.csproj" />
++  </ItemGroup>
++  <ItemGroup>
++    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
++  </ItemGroup>
++</Project>
+diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags/TagsModule.cs b/src/Modules/Tags/ModularMonolith.Modules.Tags/TagsModule.cs
+new file mode 100644
+index 0000000..751fe13
+--- /dev/null
++++ b/src/Modules/Tags/ModularMonolith.Modules.Tags/TagsModule.cs
+@@ -0,0 +1,13 @@
++using Microsoft.Extensions.DependencyInjection;
++using ModularMonolith.Modules.Tags.Infrastructure;
++using ModularMonolith.Modules.Tags.Infrastructure.Persistence;
++using Tsikhanau.Monolith.Api.Modules;
++using Tsikhanau.Monolith.Infrastructure.Modules;
++
++namespace ModularMonolith.Modules.Tags;
++
++public sealed class TagsModule : Module
++{
++    protected override void AddServices(IServiceCollection services) =>
++        services.AddModuleInfrastructure<ITagsModule, TagsModuleFacade, TagsDbContext>();
++}
+-- 
+2.55.0
+

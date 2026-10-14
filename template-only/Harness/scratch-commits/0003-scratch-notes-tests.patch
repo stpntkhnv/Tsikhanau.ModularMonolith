@@ -1,0 +1,103 @@
+From 2303ffc2a1eabf2f7940e8a77dd375e04a7ee471 Mon Sep 17 00:00:00 2001
+From: scratch <scratch@local>
+Date: Sun, 4 Oct 2026 20:15:38 +0000
+Subject: [PATCH 3/4] scratch: notes tests
+
+---
+ .../ModularMonolith.Modules.Notes.csproj      |  3 +
+ .../Modules/Notes/NotesTests.cs               | 71 +++++++++++++++++++
+ 2 files changed, 74 insertions(+)
+ create mode 100644 src/Tests/IntegrationTests/Modules/Notes/NotesTests.cs
+
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj b/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
+index 5485b71..f4426a1 100644
+--- a/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
+@@ -1,4 +1,7 @@
+ <Project Sdk="Microsoft.NET.Sdk">
++  <ItemGroup>
++    <InternalsVisibleTo Include="ModularMonolith.IntegrationTests" />
++  </ItemGroup>
+   <ItemGroup>
+     <ProjectReference Include="..\ModularMonolith.Modules.Notes.Contracts\ModularMonolith.Modules.Notes.Contracts.csproj" />
+     <ProjectReference Include="..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj" />
+diff --git a/src/Tests/IntegrationTests/Modules/Notes/NotesTests.cs b/src/Tests/IntegrationTests/Modules/Notes/NotesTests.cs
+new file mode 100644
+index 0000000..80da689
+--- /dev/null
++++ b/src/Tests/IntegrationTests/Modules/Notes/NotesTests.cs
+@@ -0,0 +1,71 @@
++using System.Net;
++using System.Net.Http.Json;
++using Microsoft.Extensions.DependencyInjection;
++using ModularMonolith.Modules.Notes;
++using ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++using ModularMonolith.Modules.Notes.Features.CreateNote;
++using ModularMonolith.Testing.App;
++
++namespace ModularMonolith.IntegrationTests.Modules.Notes;
++
++public sealed class NotesTests(AppFixture appFixture) : AppTest(appFixture)
++{
++    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
++
++    [Fact]
++    public async Task Created_note_is_read_back_through_the_facade()
++    {
++        var notesModule = App.Services.GetRequiredService<INotesModule>();
++        var noteId = Guid.CreateVersion7();
++
++        var created = await notesModule.ExecuteCommandAsync(new CreateNoteCommand(noteId, "first"), CancellationToken);
++        var note = await notesModule.ExecuteQueryAsync(new GetNoteQuery(noteId), CancellationToken);
++
++        created.IsSuccess.ShouldBeTrue();
++        note.Value.ShouldBe(new NoteDto(noteId, "first"));
++    }
++
++    [Fact]
++    public async Task Created_note_is_processed_end_to_end()
++    {
++        var notesModule = App.Services.GetRequiredService<INotesModule>();
++        var noteId = Guid.CreateVersion7();
++        var created = await notesModule.ExecuteCommandAsync(new CreateNoteCommand(noteId, "second"), CancellationToken);
++
++        await App.ProcessQueuesAsync();
++
++        created.IsSuccess.ShouldBeTrue();
++    }
++
++    [Fact]
++    public async Task Created_note_reaches_tags()
++    {
++        var notesModule = App.Services.GetRequiredService<INotesModule>();
++        var noteId = Guid.CreateVersion7();
++        await notesModule.ExecuteCommandAsync(new CreateNoteCommand(noteId, "third"), CancellationToken);
++
++        await App.ProcessQueuesAsync();
++        var inboxRows = await App.Database.ReadQueueRowsAsync("tags", "inbox_messages");
++
++        inboxRows
++            .ShouldHaveSingleItem().IsProcessed
++            .ShouldBeTrue();
++    }
++
++    [Fact]
++    public async Task Note_is_created_over_http()
++    {
++        using var httpClient = App.CreateClient();
++        var noteId = Guid.CreateVersion7();
++
++        var createResponse = await httpClient.PostAsJsonAsync(
++            "/notes",
++            new { noteId, title = "fourth" },
++            CancellationToken);
++
++        var getResponse = await httpClient.GetAsync($"/notes/{noteId}", CancellationToken);
++
++        createResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
++        getResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
++    }
++}
+-- 
+2.55.0
+

@@ -1,0 +1,1235 @@
+From 1b17c4fc8b48ed664acc155615aab45867911e35 Mon Sep 17 00:00:00 2001
+From: scratch <scratch@local>
+Date: Wed, 7 Oct 2026 12:02:02 +0000
+Subject: [PATCH 1/4] scratch: notes module
+
+---
+ ModularMonolith.slnx                          |   4 +
+ .../ModularMonolith.Bootstrapper.csproj       |   1 +
+ .../ModularMonolith.Bootstrapper/Program.cs   |   2 +
+ .../INotesQuery.cs                            |   6 +
+ .../INotesQueryFacade.cs                      |  10 +
+ .../NoteCreatedIntegrationEvent.cs            |   7 +
+ ...larMonolith.Modules.Notes.Contracts.csproj |   5 +
+ .../Queries/GetNote/GetNoteQuery.cs           |   3 +
+ .../Queries/GetNote/NoteDto.cs                |   3 +
+ .../Notes/Events/NoteCreatedDomainEvent.cs    |   6 +
+ .../Domain/Notes/INoteRepository.cs           |  10 +
+ .../Domain/Notes/Note.cs                      |  18 ++
+ .../Domain/Notes/NoteErrors.cs                |   8 +
+ .../Domain/Notes/NoteId.cs                    |  12 +
+ .../Domain/Notes/NoteTitle.cs                 |  20 ++
+ .../Features/CreateNote/CreateNoteCommand.cs  |   3 +
+ .../CreateNote/CreateNoteCommandHandler.cs    |  21 ++
+ .../Features/CreateNote/CreateNoteEndpoint.cs |  22 ++
+ .../Features/GetNote/GetNoteEndpoint.cs       |  18 ++
+ .../Features/GetNote/GetNoteQueryHandler.cs   |  26 +++
+ .../NoteCreatedDomainEventHandler.cs          |  21 ++
+ .../INotesCommand.cs                          |   6 +
+ .../INotesModule.cs                           |  13 ++
+ .../20261004195113_Initial.Designer.cs        | 220 ++++++++++++++++++
+ .../Migrations/20261004195113_Initial.cs      | 137 +++++++++++
+ .../Migrations/NotesDbContextModelSnapshot.cs | 217 +++++++++++++++++
+ .../Infrastructure/NotesModuleFacade.cs       |  22 ++
+ .../Persistence/NoteConfiguration.cs          |  18 ++
+ .../Persistence/NoteRepository.cs             |  21 ++
+ .../Persistence/NotesDbContext.cs             |  13 ++
+ .../NotesDbContextDesignTimeFactory.cs        |   5 +
+ .../ModularMonolith.Modules.Notes.csproj      |  12 +
+ .../NotesModule.cs                            |  17 ++
+ .../Settings/NotesSettings.cs                 |   9 +
+ 34 files changed, 936 insertions(+)
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQueryFacade.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/IntegrationEvents/NoteCreatedIntegrationEvent.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/GetNoteQuery.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/NoteDto.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Events/NoteCreatedDomainEvent.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/INoteRepository.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Note.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteErrors.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteId.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteTitle.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommand.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommandHandler.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteEndpoint.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteEndpoint.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteQueryHandler.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Features/NoteCreated/NoteCreatedDomainEventHandler.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/INotesCommand.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/INotesModule.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.Designer.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/NotesDbContextModelSnapshot.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/NotesModuleFacade.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteConfiguration.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteRepository.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContext.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContextDesignTimeFactory.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/NotesModule.cs
+ create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes/Settings/NotesSettings.cs
+
+diff --git a/ModularMonolith.slnx b/ModularMonolith.slnx
+index 63c086e..8ce65bd 100644
+--- a/ModularMonolith.slnx
++++ b/ModularMonolith.slnx
+@@ -41,6 +41,10 @@
+     <Project Path="src/Core/Testing/Tsikhanau.Monolith.Testing.csproj" />
+   </Folder>
+   <Folder Name="/src/Modules/" />
++  <Folder Name="/src/Modules/Notes/">
++    <Project Path="src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj" />
++    <Project Path="src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj" />
++  </Folder>
+   <Folder Name="/src/Packages/">
+     <Project Path="src/Packages/Tsikhanau.Railway.Analyzers.CodeFixes/Tsikhanau.Railway.Analyzers.CodeFixes.csproj" />
+     <Project Path="src/Packages/Tsikhanau.Railway.Analyzers/Tsikhanau.Railway.Analyzers.csproj" />
+diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj b/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
+index c5243d7..79eb23a 100644
+--- a/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
++++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/ModularMonolith.Bootstrapper.csproj
+@@ -6,5 +6,6 @@
+     <ProjectReference Include="..\..\Core\Api\Tsikhanau.Monolith.Api.csproj" />
+     <ProjectReference Include="..\..\Core\Hosting\Tsikhanau.Monolith.Hosting.csproj" />
+     <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
++    <ProjectReference Include="..\..\Modules\Notes\ModularMonolith.Modules.Notes\ModularMonolith.Modules.Notes.csproj" />
+   </ItemGroup>
+ </Project>
+diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
+index 9ae84d6..1b3951a 100644
+--- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
++++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
+@@ -1,4 +1,5 @@
+ using ModularMonolith.Bootstrapper.Platform;
++using ModularMonolith.Modules.Notes;
+ using Tsikhanau.Monolith.Api.Modules;
+ using Tsikhanau.Monolith.Hosting;
+ using Tsikhanau.Monolith.Infrastructure.Diagnostics;
+@@ -28,6 +29,7 @@ static WebApplication BuildApp(String[] args)
+ 
+         builder.AddServiceDefaults(AppDiagnostics.SourceName);
+         builder.AddPlatform();
++        builder.AddModule<NotesModule>();
+         return builder.Build();
+     }
+     catch (Exception exception) when (exception is not HostAbortedException)
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs
+new file mode 100644
+index 0000000..b558be4
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs
+@@ -0,0 +1,6 @@
++using Tsikhanau.Monolith.Contracts.Queries;
++
++namespace ModularMonolith.Modules.Notes.Contracts;
++
++public interface INotesQuery<TResult> : IQuery<TResult>
++    where TResult : notnull;
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQueryFacade.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQueryFacade.cs
+new file mode 100644
+index 0000000..5fdcee9
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQueryFacade.cs
+@@ -0,0 +1,10 @@
++using Tsikhanau.Monolith.Contracts.Modules;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Contracts;
++
++public interface INotesQueryFacade : IModuleQueryFacade
++{
++    Task<Result<TResult>> ExecuteQueryAsync<TResult>(INotesQuery<TResult> query, CancellationToken cancellationToken)
++        where TResult : notnull;
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/IntegrationEvents/NoteCreatedIntegrationEvent.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/IntegrationEvents/NoteCreatedIntegrationEvent.cs
+new file mode 100644
+index 0000000..ac661db
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/IntegrationEvents/NoteCreatedIntegrationEvent.cs
+@@ -0,0 +1,7 @@
++using Tsikhanau.Monolith.Contracts.IntegrationEvents;
++
++namespace ModularMonolith.Modules.Notes.Contracts.IntegrationEvents;
++
++[IntegrationEventName("notes.note-created")]
++public sealed record NoteCreatedIntegrationEvent(DateTimeOffset OccurredOn, Guid NoteId, String Title)
++    : IntegrationEvent(OccurredOn);
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj
+new file mode 100644
+index 0000000..6d93395
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/ModularMonolith.Modules.Notes.Contracts.csproj
+@@ -0,0 +1,5 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <ItemGroup>
++    <ProjectReference Include="..\..\..\Core\Contracts\Tsikhanau.Monolith.Contracts.csproj" />
++  </ItemGroup>
++</Project>
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/GetNoteQuery.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/GetNoteQuery.cs
+new file mode 100644
+index 0000000..dd5f4b5
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/GetNoteQuery.cs
+@@ -0,0 +1,3 @@
++namespace ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++
++public sealed record GetNoteQuery(Guid NoteId) : INotesQuery<NoteDto>;
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/NoteDto.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/NoteDto.cs
+new file mode 100644
+index 0000000..08ab843
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/Queries/GetNote/NoteDto.cs
+@@ -0,0 +1,3 @@
++namespace ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++
++public sealed record NoteDto(Guid Id, String Title);
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Events/NoteCreatedDomainEvent.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Events/NoteCreatedDomainEvent.cs
+new file mode 100644
+index 0000000..00cd559
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Events/NoteCreatedDomainEvent.cs
+@@ -0,0 +1,6 @@
++using Tsikhanau.Monolith.Domain.Events;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes.Events;
++
++internal sealed record NoteCreatedDomainEvent(DateTimeOffset OccurredOn, NoteId NoteId, NoteTitle Title)
++    : DomainEvent(OccurredOn);
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/INoteRepository.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/INoteRepository.cs
+new file mode 100644
+index 0000000..2e8e12c
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/INoteRepository.cs
+@@ -0,0 +1,10 @@
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes;
++
++internal interface INoteRepository
++{
++    void Add(Note note);
++
++    Task<Result<Note>> GetAsync(NoteId noteId, CancellationToken cancellationToken);
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Note.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Note.cs
+new file mode 100644
+index 0000000..5a20e3c
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/Note.cs
+@@ -0,0 +1,18 @@
++using ModularMonolith.Modules.Notes.Domain.Notes.Events;
++using Tsikhanau.Monolith.Domain.Aggregates;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes;
++
++internal sealed class Note : AggregateRoot<NoteId>
++{
++    private Note(NoteId id) : base(id) { }
++
++    public NoteTitle Title { get; private set; }
++
++    public static Note Create(NoteId id, NoteTitle title, DateTimeOffset createdOn)
++    {
++        var note = new Note(id) { Title = title };
++        note.Raise(new NoteCreatedDomainEvent(createdOn, id, title));
++        return note;
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteErrors.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteErrors.cs
+new file mode 100644
+index 0000000..83c6169
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteErrors.cs
+@@ -0,0 +1,8 @@
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes;
++
++internal static class NoteErrors
++{
++    public static readonly Error NotFound = Error.NotFound("Note.NotFound", "Note was not found");
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteId.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteId.cs
+new file mode 100644
+index 0000000..e3b6fba
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteId.cs
+@@ -0,0 +1,12 @@
++using Tsikhanau.Monolith.Domain.Ids;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes;
++
++internal readonly record struct NoteId(Guid Value) : ITypedId<NoteId>
++{
++    public static NoteId From(Guid value) => new(value);
++
++    public static Result<NoteId> Parse(Guid value, String fieldName) =>
++        value == Guid.Empty ? Error.Validation(fieldName, "Id is required") : new NoteId(value);
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteTitle.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteTitle.cs
+new file mode 100644
+index 0000000..3824cf6
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Domain/Notes/NoteTitle.cs
+@@ -0,0 +1,20 @@
++using Tsikhanau.Monolith.Domain.ValueObjects;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Domain.Notes;
++
++internal readonly record struct NoteTitle : IValueObject<NoteTitle, String>
++{
++    public const Int32 MaxLength = 50;
++
++    private NoteTitle(String value) => Value = value;
++
++    public String Value { get; }
++
++    static NoteTitle IValueObject<NoteTitle, String>.From(String value) => new(value);
++
++    public static Result<NoteTitle> Create(String value, String fieldName) =>
++        String.IsNullOrWhiteSpace(value) || value.Length > MaxLength
++            ? Error.Validation(fieldName, $"Title must be 1 to {MaxLength} characters")
++            : new NoteTitle(value);
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommand.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommand.cs
+new file mode 100644
+index 0000000..90e6c74
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommand.cs
+@@ -0,0 +1,3 @@
++namespace ModularMonolith.Modules.Notes.Features.CreateNote;
++
++internal sealed record CreateNoteCommand(Guid NoteId, String Title) : INotesCommand<Guid>;
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommandHandler.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommandHandler.cs
+new file mode 100644
+index 0000000..fb2aaf1
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteCommandHandler.cs
+@@ -0,0 +1,21 @@
++using ModularMonolith.Modules.Notes.Domain.Notes;
++using Tsikhanau.Monolith.Application.Commands;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Features.CreateNote;
++
++internal sealed class CreateNoteCommandHandler(INoteRepository noteRepository, TimeProvider timeProvider)
++    : ICommandHandler<CreateNoteCommand, Guid>
++{
++    public Task<Result<Guid>> Handle(CreateNoteCommand command, CancellationToken cancellationToken) =>
++        Task.FromResult(
++            CreateNote(command)
++                .Tap(noteRepository.Add)
++                .Map(note => note.Id.Value));
++
++    private Result<Note> CreateNote(CreateNoteCommand command) =>
++        Result
++            .Collect(NoteId.Parse(command.NoteId, "noteId"))
++            .And(NoteTitle.Create(command.Title, "title"))
++            .Map((noteId, title) => Note.Create(noteId, title, timeProvider.GetUtcNow()));
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteEndpoint.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteEndpoint.cs
+new file mode 100644
+index 0000000..a43b209
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/CreateNote/CreateNoteEndpoint.cs
+@@ -0,0 +1,22 @@
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Routing;
++using Tsikhanau.Monolith.Api.Endpoints;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Features.CreateNote;
++
++internal sealed class CreateNoteEndpoint : IEndpoint
++{
++    public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapPost("/", CreateAsync);
++
++    private static Task<IResult> CreateAsync(
++        CreateNoteRequest request,
++        INotesModule notesModule,
++        CancellationToken cancellationToken) =>
++        notesModule
++            .ExecuteCommandAsync(new CreateNoteCommand(request.NoteId, request.Title), cancellationToken)
++            .ToHttpResultAsync();
++
++    internal sealed record CreateNoteRequest(Guid NoteId, String Title);
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteEndpoint.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteEndpoint.cs
+new file mode 100644
+index 0000000..ec2bc6f
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteEndpoint.cs
+@@ -0,0 +1,18 @@
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Routing;
++using ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++using Tsikhanau.Monolith.Api.Endpoints;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Features.GetNote;
++
++internal sealed class GetNoteEndpoint : IEndpoint
++{
++    public void Map(IEndpointRouteBuilder endpoints) => endpoints.MapGet("/{noteId:guid}", GetAsync);
++
++    private static Task<IResult> GetAsync(Guid noteId, INotesModule notesModule, CancellationToken cancellationToken) =>
++        notesModule
++            .ExecuteQueryAsync(new GetNoteQuery(noteId), cancellationToken)
++            .ToHttpResultAsync();
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteQueryHandler.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteQueryHandler.cs
+new file mode 100644
+index 0000000..ae8b8ea
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/GetNote/GetNoteQueryHandler.cs
+@@ -0,0 +1,26 @@
++using Dapper;
++using ModularMonolith.Modules.Notes.Contracts.Queries.GetNote;
++using ModularMonolith.Modules.Notes.Domain.Notes;
++using Tsikhanau.Monolith.Application.Queries;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Features.GetNote;
++
++internal sealed class GetNoteQueryHandler(ISqlConnectionFactory<INotesModule> sqlConnectionFactory)
++    : IQueryHandler<GetNoteQuery, NoteDto>
++{
++    private const String Sql = """
++        SELECT id AS "Id", title AS "Title"
++        FROM notes.notes
++        WHERE id = @NoteId
++        """;
++
++    public async Task<Result<NoteDto>> Handle(GetNoteQuery query, CancellationToken cancellationToken)
++    {
++        await using var connection = await sqlConnectionFactory.OpenConnectionAsync(cancellationToken);
++        Optional<NoteDto> foundNote = await connection.QuerySingleOrDefaultAsync<NoteDto>(
++            new CommandDefinition(Sql, new { query.NoteId }, cancellationToken: cancellationToken));
++
++        return foundNote.ToResult(NoteErrors.NotFound);
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/NoteCreated/NoteCreatedDomainEventHandler.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/NoteCreated/NoteCreatedDomainEventHandler.cs
+new file mode 100644
+index 0000000..01d8cc9
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Features/NoteCreated/NoteCreatedDomainEventHandler.cs
+@@ -0,0 +1,21 @@
++using ModularMonolith.Modules.Notes.Contracts.IntegrationEvents;
++using ModularMonolith.Modules.Notes.Domain.Notes.Events;
++using Tsikhanau.Monolith.Application.Events;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Features.NoteCreated;
++
++internal sealed class NoteCreatedDomainEventHandler(IOutbox<INotesModule> outbox)
++    : IDomainEventHandler<NoteCreatedDomainEvent>
++{
++    public Task<Result<Unit>> Handle(NoteCreatedDomainEvent domainEvent, CancellationToken cancellationToken)
++    {
++        outbox.Add(
++            new NoteCreatedIntegrationEvent(
++                domainEvent.OccurredOn,
++                domainEvent.NoteId.Value,
++                domainEvent.Title.Value));
++
++        return Task.FromResult(Result.Success());
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesCommand.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesCommand.cs
+new file mode 100644
+index 0000000..f8ccce6
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesCommand.cs
+@@ -0,0 +1,6 @@
++using Tsikhanau.Monolith.Application.Commands;
++
++namespace ModularMonolith.Modules.Notes;
++
++internal interface INotesCommand<TResult> : ICommand<TResult>
++    where TResult : notnull;
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesModule.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesModule.cs
+new file mode 100644
+index 0000000..fd04e29
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/INotesModule.cs
+@@ -0,0 +1,13 @@
++using ModularMonolith.Modules.Notes.Contracts;
++using Tsikhanau.Monolith.Application.Modules;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes;
++
++internal interface INotesModule : INotesQueryFacade, IModuleFacade
++{
++    Task<Result<TResult>> ExecuteCommandAsync<TResult>(
++        INotesCommand<TResult> command,
++        CancellationToken cancellationToken)
++        where TResult : notnull;
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.Designer.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.Designer.cs
+new file mode 100644
+index 0000000..2b86b0b
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.Designer.cs
+@@ -0,0 +1,220 @@
++﻿// <auto-generated />
++using System;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Migrations
++{
++    [DbContext(typeof(NotesDbContext))]
++    [Migration("20261004195113_Initial")]
++    partial class Initial
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasDefaultSchema("notes")
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Inbox.InboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<DateTimeOffset>("ReceivedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("received_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_inbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_inbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("inbox_messages", "notes");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.InternalCommands.InternalCommandMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset>("EnqueuedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("enqueued_on");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_internal_commands");
++
++                    b.HasIndex("NextAttemptOn", "EnqueuedOn", "Id")
++                        .HasDatabaseName("ix_internal_commands_next_attempt_on_enqueued_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("internal_commands", "notes");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Outbox.OutboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_outbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_outbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("outbox_messages", "notes");
++                });
++
++            modelBuilder.Entity("ModularMonolith.Modules.Notes.Domain.Notes.Note", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<string>("Title")
++                        .IsRequired()
++                        .HasMaxLength(50)
++                        .HasColumnType("character varying(50)")
++                        .HasColumnName("title");
++
++                    b.Property<int>("Version")
++                        .IsConcurrencyToken()
++                        .HasColumnType("integer")
++                        .HasColumnName("version");
++
++                    b.HasKey("Id")
++                        .HasName("pk_notes");
++
++                    b.ToTable("notes", "notes");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.cs
+new file mode 100644
+index 0000000..a497101
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/20261004195113_Initial.cs
+@@ -0,0 +1,137 @@
++﻿using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Migrations
++{
++    /// <inheritdoc />
++    public partial class Initial : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.EnsureSchema(
++                name: "notes");
++
++            migrationBuilder.CreateTable(
++                name: "inbox_messages",
++                schema: "notes",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    occurred_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    received_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_inbox_messages", x => x.id);
++                });
++
++            migrationBuilder.CreateTable(
++                name: "internal_commands",
++                schema: "notes",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    enqueued_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_internal_commands", x => x.id);
++                });
++
++            migrationBuilder.CreateTable(
++                name: "notes",
++                schema: "notes",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    title = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
++                    version = table.Column<int>(type: "integer", nullable: false)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_notes", x => x.id);
++                });
++
++            migrationBuilder.CreateTable(
++                name: "outbox_messages",
++                schema: "notes",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    occurred_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    type = table.Column<string>(type: "text", nullable: false),
++                    payload = table.Column<string>(type: "jsonb", nullable: false),
++                    trace_parent = table.Column<string>(type: "text", nullable: true),
++                    attempts = table.Column<int>(type: "integer", nullable: false),
++                    next_attempt_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                    last_error = table.Column<string>(type: "text", nullable: true),
++                    processed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
++                    failed_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_outbox_messages", x => x.id);
++                });
++
++            migrationBuilder.CreateIndex(
++                name: "ix_inbox_messages_next_attempt_on_occurred_on_id",
++                schema: "notes",
++                table: "inbox_messages",
++                columns: new[] { "next_attempt_on", "occurred_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++
++            migrationBuilder.CreateIndex(
++                name: "ix_internal_commands_next_attempt_on_enqueued_on_id",
++                schema: "notes",
++                table: "internal_commands",
++                columns: new[] { "next_attempt_on", "enqueued_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++
++            migrationBuilder.CreateIndex(
++                name: "ix_outbox_messages_next_attempt_on_occurred_on_id",
++                schema: "notes",
++                table: "outbox_messages",
++                columns: new[] { "next_attempt_on", "occurred_on", "id" },
++                filter: "processed_on IS NULL AND failed_on IS NULL");
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(
++                name: "inbox_messages",
++                schema: "notes");
++
++            migrationBuilder.DropTable(
++                name: "internal_commands",
++                schema: "notes");
++
++            migrationBuilder.DropTable(
++                name: "notes",
++                schema: "notes");
++
++            migrationBuilder.DropTable(
++                name: "outbox_messages",
++                schema: "notes");
++        }
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/NotesDbContextModelSnapshot.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/NotesDbContextModelSnapshot.cs
+new file mode 100644
+index 0000000..c946f53
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Migrations/NotesDbContextModelSnapshot.cs
+@@ -0,0 +1,217 @@
++﻿// <auto-generated />
++using System;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Migrations
++{
++    [DbContext(typeof(NotesDbContext))]
++    partial class NotesDbContextModelSnapshot : ModelSnapshot
++    {
++        protected override void BuildModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasDefaultSchema("notes")
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Inbox.InboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<DateTimeOffset>("ReceivedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("received_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_inbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_inbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("inbox_messages", "notes");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.InternalCommands.InternalCommandMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset>("EnqueuedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("enqueued_on");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_internal_commands");
++
++                    b.HasIndex("NextAttemptOn", "EnqueuedOn", "Id")
++                        .HasDatabaseName("ix_internal_commands_next_attempt_on_enqueued_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("internal_commands", "notes");
++                });
++
++            modelBuilder.Entity("Tsikhanau.Monolith.Infrastructure.Outbox.OutboxMessage", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<int>("Attempts")
++                        .HasColumnType("integer")
++                        .HasColumnName("attempts");
++
++                    b.Property<DateTimeOffset?>("FailedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("failed_on");
++
++                    b.Property<string>("LastError")
++                        .HasColumnType("text")
++                        .HasColumnName("last_error");
++
++                    b.Property<DateTimeOffset>("NextAttemptOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("next_attempt_on");
++
++                    b.Property<DateTimeOffset>("OccurredOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("occurred_on");
++
++                    b.Property<string>("Payload")
++                        .IsRequired()
++                        .HasColumnType("jsonb")
++                        .HasColumnName("payload");
++
++                    b.Property<DateTimeOffset?>("ProcessedOn")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("processed_on");
++
++                    b.Property<string>("TraceParent")
++                        .HasColumnType("text")
++                        .HasColumnName("trace_parent");
++
++                    b.Property<string>("Type")
++                        .IsRequired()
++                        .HasColumnType("text")
++                        .HasColumnName("type");
++
++                    b.HasKey("Id")
++                        .HasName("pk_outbox_messages");
++
++                    b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
++                        .HasDatabaseName("ix_outbox_messages_next_attempt_on_occurred_on_id")
++                        .HasFilter("processed_on IS NULL AND failed_on IS NULL");
++
++                    b.ToTable("outbox_messages", "notes");
++                });
++
++            modelBuilder.Entity("ModularMonolith.Modules.Notes.Domain.Notes.Note", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<string>("Title")
++                        .IsRequired()
++                        .HasMaxLength(50)
++                        .HasColumnType("character varying(50)")
++                        .HasColumnName("title");
++
++                    b.Property<int>("Version")
++                        .IsConcurrencyToken()
++                        .HasColumnType("integer")
++                        .HasColumnName("version");
++
++                    b.HasKey("Id")
++                        .HasName("pk_notes");
++
++                    b.ToTable("notes", "notes");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/NotesModuleFacade.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/NotesModuleFacade.cs
+new file mode 100644
+index 0000000..35ab025
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/NotesModuleFacade.cs
+@@ -0,0 +1,22 @@
++using Microsoft.Extensions.DependencyInjection;
++using ModularMonolith.Modules.Notes.Contracts;
++using Tsikhanau.Monolith.Infrastructure.Dispatching;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Infrastructure;
++
++internal sealed class NotesModuleFacade(IServiceScopeFactory serviceScopeFactory)
++    : ModuleFacade<INotesModule>(serviceScopeFactory), INotesModule
++{
++    public Task<Result<TResult>> ExecuteCommandAsync<TResult>(
++        INotesCommand<TResult> command,
++        CancellationToken cancellationToken)
++        where TResult : notnull =>
++        SendAsync(command, cancellationToken);
++
++    public Task<Result<TResult>> ExecuteQueryAsync<TResult>(
++        INotesQuery<TResult> query,
++        CancellationToken cancellationToken)
++        where TResult : notnull =>
++        QueryAsync(query, cancellationToken);
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteConfiguration.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteConfiguration.cs
+new file mode 100644
+index 0000000..5eda087
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteConfiguration.cs
+@@ -0,0 +1,18 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using ModularMonolith.Modules.Notes.Domain.Notes;
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++
++internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
++{
++    public void Configure(EntityTypeBuilder<Note> builder)
++    {
++        builder.ToTable("notes");
++        builder.HasKey(note => note.Id);
++
++        builder
++            .Property(note => note.Title)
++            .HasMaxLength(NoteTitle.MaxLength);
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteRepository.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteRepository.cs
+new file mode 100644
+index 0000000..379e998
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NoteRepository.cs
+@@ -0,0 +1,21 @@
++using ModularMonolith.Modules.Notes.Domain.Notes;
++using Tsikhanau.Railway;
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++
++internal sealed class NoteRepository(NotesDbContext notesDbContext) : INoteRepository
++{
++    public void Add(Note note) =>
++        notesDbContext
++            .Set<Note>()
++            .Add(note);
++
++    public async Task<Result<Note>> GetAsync(NoteId noteId, CancellationToken cancellationToken)
++    {
++        Optional<Note> foundNote = await notesDbContext
++            .Set<Note>()
++            .FindAsync([noteId], cancellationToken);
++
++        return foundNote.ToResult(NoteErrors.NotFound);
++    }
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContext.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContext.cs
+new file mode 100644
+index 0000000..899fd89
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContext.cs
+@@ -0,0 +1,13 @@
++using Microsoft.EntityFrameworkCore;
++using Tsikhanau.Monolith.Infrastructure.Persistence;
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++
++internal sealed class NotesDbContext(DbContextOptions<NotesDbContext> dbContextOptions)
++    : ModuleDbContext(dbContextOptions)
++{
++    public const String SchemaName = "notes";
++
++    protected override void ConfigureModule(ModelBuilder modelBuilder) =>
++        modelBuilder.ApplyConfiguration(new NoteConfiguration());
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContextDesignTimeFactory.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContextDesignTimeFactory.cs
+new file mode 100644
+index 0000000..d11e111
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Infrastructure/Persistence/NotesDbContextDesignTimeFactory.cs
+@@ -0,0 +1,5 @@
++using Tsikhanau.Monolith.Infrastructure.Persistence;
++
++namespace ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++
++internal sealed class NotesDbContextDesignTimeFactory : ModuleDbContextDesignTimeFactory<NotesDbContext>;
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj b/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
+new file mode 100644
+index 0000000..5485b71
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/ModularMonolith.Modules.Notes.csproj
+@@ -0,0 +1,12 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <ItemGroup>
++    <ProjectReference Include="..\ModularMonolith.Modules.Notes.Contracts\ModularMonolith.Modules.Notes.Contracts.csproj" />
++    <ProjectReference Include="..\..\..\Core\Domain\Tsikhanau.Monolith.Domain.csproj" />
++    <ProjectReference Include="..\..\..\Core\Application\Tsikhanau.Monolith.Application.csproj" />
++    <ProjectReference Include="..\..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
++    <ProjectReference Include="..\..\..\Core\Api\Tsikhanau.Monolith.Api.csproj" />
++  </ItemGroup>
++  <ItemGroup>
++    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
++  </ItemGroup>
++</Project>
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/NotesModule.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/NotesModule.cs
+new file mode 100644
+index 0000000..2556fcd
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/NotesModule.cs
+@@ -0,0 +1,17 @@
++using Microsoft.Extensions.DependencyInjection;
++using ModularMonolith.Modules.Notes.Domain.Notes;
++using ModularMonolith.Modules.Notes.Infrastructure;
++using ModularMonolith.Modules.Notes.Infrastructure.Persistence;
++using ModularMonolith.Modules.Notes.Settings;
++using Tsikhanau.Monolith.Api.Modules;
++using Tsikhanau.Monolith.Infrastructure.Modules;
++
++namespace ModularMonolith.Modules.Notes;
++
++public sealed class NotesModule : Module
++{
++    protected override void AddServices(IServiceCollection services) =>
++        AddSettings<NotesSettings>(services)
++            .AddModuleInfrastructure<INotesModule, NotesModuleFacade, NotesDbContext>()
++            .AddScoped<INoteRepository, NoteRepository>();
++}
+diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes/Settings/NotesSettings.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes/Settings/NotesSettings.cs
+new file mode 100644
+index 0000000..9269ece
+--- /dev/null
++++ b/src/Modules/Notes/ModularMonolith.Modules.Notes/Settings/NotesSettings.cs
+@@ -0,0 +1,9 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace ModularMonolith.Modules.Notes.Settings;
++
++internal sealed record NotesSettings
++{
++    [Range(1, 1000)]
++    public Int32 MaxNotes { get; init; } = 100;
++}
+-- 
+2.55.0
+
