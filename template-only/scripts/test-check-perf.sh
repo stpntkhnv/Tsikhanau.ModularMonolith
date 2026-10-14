@@ -166,7 +166,7 @@ chmod +x "$scratch/bin/dotnet"
 run_fake() {
   rm -f -- "$scratch"/state/*
   (cd "$scratch/repo" && PATH="$scratch/bin:$PATH" FAKE_STATE="$scratch/state" TMPDIR="$scratch/tmp" \
-    bash "$script_dir/check-perf.sh" HEAD 2>&1)
+    env -u PERF_PG bash "$script_dir/check-perf.sh" HEAD 2>&1)
 }
 
 routed_to_other() {
@@ -189,6 +189,10 @@ scratch_cases() {
   expect_contains "the warm-up spike does not reach the medians" "$output" "command: base median 100 (min 100, max 100)"
   expect_equal "worktrees are removed after a clean run" "$(worktree_lines)" "1"
   expect_equal "the temp folder is emptied after a clean run" "$(ls -A "$scratch/tmp" | wc -l)" "0"
+
+  output=$(PERF_PG='' run_fake)
+  code=$?
+  expect_equal "a fake run ignores an exported empty PERF_PG" "$code" "0"
 
   output=$(FAKE_NOISY=1 run_fake)
   code=$?
