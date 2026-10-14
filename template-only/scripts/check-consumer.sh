@@ -18,7 +18,7 @@ extra_type=$extra_folder/ExtraMarker.cs
 extra_assembly=Tsikhanau.Monolith.Extra.dll
 hook_mark='core-hash: the staged core matches the staged core.lock'
 rule_links=(AGENTS.md CLAUDE.md STYLE.md docs/engineering-principles.md docs/playbooks)
-new_app_skips=54
+new_app_skips=56
 one_module_skips=28
 
 main() {

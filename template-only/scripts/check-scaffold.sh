@@ -23,7 +23,7 @@ main() {
   mkdir "$work/logs"
   echo "check-scaffold: $name, working folder $work"
 
-  make_app 54
+  make_app 56
   scaffold 28 module Notes --settings
   scaffold 52 module Tags
   scaffold 45 feature Notes ArchiveNote --kind command

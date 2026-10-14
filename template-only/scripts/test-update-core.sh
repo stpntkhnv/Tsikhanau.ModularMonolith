@@ -1212,7 +1212,7 @@ run_case "core-hash print and check fail when sha256sum fails on the data" case_
 run_case "core-hash check refuses a core.lock whose hash is not sha256: and 64 lowercase hex digits" case_mangled_lock
 run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
 run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
-run_case "an app that still declares EmptySubject.Pass and returns on the placeholder builds after update-core, and its arch tests on an empty subject skip" case_legacy_app_skips_an_empty_subject
+run_case "app code that still declares EmptySubject.Pass and returns on the placeholder builds on the current core (an update-core from A to E, not from an old core), and its arch tests on an empty subject skip" case_legacy_app_skips_an_empty_subject
 run_case "the gate stops after the tests and names init when AGENTS.md is not a link into a rulebook with check-markers.cs" case_gate_needs_linked_rules
 run_case "the gate runs the linked rulebook's check-markers.cs on the app and fails when it fails" case_gate_checks_rule_markers
 run_case "with CI=true the gate skips the marker check with a message" case_gate_skips_rule_markers_in_ci

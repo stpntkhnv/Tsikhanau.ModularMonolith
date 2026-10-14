@@ -15,6 +15,8 @@ namespace ModularMonolith.IntegrationTests.Modules;
 
 public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture)
 {
+    private const String NoModuleReason = "There are no production modules";
+
     private static readonly String[] QueueTables =
         [InboxMessage.Table, InternalCommandMessage.Table, OutboxMessage.Table];
 
@@ -23,8 +25,14 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public void Every_module_folder_has_exactly_one_registered_module() =>
-        RegisteredModuleNames.ShouldBe(ProductionModules.Names, ignoreOrder: true);
+    public void Every_module_folder_has_exactly_one_registered_module()
+    {
+        var registeredModuleNames = RegisteredModuleNames;
+
+        Assert.SkipWhen(ProductionModules.Names.Length == 0 && registeredModuleNames.Count == 0, NoModuleReason);
+
+        registeredModuleNames.ShouldBe(ProductionModules.Names, ignoreOrder: true);
+    }
 
     [Fact]
     public void Every_module_class_has_the_name_of_the_module_it_registers()
@@ -34,7 +42,11 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
             .Select(module => module.Name)
             .ToList();
 
-        moduleClassNames.ShouldBe(RegisteredModuleNames, ignoreOrder: true);
+        var registeredModuleNames = RegisteredModuleNames;
+
+        Assert.SkipWhen(moduleClassNames.Count == 0 && registeredModuleNames.Count == 0, NoModuleReason);
+
+        moduleClassNames.ShouldBe(registeredModuleNames, ignoreOrder: true);
     }
 
     [Theory]
