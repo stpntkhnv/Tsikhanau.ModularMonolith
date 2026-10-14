@@ -792,7 +792,7 @@ public sealed class FeatureCommandTests : IAsyncLifetime
         exitCode.ShouldBe(1);
         error.ShouldBe(
             $"scaffold: feature name 'GetNote' with route '{Route}' makes {NotesTests}/GetNoteTests.cs:16 "
-            + "124 characters long, more than the 120 the build allows; choose a shorter name\n");
+            + "124 characters long, more than the 120 the build allows; choose a shorter name or --route\n");
     }
 
     [Fact]

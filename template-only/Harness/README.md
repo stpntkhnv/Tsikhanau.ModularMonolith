@@ -21,7 +21,7 @@ bash template-only/Harness/run-mutations.sh --dry-run . <new folder outside the 
 bash template-only/Harness/run-mutations.sh . <new folder outside the repository>
 ```
 
-Both first clear the git routing variables, record the source repository (HEAD, index and the content of its working set), copy the working set (tracked and not ignored files, so uncommitted changes count) into `<folder>/repo`, commit it there, apply the patches, build the harness and restore the dotnet tools. At the end they check that the source did not change.
+Both first clear the git routing variables and run git without the user's and the system's config (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`); in the copy git also runs without hooks, a template folder and the default global ignore and attributes files, so a personal setting cannot change the copy. Then they record the source repository (HEAD, index and the content of its working set), copy the working set (tracked and not ignored files, so uncommitted changes count) into `<folder>/repo`, commit it there, apply the patches, build the harness and restore the dotnet tools. At the end they check that the source did not change.
 
 - Dry run (about half a minute; the gate and the pre-push hook run it): every mutation applies and reverts; nothing is built but the harness and, for m25 and m25b, Notes with its migration.
 - Full run (about 12 minutes, needs the gate's container settings; the `harness` job of `.github/workflows/template.yml` runs it): a baseline (both solutions built, `src/Tests/ArchTests`, `template-only/ArchRules.Tests` and `src/Tests/IntegrationTests` run, skipped tests counted per project), then per mutation the same checks, stopping at the first failing stage.

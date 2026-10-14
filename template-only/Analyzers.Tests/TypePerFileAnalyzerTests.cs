@@ -2,10 +2,17 @@ namespace Tsikhanau.Monolith.Analyzers.Tests;
 
 public sealed class TypePerFileAnalyzerTests
 {
+    private const String RuleLine =
+        "Rule in AGENTS.md: One type per file, named after the type; types of one name that differ only in type "
+        + "parameters share a file, and a `file` type may sit beside them.";
+
     private const String ExpectedMessage =
-        "Type Bar does not belong in Foo.cs: one type per file, named after the type, so move it to Bar.cs. Rule in "
-        + "AGENTS.md: One type per file, named after the type; types of one name that differ only in type "
-        + "parameters share a file.";
+        "Type Bar does not belong in Foo.cs: one type per file, named after the type, so move it to Bar.cs. "
+        + RuleLine;
+
+    private const String SameNameMessage =
+        "Type Foo does not belong in Foo.cs: one type per file, named after the type, so move it to a Foo.cs of its "
+        + $"own in the folder of namespace Two. {RuleLine}";
 
     public static TheoryData<String> SecondTypes =>
     [
@@ -16,6 +23,17 @@ public sealed class TypePerFileAnalyzerTests
         "public interface Bar;",
         "public enum Bar { One }",
         "public delegate void Bar();",
+    ];
+
+    public static TheoryData<String> FileTypes =>
+    [
+        "file sealed class Helper;",
+        "file sealed record Helper;",
+        "file record struct Helper;",
+        "file struct Helper;",
+        "file interface IHelper;",
+        "file enum Kind { One }",
+        "file delegate void Callback();",
     ];
 
     [Theory]
@@ -40,6 +58,42 @@ public sealed class TypePerFileAnalyzerTests
             "src/Foo.cs");
 
         messages.ShouldBe([ExpectedMessage]);
+    }
+
+    [Theory]
+    [MemberData(nameof(FileTypes))]
+    public async Task File_type_beside_the_type_of_the_file_passes(String fileType)
+    {
+        var lines = await GetReportedLinesAsync(
+            "Foo.cs",
+            "namespace App;",
+            "public sealed class Foo;",
+            fileType);
+
+        lines.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task File_that_holds_only_file_types_passes()
+    {
+        var lines = await GetReportedLinesAsync(
+            "Helpers.cs",
+            "namespace App;",
+            "file sealed class Helper;",
+            "file static class Extensions;");
+
+        lines.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Message_for_the_same_name_in_another_namespace_names_the_folder_of_that_namespace()
+    {
+        var messages = await AnalyzerRunner.GetReportedMessagesAsync(
+            new TypePerFileAnalyzer(),
+            "namespace One { public sealed class Foo; }\nnamespace Two { public sealed class Foo<T>; }",
+            "src/Foo.cs");
+
+        messages.ShouldBe([SameNameMessage]);
     }
 
     [Fact]

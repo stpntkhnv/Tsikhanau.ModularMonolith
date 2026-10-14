@@ -37,6 +37,7 @@ clear_git_routing() {
   if [[ ${#variables[@]} -gt 0 ]]; then
     unset -- "${variables[@]}"
   fi
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1
 }
 
 working_set() {
@@ -76,6 +77,8 @@ in_copy() {
     -c user.email=harness@localhost \
     -c commit.gpgsign=false \
     -c core.hooksPath=/dev/null \
+    -c core.excludesFile=/dev/null \
+    -c core.attributesFile=/dev/null \
     "$@"
 }
 
@@ -84,7 +87,7 @@ copy_working_set() {
   working_set "$source_repository" > "$list"
   mkdir -p "$repository"
   tar -C "$source_repository" --null -T "$list" -cf - | tar -C "$repository" -xf -
-  in_copy init -q
+  in_copy init -q --template=
   in_copy add -A
   in_copy commit -q -m "working set of $source_repository"
   echo "run-mutations: copied the working set of $source_repository ($(tr -cd '\0' < "$list" | wc -c) files)"
@@ -149,15 +152,15 @@ apply_mutation() {
   local mutation=$1
   (cd "$repository" && dotnet "$harness_dll" "$mutation") > "$results/$mutation.mutate" 2>&1 < /dev/null &&
     grep -qx "applied $mutation" "$results/$mutation.mutate" &&
-    git -C "$repository" status --porcelain > "$results/$mutation.status" &&
+    in_copy status --porcelain > "$results/$mutation.status" &&
     [[ -s "$results/$mutation.status" ]]
 }
 
 revert_mutation() {
-  git -C "$repository" checkout -q -- .
-  git -C "$repository" clean -fdq
-  if [[ -n "$(git -C "$repository" status --porcelain)" ]]; then
-    git -C "$repository" status --porcelain >&2
+  in_copy checkout -q -- .
+  in_copy clean -fdq
+  if [[ -n "$(in_copy status --porcelain)" ]]; then
+    in_copy status --porcelain >&2
     abort "reverting $1 left changes behind"
   fi
 }

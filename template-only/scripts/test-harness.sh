@@ -103,6 +103,7 @@ case $1 in
       echo touched >> "$FAKE_TOUCH_SOURCE"
     fi
     echo "$2" > planted
+    echo "$2" >> src/Fake/tracked.txt
     echo "applied $2"
     ;;
 esac
@@ -176,6 +177,43 @@ expect_equal "the copy has the four scratch commits on its working set commit" \
   "$(git -C "$scratch/work-dry/repo" rev-list --count HEAD 2> /dev/null)" "5"
 expect_equal "the copy is clean after the last revert" \
   "$(git -C "$scratch/work-dry/repo" status --porcelain 2>&1 || echo "no repository")" ""
+
+copy_files() {
+  (cd "$1" && find . -path ./.git -prune -o -type f ! -name 'scratch-*.txt' -printf '%P\0' |
+    sort -z | xargs -0 sha256sum --)
+}
+
+source_files() {
+  (cd "$1" && git ls-files -z --cached --others --exclude-standard | sort -z | xargs -0 sha256sum --)
+}
+
+hostile=$scratch/hostile
+mkdir -p "$hostile/hooks" "$hostile/template/hooks" "$hostile/home/.config/git"
+for hook in "$hostile/hooks/post-checkout" "$hostile/template/hooks/post-checkout"; do
+  printf '#!/usr/bin/env bash\necho "%s ran" >> "%s"\n' "$hook" "$hostile/hook-ran" > "$hook"
+  chmod +x "$hook"
+done
+printf 'planted\n' > "$hostile/excludes"
+printf '*.txt text eol=crlf\n' > "$hostile/home/.config/git/attributes"
+cat > "$hostile/home/.gitconfig" <<CONFIG
+[core]
+  hooksPath = $hostile/hooks
+  autocrlf = true
+  excludesFile = $hostile/excludes
+[init]
+  templateDir = $hostile/template
+CONFIG
+output=$(HOME=$hostile/home XDG_CONFIG_HOME=$hostile/home/.config GIT_CONFIG_GLOBAL=$hostile/home/.gitconfig \
+  GIT_TEMPLATE_DIR=$hostile/template run_routed --dry-run "$fake_source" "$scratch/work-hostile")
+code=$?
+expect_equal "a dry run under a hostile global git configuration exits 0" "$code" "0"
+expect_equal "a dry run under a hostile global git configuration runs none of its hooks" \
+  "$(cat "$hostile/hook-ran" 2> /dev/null)" ""
+expect_equal "the copy under a hostile global git configuration gets no template hooks" \
+  "$(ls -A "$scratch/work-hostile/repo/.git/hooks" 2> /dev/null)" ""
+expect_equal "the copy under a hostile global git configuration holds the working set byte for byte" \
+  "$(copy_files "$scratch/work-hostile/repo")" "$(source_files "$fake_source")"
+expect_source_unchanged "a dry run under a hostile global git configuration"
 
 output=$(FAKE_UNAPPLIED=f07_fake_mutation run_routed --dry-run "$fake_source" "$scratch/work-unapplied")
 code=$?

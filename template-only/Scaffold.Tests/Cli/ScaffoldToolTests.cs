@@ -144,6 +144,11 @@ public sealed class ScaffoldToolTests : IDisposable
         "/{id:guid}/{id:guid}",
         "--kind command --endpoint delete",
         "route '/{id:guid}/{id:guid}' names the parameter id twice: each parameter needs its own name")]
+    [InlineData(
+        "/{noteId:guid}/tags/{noteid:guid}",
+        "--kind query --endpoint get",
+        "route '/{noteId:guid}/tags/{noteid:guid}' names the parameter noteId twice: "
+        + "each parameter needs its own name")]
     public async Task Route_without_an_endpoint_or_that_breaks_a_route_rule_is_refused_with_the_usage(
         String route,
         String kindAndMethod,

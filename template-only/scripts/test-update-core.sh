@@ -715,6 +715,23 @@ case_gate_reads_a_crlf_skip_file() {
   expect_green_gate CI=true
 }
 
+case_gate_removes_a_failed_harness_dry_run_folder() {
+  local app script
+  app=$(new_consumer harness-dry)
+  cd "$app"
+  mkdir -p template-only/.gate template-only/scripts template-only/Harness
+  cp Acme.Shop.slnx template-only/Template.slnx
+  printf '0\n' > template-only/.gate/skips
+  for script in test-update-core test-init test-check-perf test-distinct-ports test-harness; do
+    printf '#!/usr/bin/env bash\n' > "template-only/scripts/$script.sh"
+  done
+  printf '#!/usr/bin/env bash\nmkdir -p "$3/repo"\necho "run-mutations: stub failed" >&2\nexit 1\n' \
+    > template-only/Harness/run-mutations.sh
+  empty_folder "$TMPDIR"
+  expect_red_gate 'run-mutations: stub failed' CI=true
+  [[ -z "$(ls -A "$TMPDIR")" ]] || fail "the gate left in its temporary folder: $(ls -A "$TMPDIR")"
+}
+
 make_legacy_app() {
   local inputs=src/Tests/ArchTests/Inputs/AppInputs.cs
   local host_line='    public static Assembly HostAssembly => typeof(Program).Assembly;'
@@ -1212,6 +1229,7 @@ run_case "core-hash print and check fail when sha256sum fails on the data" case_
 run_case "core-hash check refuses a core.lock whose hash is not sha256: and 64 lowercase hex digits" case_mangled_lock
 run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
 run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
+run_case "the gate removes the work folder of a harness dry run that fails" case_gate_removes_a_failed_harness_dry_run_folder
 run_case "app code that still declares EmptySubject.Pass and returns on the placeholder builds on the current core (an update-core from A to E, not from an old core), and its arch tests on an empty subject skip" case_legacy_app_skips_an_empty_subject
 run_case "the gate stops after the tests and names init when AGENTS.md is not a link into a rulebook with check-markers.cs" case_gate_needs_linked_rules
 run_case "the gate runs the linked rulebook's check-markers.cs on the app and fails when it fails" case_gate_checks_rule_markers

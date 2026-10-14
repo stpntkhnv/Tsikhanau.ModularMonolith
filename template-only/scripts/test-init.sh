@@ -423,6 +423,34 @@ case_kept_links_to_two_rulebooks() {
   done
 }
 
+snapshot_tree() {
+  (
+    cd "$1"
+    find . -printf '%m %y %s %p -> %l\n' | sort
+    git config --local --list
+    cat "$(git rev-parse --git-path info/exclude)"
+  )
+}
+
+case_new_worktree_of_links_to_two_rulebooks() {
+  local app mode tree=$work/cases/tree-conflict/tree
+  app=$(mixed_app tree-conflict)
+  ln -s "$rulebook" "$work/cases/tree-conflict/Tsikhanau.Rulebook"
+  git -C "$app" worktree add -q "$tree" -b tree
+  : > "$(dotnet_calls "$tree")"
+  snapshot_tree "$tree" > "$work/before"
+  for mode in '' --rules-only; do
+    run_in "$tree" env -u RULEBOOK_PATH DOTNET_CALLS="$(dotnet_calls "$tree")" bash scripts/init.sh $mode
+    expect_refused "the rules links of the main worktree $app point to different rulebooks: .*RULEBOOK_PATH"
+    expect_said "$custom_rulebook"
+    expect_said "$rulebook"
+    snapshot_tree "$tree" > "$work/after"
+    diff -- "$work/before" "$work/after" || fail "a refused init changed the worktree"
+    expect_no_rule_links "$tree"
+    [[ ! -s "$(dotnet_calls "$tree")" ]] || fail "a refused init must stop before the build"
+  done
+}
+
 case_explicit_path_ignores_conflict() {
   local app
   app=$(mixed_app conflict-explicit)
@@ -535,6 +563,7 @@ run_case "an explicit RULEBOOK_PATH replaces links to another rulebook" case_exp
 run_case "missing links go to the rulebook the kept links point to" case_missing_links_follow_the_kept_rulebook
 run_case "kept links to two rulebooks stop init before any write and name RULEBOOK_PATH" case_kept_links_to_two_rulebooks
 run_case "an explicit RULEBOOK_PATH is not stopped by links to two rulebooks" case_explicit_path_ignores_conflict
+run_case "a new worktree of a main checkout with links to two rulebooks stops init before any write and names RULEBOOK_PATH" case_new_worktree_of_links_to_two_rulebooks
 run_case "a relative and an absolute link to the same rulebook are no conflict" case_relative_and_absolute_links_agree
 run_case "a rulebook reached through an alias and through its real path is no conflict" case_alias_and_real_path_agree
 run_case "a rulebook path with a space works" case_rulebook_path_with_a_space

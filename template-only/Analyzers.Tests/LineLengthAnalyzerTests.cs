@@ -32,6 +32,14 @@ public sealed class LineLengthAnalyzerTests
             { "var text = $$\"\"\"", "    \"\"\";" },
         };
 
+    public static TheoryData<String, String> MultilineVerbatimLiteralsAndComments =>
+        new()
+        {
+            { "var text = @\"", "    \";" },
+            { "var text = $@\"{name}", "    \";" },
+            { "/*", "*/" },
+        };
+
     public static TheoryData<String> MultilineRawOpenings =>
     [
         "\"\"\"",
@@ -99,6 +107,23 @@ public sealed class LineLengthAnalyzerTests
                 closing));
 
         lines.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(MultilineVerbatimLiteralsAndComments))]
+    public async Task Long_line_inside_a_multiline_verbatim_literal_or_block_comment_is_reported(
+        String opening,
+        String closing)
+    {
+        var lines = await GetReportedLinesAsync(
+            Source(
+                opening,
+                Line("    ", 121, ""),
+                "    short",
+                Line("    ", 200, ""),
+                closing));
+
+        lines.ShouldBe([2, 4]);
     }
 
     [Theory]

@@ -40,6 +40,9 @@ public sealed class EndpointRouteTests
     [InlineData("/{id:int}", $"has the parameter {{id:int}}: {GuidIdRule}")]
     [InlineData("/{id:guid?}", $"has the parameter {{id:guid?}}: {GuidIdRule}")]
     [InlineData("/{id:guid}/{id:guid}", "names the parameter id twice: each parameter needs its own name")]
+    [InlineData(
+        "/{noteId:guid}/tags/{noteid:guid}",
+        "names the parameter noteId twice: each parameter needs its own name")]
     public void Route_that_breaks_a_route_rule_is_refused_with_the_rule(String path, String rule)
     {
         var message = EndpointRoute

@@ -16,6 +16,9 @@ public sealed class AnalyzerSourcesTests
 
     private static readonly ImmutableArray<DiagnosticAnalyzer> AnalyzersLeftOut =
     [
+        new CallChainAnalyzer(),
+        new StatementSpacingAnalyzer(),
+        new ClrTypeNameAnalyzer(),
         new LineLengthAnalyzer(),
         new TypePerFileAnalyzer(),
     ];
