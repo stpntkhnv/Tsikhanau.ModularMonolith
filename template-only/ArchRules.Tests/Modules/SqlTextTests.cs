@@ -131,6 +131,10 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT t.order, t.* FROM t")]
     [InlineData("SELECT t.from, t.* FROM t")]
     [InlineData("SELECT id AS order, t.* FROM t")]
+    [InlineData("SELECT to_jsonb(t.*) FROM notes.notes t")]
+    [InlineData("SELECT ROW(t.*) FROM t")]
+    [InlineData("SELECT coalesce(a, t.*) FROM t")]
+    [InlineData("SELECT (SELECT to_jsonb(u.*) FROM u LIMIT 1) FROM t")]
     public void Sql_that_reads_every_column_is_a_star_column(String sql) =>
         SqlScanner
             .ReadsEveryColumn(sql)
@@ -164,6 +168,15 @@ public sealed class SqlTextTests : SqlTextTests<TestModuleInputs>
     [InlineData("SELECT $q$ , * --$q$")]
     [InlineData("SELECT t.order FROM t")]
     [InlineData("SELECT id AS order FROM t")]
+    [InlineData("SELECT count(*) FILTER (WHERE a > 1) FROM t")]
+    [InlineData("SELECT count(*) FILTER (WHERE a > 1), b FROM t")]
+    [InlineData("SELECT (SELECT u.id FROM u ORDER BY u.*) FROM t")]
+    [InlineData("SELECT (SELECT u.id FROM u ORDER BY u.id, u.*) AS first FROM t")]
+    [InlineData("INSERT INTO t (a) VALUES (1) RETURNING id")]
+    [InlineData("SELECT \"a\", \"count(*)\" FROM t")]
+    [InlineData("SELECT /* * */ a, -- *\n b FROM t")]
+    [InlineData("SELECT x FROM (SELECT id AS as ORDER BY t.*) s")]
+    [InlineData("SELECT id AS as ORDER BY t.*")]
     public void Sql_that_names_its_columns_is_not_a_star_column(String text) =>
         SqlScanner
             .ReadsEveryColumn(text)

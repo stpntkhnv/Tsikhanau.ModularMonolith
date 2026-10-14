@@ -83,33 +83,60 @@ internal static class SqlScanner
     {
         var depth = 0;
         var isStar = false;
+        var callHasStar = false;
+        UInt64 subqueryParens = 0;
+        var previousIsName = false;
         SqlToken previousToken = default;
         while (tokens.MoveNext())
         {
             var token = tokens.Current;
             depth += token.DepthChange;
-            if (depth < 0 || (depth == 0 && EndsColumnList(token, previousToken)))
+            if (depth < 0 || (depth == 0 && EndsColumnList(token, previousToken, previousIsName)))
             {
-                return (isStar, EndsList: true);
+                return (isStar || callHasStar, EndsList: true);
             }
 
             if (depth == 0 && token.Is(","))
             {
-                return (isStar, EndsList: false);
+                return (isStar || callHasStar, EndsList: false);
             }
 
+            subqueryParens = TrackSubqueries(subqueryParens, depth, token, previousToken);
+            callHasStar |= token.Is("*") && previousToken.Is(".") && depth > 0 && !InSubquery(subqueryParens, depth);
             isStar = token.Is("*") && (previousToken.IsEmpty || previousToken.Is("."));
+            previousIsName = !previousIsName && IntroducesName(previousToken);
             previousToken = token;
         }
 
-        return (isStar, EndsList: true);
+        return (isStar || callHasStar, EndsList: true);
     }
 
-    private static Boolean EndsColumnList(SqlToken token, SqlToken previousToken) =>
-        token.IsOneOf(ColumnListEnds) && !ContinuesColumn(token, previousToken);
+    private static UInt64 TrackSubqueries(UInt64 subqueryParens, Int32 depth, SqlToken token, SqlToken previousToken)
+    {
+        if (depth is < 1 or > 64)
+        {
+            return subqueryParens;
+        }
 
-    private static Boolean ContinuesColumn(SqlToken token, SqlToken previousToken) =>
-        IntroducesName(previousToken)
+        var bit = 1UL << (depth - 1);
+        if (token.Is("("))
+        {
+            return subqueryParens & ~bit;
+        }
+
+        return previousToken.Is("(") && (token.Is("SELECT") || token.Is("WITH") || token.Is("VALUES"))
+            ? subqueryParens | bit
+            : subqueryParens;
+    }
+
+    private static Boolean InSubquery(UInt64 subqueryParens, Int32 depth) =>
+        depth <= 64 && (subqueryParens & (1UL << (depth - 1))) != 0;
+
+    private static Boolean EndsColumnList(SqlToken token, SqlToken previousToken, Boolean previousIsName) =>
+        token.IsOneOf(ColumnListEnds) && !ContinuesColumn(token, previousToken, previousIsName);
+
+    private static Boolean ContinuesColumn(SqlToken token, SqlToken previousToken, Boolean previousIsName) =>
+        (!previousIsName && IntroducesName(previousToken))
             || (token.Is("FROM") && previousToken.Is("DISTINCT"))
             || (token.Is("GROUP") && previousToken.Is("WITHIN"));
 
