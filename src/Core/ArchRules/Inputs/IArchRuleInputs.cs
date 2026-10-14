@@ -10,7 +10,7 @@ public interface IArchRuleInputs
 
     static abstract String SolutionRoot { get; }
 
-    static abstract EmptySubject EmptySubject { get; }
+    static virtual EmptySubject EmptySubject => EmptySubject.Skip;
 
     static virtual IReadOnlyList<Assembly> SharedKernelAssemblies => [];
 }

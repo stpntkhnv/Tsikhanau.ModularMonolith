@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.ArchRules" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
   </ItemGroup>
   <ItemGroup>

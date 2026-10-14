@@ -23,11 +23,6 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     [EveryProductionModule]
     public async Task Module_connects_as_its_own_login(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var loginName = App.GetModuleLoginName(name);
 
@@ -44,11 +39,6 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     [EveryProductionModulePair]
     public async Task Module_cannot_become_another_module(String name, String otherName)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var otherSchema = App.GetModule(otherName).Schema;
         var otherLoginName = App.GetModuleLoginName(otherName);
@@ -68,11 +58,6 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     [EveryProductionModulePair]
     public async Task Module_reaches_another_module_only_through_its_inbox(String name, String otherName)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var moduleConnectionProbe = CreateConnectionProbe(name);
         var ownSchema = App.GetModule(name).Schema;
         var foreignSchema = App.GetModule(otherName).Schema;
@@ -115,11 +100,6 @@ public sealed class ModuleDatabaseAccessTests(AppFixture appFixture) : AppTest(a
     [EveryProductionModule]
     public async Task Module_login_owns_its_schema_and_everything_in_it(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var schema = App.GetModule(name).Schema;
         var loginName = App.GetModuleLoginName(name);
 

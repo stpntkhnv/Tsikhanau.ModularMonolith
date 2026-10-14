@@ -10,7 +10,6 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Testing.Modules;
-using Tsikhanau.Railway;
 
 namespace ModularMonolith.IntegrationTests.Modules;
 
@@ -42,11 +41,6 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     [EveryProductionModule]
     public void Module_facade_is_registered(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var moduleFacade = App.Services.GetService(App.GetModule(name).Key);
 
         moduleFacade.ShouldNotBeNull();
@@ -56,29 +50,25 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     [EveryProductionModule]
     public void Query_facade_is_the_module_facade(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var module = App.GetModule(name);
-        var moduleFacade = App.Services.GetRequiredService(module.Key);
 
-        module.QueryFacadeKey
-            .Map(App.Services.GetRequiredService)
-            .Tap(queryFacade => queryFacade.ShouldBeSameAs(moduleFacade));
+        Assert.SkipWhen(module.QueryFacadeKey.IsNone, $"{name} has no query facade");
+
+        var moduleFacade = App.Services.GetRequiredService(module.Key);
+        var queryFacade = App.Services.GetRequiredService(module.QueryFacadeKey.Value);
+
+        queryFacade.ShouldBeSameAs(moduleFacade);
     }
 
     [Theory]
     [EveryProductionModule]
     public void Module_settings_are_validated_with_data_annotations(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
+        var settingsTypes = GetSettingsTypes(App.GetModule(name));
 
-        var settingsTypesWithoutValidation = GetSettingsTypes(App.GetModule(name))
+        Assert.SkipWhen(settingsTypes.Count == 0, $"{name} has no settings");
+
+        var settingsTypesWithoutValidation = settingsTypes
             .Where(settingsType => !IsValidatedWithDataAnnotations(settingsType))
             .ToList();
 
@@ -89,11 +79,6 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     [EveryProductionModule]
     public async Task Module_schema_holds_exactly_the_queues_and_its_own_tables(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var module = App.GetModule(name);
         var tableNames = await App.Database.ReadTableNamesAsync(module.Schema);
 
@@ -106,11 +91,6 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
     [EveryProductionModule]
     public async Task Module_database_health_check_is_healthy(String name)
     {
-        if (name == ProductionModules.Placeholder)
-        {
-            return;
-        }
-
         var healthCheckName = $"database-{App.GetModule(name).Schema}";
         var healthCheckService = App.Services.GetRequiredService<HealthCheckService>();
 
@@ -126,10 +106,11 @@ public sealed class ModuleSetupTests(AppFixture appFixture) : AppTest(appFixture
             .Select(module => module.Name)
             .ToList();
 
-    private static IEnumerable<Type> GetSettingsTypes(ModuleDescriptor module) =>
+    private static List<Type> GetSettingsTypes(ModuleDescriptor module) =>
         module.Key.Assembly
             .GetTypes()
-            .Where(type => type.FullName == $"{module.Key.Namespace}.Settings.{module.Name}Settings");
+            .Where(type => type.FullName == $"{module.Key.Namespace}.Settings.{module.Name}Settings")
+            .ToList();
 
     private Boolean IsValidatedWithDataAnnotations(Type settingsType) =>
         GetValidatorTypes(settingsType)

@@ -14,8 +14,6 @@ public sealed class AppInputs : IAppArchRuleInputs
 
     public static Assembly HostAssembly => typeof(Program).Assembly;
 
-    public static EmptySubject EmptySubject => EmptySubject.Pass;
-
     private static ArchModule CreateModule(String name)
     {
         var moduleNamespace = $"{RootNamespace}.Modules.{name}";

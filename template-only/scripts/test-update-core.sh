@@ -143,6 +143,18 @@ make_file_then_folder() {
   git tag C2
 }
 
+make_extra() {
+  git checkout -q -b extra A
+  mkdir -p src/Core/Extra
+  printf '<Project Sdk="Microsoft.NET.Sdk" />\n' > src/Core/Extra/Tsikhanau.Monolith.Extra.csproj
+  printf 'namespace Tsikhanau.Monolith.Extra;\n\npublic static class ExtraMarker\n{\n}\n' > src/Core/Extra/ExtraMarker.cs
+  insert_block "$(only_solution .)" '<Folder Name="/src/Core/Domain/">' '</Folder>' "$extra_block"
+  bash template-only/scripts/lock-core.sh > /dev/null
+  git add -A
+  git commit -q -m E
+  git tag E
+}
+
 make_broken() {
   git checkout -q -b broken A
   sed -i -E 's/^hash=sha256:[0-9a-f]/hash=sha256:x/' core.lock
@@ -167,6 +179,7 @@ make_template() {
   make_b
   make_b2
   make_file_then_folder
+  make_extra
   make_broken
   git checkout -q main
 }
@@ -183,6 +196,7 @@ make_consumer() {
   printf 'namespace Acme.Shop.Modules.Orders;\n' > "$module/Order.cs"
   insert_block Acme.Shop.slnx '<Folder Name="/src/Modules/" />' '<Folder Name="/src/Modules/" />' "$orders_block"
   printf '#!/usr/bin/env bash\necho app\n' > scripts/app-tool.sh
+  printf '0\n' > .gate/skips
   printf 'source=%s\ncommit=%s\n' "$template" "$(commit_of A)" >> core.lock
   git init -q -b main
   git add -A
@@ -701,6 +715,88 @@ case_gate_reads_a_crlf_skip_file() {
   expect_green_gate CI=true
 }
 
+make_legacy_app() {
+  local inputs=src/Tests/ArchTests/Inputs/AppInputs.cs
+  local host_line='    public static Assembly HostAssembly => typeof(Program).Assembly;'
+  local legacy_line='    public static EmptySubject EmptySubject => EmptySubject.Pass;'
+  mkdir -p "$1"
+  git -C "$template" archive A | tar -C "$1" -xf -
+  cd "$1"
+  remove_folder "$1/template-only"
+  grep -qxF "$host_line" "$inputs" || fail "$inputs has no HostAssembly line to put the legacy declaration after"
+  awk -v host="$host_line" -v legacy="$legacy_line" '{ print } $0 == host { print ""; print legacy }' "$inputs" \
+    > "$work/inputs.tmp"
+  cat "$work/inputs.tmp" > "$inputs"
+  grep -qxF "$legacy_line" "$inputs" || fail "the legacy EmptySubject declaration is not in $inputs"
+  cat > src/Tests/ArchTests/Modules/LegacyPlaceholderTests.cs << 'CSHARP'
+using Tsikhanau.Monolith.Testing.Modules;
+
+namespace ModularMonolith.ArchTests.Modules;
+
+public sealed class LegacyPlaceholderTests
+{
+    [Theory]
+    [EveryProductionModule]
+    public void Module_name_is_not_empty(String name)
+    {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
+        name.ShouldNotBeEmpty();
+    }
+
+    [Theory]
+    [EveryProductionModulePair]
+    public void Module_names_differ(String name, String otherName)
+    {
+        if (name == ProductionModules.Placeholder)
+        {
+            return;
+        }
+
+        name.ShouldNotBe(otherName);
+    }
+}
+CSHARP
+  printf 'source=%s\ncommit=%s\n' "$template" "$(commit_of A)" >> core.lock
+  git init -q -b main
+  git add -A
+  git commit -q -m legacy
+}
+
+in_dotnet_tmp() {
+  mkdir -p "$work/dotnet-tmp"
+  TMPDIR=$work/dotnet-tmp "$@"
+}
+
+case_legacy_app_skips_an_empty_subject() {
+  local app=$work/cases/legacy expected_skips=47 skipped_test
+  make_legacy_app "$app"
+  run_update scripts/update-core.sh E
+  expect_success
+  grep -qx "commit=$(commit_of E)" core.lock || fail "core.lock does not hold E"
+  if ! in_dotnet_tmp dotnet build src/Tests/ArchTests --disable-build-servers > "$work/legacy-build" 2>&1; then
+    tail -n 20 "$work/legacy-build"
+    fail "the app with the legacy AppInputs and placeholder returns does not build after update-core"
+  fi
+  if ! in_dotnet_tmp dotnet test --project src/Tests/ArchTests --no-build > "$work/legacy-test" 2>&1; then
+    tail -n 20 "$work/legacy-test"
+    fail "the arch tests of the legacy app failed"
+  fi
+  grep -qx "  skipped: $expected_skips" "$work/legacy-test" \
+    || fail "the legacy app skipped $(sed -n 's/^  skipped: //p' "$work/legacy-test") arch tests, not $expected_skips"
+  for skipped_test in \
+    'IntegrationEventNameTests.Every_integration_event_has_a_unique_stable_name' \
+    'NullabilityTests.Domain_and_feature_classes_return_optional_instead_of_null(name: "(none)")' \
+    'LegacyPlaceholderTests.Module_name_is_not_empty(name: "(none)")' \
+    'LegacyPlaceholderTests.Module_names_differ(name: "(none)", otherName: "(none)")'; do
+    grep -qF "skipped ModularMonolith.ArchTests.Modules.$skipped_test (" "$work/legacy-test" \
+      || fail "$skipped_test was not skipped"
+  done
+}
+
 dirty_core_file() {
   printf '\n' >> src/Core/Shared/Collections/EnumerableExtensions.cs
 }
@@ -1116,6 +1212,7 @@ run_case "core-hash print and check fail when sha256sum fails on the data" case_
 run_case "core-hash check refuses a core.lock whose hash is not sha256: and 64 lowercase hex digits" case_mangled_lock
 run_case "an app with a leftover template-only folder but no Template.slnx is an app for the gate, core-hash and update-core" case_leftover_template_folder
 run_case "the gate reads a skip file with a CR line ending" case_gate_reads_a_crlf_skip_file
+run_case "an app that still declares EmptySubject.Pass and returns on the placeholder builds after update-core, and its arch tests on an empty subject skip" case_legacy_app_skips_an_empty_subject
 run_case "the gate stops after the tests and names init when AGENTS.md is not a link into a rulebook with check-markers.cs" case_gate_needs_linked_rules
 run_case "the gate runs the linked rulebook's check-markers.cs on the app and fails when it fails" case_gate_checks_rule_markers
 run_case "with CI=true the gate skips the marker check with a message" case_gate_skips_rule_markers_in_ci

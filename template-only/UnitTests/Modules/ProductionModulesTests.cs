@@ -6,34 +6,56 @@ public sealed class ProductionModulesTests
 {
     private const String Placeholder = ProductionModules.Placeholder;
 
-    [Fact]
-    public void No_module_gives_the_placeholder_row_and_the_placeholder_pair()
-    {
-        var rows = GetData(ProductionModules.CreateRows([]));
-        var pairRows = GetData(ProductionModules.CreatePairRows([]));
+    private const String NoModuleReason = "There are no production modules";
 
-        rows.ShouldBe([Placeholder]);
-        pairRows.ShouldBe([(Placeholder, Placeholder)]);
+    private const String NoPairReason = "There are fewer than two production modules";
+
+    [Fact]
+    public void No_module_gives_a_skipped_placeholder_row_and_a_skipped_placeholder_pair()
+    {
+        var row = ProductionModules
+            .CreateRows([])
+            .ShouldHaveSingleItem();
+
+        var pairRow = ProductionModules
+            .CreatePairRows([])
+            .ShouldHaveSingleItem();
+
+        row.Data.ShouldBe(Placeholder);
+        row.Skip.ShouldBe(NoModuleReason);
+        pairRow.Data.ShouldBe((Placeholder, Placeholder));
+        pairRow.Skip.ShouldBe(NoPairReason);
     }
 
     [Fact]
-    public void One_module_gives_its_row_and_only_the_placeholder_pair()
+    public void One_module_gives_its_row_and_only_a_skipped_placeholder_pair()
     {
-        var rows = GetData(ProductionModules.CreateRows(["Orders"]));
-        var pairRows = GetData(ProductionModules.CreatePairRows(["Orders"]));
+        var row = ProductionModules
+            .CreateRows(["Orders"])
+            .ShouldHaveSingleItem();
 
-        rows.ShouldBe(["Orders"]);
-        pairRows.ShouldBe([(Placeholder, Placeholder)]);
+        var pairRow = ProductionModules
+            .CreatePairRows(["Orders"])
+            .ShouldHaveSingleItem();
+
+        row.Data.ShouldBe("Orders");
+        row.Skip.ShouldBeNull();
+        pairRow.Data.ShouldBe((Placeholder, Placeholder));
+        pairRow.Skip.ShouldBe(NoPairReason);
     }
 
     [Fact]
     public void Two_modules_give_their_rows_and_both_ordered_pairs()
     {
-        var rows = GetData(ProductionModules.CreateRows(["Orders", "Payments"]));
-        var pairRows = GetData(ProductionModules.CreatePairRows(["Orders", "Payments"]));
+        var rows = ProductionModules.CreateRows(["Orders", "Payments"]);
+        var pairRows = ProductionModules.CreatePairRows(["Orders", "Payments"]);
+        var names = GetData(rows);
+        var pairs = GetData(pairRows);
 
-        rows.ShouldBe(["Orders", "Payments"]);
-        pairRows.ShouldBe([("Orders", "Payments"), ("Payments", "Orders")]);
+        names.ShouldBe(["Orders", "Payments"]);
+        pairs.ShouldBe([("Orders", "Payments"), ("Payments", "Orders")]);
+        rows.ShouldAllBe(row => row.Skip == null);
+        pairRows.ShouldAllBe(pairRow => pairRow.Skip == null);
     }
 
     [Fact]
