@@ -41,12 +41,10 @@
   <ItemGroup>
     <GlobalPackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.7.23" />
-    <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
     <CoreAnalyzer Include="Microsoft.CodeAnalysis.BannedApiAnalyzers;Microsoft.CodeAnalysis.CSharp.BannedApiAnalyzers" />
     <CoreAnalyzer Include="Microsoft.VisualStudio.Threading.Analyzers;Microsoft.VisualStudio.Threading.Analyzers.CSharp" />
-    <CoreAnalyzer Include="Roslynator.Formatting.Analyzers" />
   </ItemGroup>
   <PropertyGroup>
     <CorePackagesPropsImported>true</CorePackagesPropsImported>

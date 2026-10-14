@@ -29,8 +29,8 @@ public abstract class DomainRulesTests<TInputs> : ArchRuleTests<TInputs>
         Check(
             DomainRules.ValueObjectsHideTheUncheckedFactory(GetModule(name)),
             $"{name} has no value objects",
-            "Implement the unchecked From explicitly as IValueObject<TSelf, TValue>.From; callers go through the factory "
-            + "that returns Result");
+            "Implement the unchecked From explicitly as IValueObject<TSelf, TValue>.From; callers go through the "
+            + "factory that returns Result");
 
     [Theory]
     [EveryModule]

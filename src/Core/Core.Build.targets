@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <CoreBuildTargetsImported>true</CoreBuildTargetsImported>
-    <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|RCS|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
+    <CoreDiagnosticPattern>(?i)^(nullable|(TS|TR|IDE|CA|VSTHRD)\d+|RS0030|(CS|\+?0*)(8[67]\d\d|8597|8819|8824|8825|8847|9158|9159|9264))$</CoreDiagnosticPattern>
     <CoreNullableAnalysisOffPattern>(?i)^run-nullable-analysis=never$</CoreNullableAnalysisOffPattern>
   </PropertyGroup>
   <Target Name="CheckCoreBuildSettings" BeforeTargets="CoreCompile">

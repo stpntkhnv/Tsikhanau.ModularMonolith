@@ -25,6 +25,9 @@ public sealed class ModuleLoadingTests
     private const String OrphanLoadFailure =
         $"Orphan cannot load its assemblies: Could not load file or assembly '{OrphanBaseAssemblyName},";
 
+    private const String OrphanSource =
+        $"namespace {OrphanRootNamespace}.Domain;\n\npublic sealed class Orphan : {OrphanBaseAssemblyName}.OrphanBase;";
+
     private static readonly Lazy<Byte[]> OrphanAssemblyImage = new(CompileOrphanAssembly);
 
     private static ArchModule GhostModule =>
@@ -111,7 +114,7 @@ public sealed class ModuleLoadingTests
 
         return FixtureCompiler.Compile(
             OrphanRootNamespace,
-            $"namespace {OrphanRootNamespace}.Domain;\n\npublic sealed class Orphan : {OrphanBaseAssemblyName}.OrphanBase;",
+            OrphanSource,
             [.. FixtureCompiler.RuntimeReferences, MetadataReference.CreateFromImage(baseImage)]);
     }
 }

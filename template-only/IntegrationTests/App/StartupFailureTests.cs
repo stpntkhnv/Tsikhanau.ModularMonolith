@@ -19,7 +19,8 @@ public sealed class StartupFailureTests(TestAppFixture testAppFixture) : TestApp
     private const String LimitError = "The field Limit must be between 1 and 100.";
 
     private const String PingsLimitFailure =
-        $"DataAnnotation validation failed for '{nameof(PingsSettings)}' members: 'Limit' with the error: '{LimitError}'.";
+        $"DataAnnotation validation failed for '{nameof(PingsSettings)}' members: 'Limit' with the error: "
+        + $"'{LimitError}'.";
 
     private static readonly TimeSpan DisposalTimeout = TimeSpan.FromSeconds(30);
 

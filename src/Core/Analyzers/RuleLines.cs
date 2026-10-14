@@ -11,8 +11,9 @@ internal static class RuleLines
     private const String ClrTypeNames = "CLR type names (`String`, `Int32`, `Boolean`), not C# keywords.";
 
     private const String LinesAndStatements =
-        "Lines fit in 120 characters, a chain of two calls or more puts each call on its own line, and a statement "
-        + "that spans several lines is followed by a blank line unless the block ends there.";
+        "Lines fit in 120 characters, string literals included; only the text inside a multi-line raw string "
+        + "literal is data and keeps its lines. A chain of two calls or more puts each call on its own line, and a "
+        + "statement that spans several lines is followed by a blank line unless the block ends there.";
 
     private const String DependencyNames =
         "A constructor dependency is named after its type: `INoteRepository noteRepository`, "
@@ -30,7 +31,7 @@ internal static class RuleLines
     [
         new(ErrorsAsValues, "add-feature", "TS0005"),
         new(ClrTypeNames, "", "TS0004"),
-        new(LinesAndStatements, "", "TS0001", "TS0002"),
+        new(LinesAndStatements, "", "TS0001", "TS0002", "TS0008"),
         new(DependencyNames, "", "TS0003"),
         new(Layers, "add-feature", "TS0007"),
         new(ModuleSql, "add-feature", "TS0006"),
