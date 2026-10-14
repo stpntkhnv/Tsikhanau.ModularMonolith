@@ -384,10 +384,109 @@ case_dangling_link_without_rulebook_path() {
   ln -sfn "$work/gone/AGENTS.md" "$app/AGENTS.md"
   run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
   expect_success
-  expect_said "linked to the rulebook $rulebook: AGENTS.md$"
-  expect_link "$app" AGENTS.md "$rulebook/AGENTS.md"
+  expect_said "linked to the rulebook $custom_rulebook: AGENTS.md$"
+  expect_rule_links "$app" "$custom_rulebook"
+}
+
+case_missing_links_follow_the_kept_rulebook() {
+  local app
+  app=$(app_with_custom_rules missing-kept)
+  ln -s "$rulebook" "$work/cases/missing-kept/Tsikhanau.Rulebook"
+  rm -- "$app/STYLE.md" "$app/docs/playbooks"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  expect_rule_links "$app" "$custom_rulebook"
+}
+
+mixed_app() {
+  local app
+  app=$(app_with_custom_rules "$1")
+  ln -sfn "$rulebook/STYLE.md" "$app/STYLE.md"
+  git -C "$app" config --local --unset core.hooksPath
+  chmod -x "$app/gate.sh"
+  : > "$(dotnet_calls "$app")"
+  printf '%s\n' "$app"
+}
+
+case_kept_links_to_two_rulebooks() {
+  local app mode
+  app=$(mixed_app conflict)
+  snapshot "$app" > "$work/before"
+  for mode in '' --rules-only; do
+    run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh $mode
+    expect_refused "different rulebooks: .*RULEBOOK_PATH"
+    expect_said "$custom_rulebook"
+    expect_said "$rulebook"
+    snapshot "$app" > "$work/after"
+    diff -- "$work/before" "$work/after" || fail "a refused init changed the app"
+    [[ ! -s "$(dotnet_calls "$app")" ]] || fail "a refused init must stop before the build"
+  done
+}
+
+case_explicit_path_ignores_conflict() {
+  local app
+  app=$(mixed_app conflict-explicit)
+  RULEBOOK_PATH=$rulebook run_init "$app" --rules-only
+  expect_success
+  expect_rule_links "$app"
+}
+
+case_relative_and_absolute_links_agree() {
+  local app relative
+  app=$(app_with_custom_rules relative)
+  relative=$(realpath --relative-to="$app" "$custom_rulebook")
+  ln -sfn "$relative/AGENTS.md" "$app/AGENTS.md"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  [[ "$(readlink -- "$app/AGENTS.md")" == "$relative/AGENTS.md" ]] || fail "init changed the relative link"
   expect_link "$app" STYLE.md "$custom_rulebook/STYLE.md"
-  expect_link "$app" docs/playbooks "$custom_rulebook/playbooks"
+}
+
+case_alias_and_real_path_agree() {
+  local app
+  app=$(app_with_custom_rules alias)
+  ln -s "$custom_rulebook" "$work/cases/alias/alias-rulebook"
+  ln -sfn "$work/cases/alias/alias-rulebook/AGENTS.md" "$app/AGENTS.md"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  expect_link "$app" AGENTS.md "$work/cases/alias/alias-rulebook/AGENTS.md"
+  expect_link "$app" STYLE.md "$custom_rulebook/STYLE.md"
+}
+
+case_rulebook_path_with_a_space() {
+  local app spaced="$work/rule book"
+  cp -r -- "$rulebook" "$spaced"
+  app=$(new_app space acme_shop)
+  RULEBOOK_PATH=$spaced run_init "$app"
+  expect_success
+  expect_rule_links "$app" "$spaced"
+  commit_all "$app"
+  rm -- "$app/STYLE.md" "$app/docs/playbooks"
+  run_in "$app" env -u RULEBOOK_PATH bash scripts/init.sh --rules-only
+  expect_success
+  expect_rule_links "$app" "$spaced"
+}
+
+case_new_worktree_follows_the_main_checkout() {
+  local app
+  app=$(app_with_custom_rules tree-kept)
+  ln -s "$rulebook" "$work/cases/tree-kept/Tsikhanau.Rulebook"
+  run_in "$app" env -u RULEBOOK_PATH git worktree add -q "$work/cases/tree-kept/tree" -b tree
+  expect_success
+  expect_rule_links "$work/cases/tree-kept/tree" "$custom_rulebook"
+}
+
+case_new_worktree_without_main_links_gets_the_default() {
+  local app
+  app=$(new_app tree-plain acme_shop)
+  run_init "$app" --no-rules
+  expect_success
+  commit_all "$app"
+  ln -s "$rulebook" "$work/cases/tree-plain/Tsikhanau.Rulebook"
+  run_in "$app" env -u RULEBOOK_PATH git worktree add -q "$work/cases/tree-plain/tree" -b tree
+  expect_success
+  expect_rule_links "$work/cases/tree-plain/tree"
+  expect_no_rule_links "$app"
 }
 
 case_explicit_rulebook_path_wins() {
@@ -431,8 +530,16 @@ run_case "--no-rules skips the links with a message and needs no rulebook" case_
 run_case "a missing rulebook at RULEBOOK_PATH or at the default path beside the app is refused with a message" case_missing_rulebook
 run_case "the post-checkout hook links the rules in a new worktree and does not fail the checkout without a rulebook" case_post_checkout
 run_case "links to a rulebook chosen with RULEBOOK_PATH stay through a checkout and --rules-only without it" case_custom_rulebook_kept
-run_case "without RULEBOOK_PATH a dangling link is made from the default rulebook and valid links stay" case_dangling_link_without_rulebook_path
+run_case "without RULEBOOK_PATH a dangling link is made again from the kept rulebook" case_dangling_link_without_rulebook_path
 run_case "an explicit RULEBOOK_PATH replaces links to another rulebook" case_explicit_rulebook_path_wins
+run_case "missing links go to the rulebook the kept links point to" case_missing_links_follow_the_kept_rulebook
+run_case "kept links to two rulebooks stop init before any write and name RULEBOOK_PATH" case_kept_links_to_two_rulebooks
+run_case "an explicit RULEBOOK_PATH is not stopped by links to two rulebooks" case_explicit_path_ignores_conflict
+run_case "a relative and an absolute link to the same rulebook are no conflict" case_relative_and_absolute_links_agree
+run_case "a rulebook reached through an alias and through its real path is no conflict" case_alias_and_real_path_agree
+run_case "a rulebook path with a space works" case_rulebook_path_with_a_space
+run_case "a new worktree links the rulebook of the main checkout" case_new_worktree_follows_the_main_checkout
+run_case "a new worktree of a checkout without links gets the default rulebook" case_new_worktree_without_main_links_gets_the_default
 
 echo "test-init: $passes passed, $failures failed"
 [[ $failures -eq 0 ]]
