@@ -28,7 +28,8 @@ internal static class RuleLines
         + "of its own. SQL passed to Dapper or EF Core raw SQL is a constant, values go in parameters.";
 
     private const String TypePerFile =
-        "One type per file, named after the type; types of one name that differ only in type parameters share a file.";
+        "One type per file, named after the type; types of one name that differ only in type parameters share a file, "
+        + "and a `file` type may sit beside them.";
 
     private static readonly RuleLine[] All =
     [

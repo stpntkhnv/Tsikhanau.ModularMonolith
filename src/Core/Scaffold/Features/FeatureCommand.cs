@@ -84,7 +84,7 @@ internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
         String nextStep,
         Optional<String> nameNote) =>
         CodeLayout
-            .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], feature.ChosenNames)
+            .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], feature.ChosenNames, feature.ShorterChoice)
             .Map(newFiles => new ScaffoldPlan(newFiles, [.. facadeChange.FileEdits, .. referenceEdits], [], nextStep)
             {
                 Note = nameNote,

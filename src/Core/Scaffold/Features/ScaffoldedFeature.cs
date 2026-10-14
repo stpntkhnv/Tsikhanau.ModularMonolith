@@ -80,6 +80,8 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String RouteChoice => Request.Route.HasValue ? "--route" : "feature name";
 
+    public String ShorterChoice => Request.Route.HasValue ? "name or --route" : "name";
+
     public String RouteName => $"{Module.Name}.{Name}";
 
     public String HttpPath => $"/{Module.Route}{Route.Path}";

@@ -13,7 +13,7 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
         new(
             "TS0009",
             "Keep one type per file",
-            "Type {0} does not belong in {1}: one type per file, named after the type, so move it to {0}.cs",
+            "Type {0} does not belong in {1}: one type per file, named after the type, so move it to {2}",
             "Style",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true));
@@ -36,7 +36,13 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
 
         var file = Path.GetFileName(context.Tree.FilePath);
         var fileStem = file.Split('.')[0];
-        var types = CollectTypes(context.Tree.GetRoot(context.CancellationToken).ChildNodes(), String.Empty).ToList();
+        var members = context.Tree
+            .GetRoot(context.CancellationToken)
+            .ChildNodes();
+
+        var types = CollectTypes(members, String.Empty)
+            .ToList();
+
         var ownFamily = types
             .Where(type => type.Name == fileStem)
             .Select(type => type.Namespace)
@@ -44,9 +50,15 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
 
         foreach (var type in types.Where(type => type.Name != fileStem || type.Namespace != ownFamily))
         {
-            context.ReportDiagnostic(Diagnostic.Create(Rule, type.Identifier.GetLocation(), type.Name, file));
+            var place = type.Name == fileStem ? DescribeOwnFile(type) : $"{type.Name}.cs";
+            context.ReportDiagnostic(Diagnostic.Create(Rule, type.Identifier.GetLocation(), type.Name, file, place));
         }
     }
+
+    private static String DescribeOwnFile(TopLevelType type) =>
+        type.Namespace.Length == 0
+            ? $"a {type.Name}.cs of its own in the folder of the global namespace"
+            : $"a {type.Name}.cs of its own in the folder of namespace {type.Namespace}";
 
     private static IEnumerable<TopLevelType> CollectTypes(IEnumerable<SyntaxNode> members, String currentNamespace)
     {
@@ -65,17 +77,19 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
                     }
 
                     break;
-                case BaseTypeDeclarationSyntax declaration:
+                case BaseTypeDeclarationSyntax declaration when !IsFileLocal(declaration.Modifiers):
                     yield return new(declaration.Identifier, currentNamespace);
 
                     break;
-                case DelegateDeclarationSyntax declaration:
+                case DelegateDeclarationSyntax declaration when !IsFileLocal(declaration.Modifiers):
                     yield return new(declaration.Identifier, currentNamespace);
 
                     break;
             }
         }
     }
+
+    private static Boolean IsFileLocal(SyntaxTokenList modifiers) => modifiers.Any(SyntaxKind.FileKeyword);
 
     private sealed class TopLevelType(SyntaxToken identifier, String declaredNamespace)
     {

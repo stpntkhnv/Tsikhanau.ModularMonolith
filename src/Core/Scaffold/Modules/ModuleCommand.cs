@@ -43,7 +43,8 @@ internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffol
     private Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module) =>
         CodeLayout.EnsureLinesFit(
             new ModuleTemplate(module, hasSettings).CreateFiles(),
-            $"module name '{module.Name}'");
+            $"module name '{module.Name}'",
+            "name");
 
     private Result<IReadOnlyList<FileEdit>> PlanEdits(ScaffoldedModule module) =>
         Result.CombineAll(

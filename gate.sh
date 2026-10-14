@@ -9,7 +9,8 @@ bash scripts/core-hash.sh check
 root_solutions=(*.slnx)
 template_solution=template-only/Template.slnx
 test_output=$(mktemp)
-trap 'rm -f "$test_output"' EXIT
+harness_work=
+trap 'rm -rf -- "$test_output" ${harness_work:+"$harness_work"}' EXIT
 results=()
 
 run_solution() {
@@ -65,10 +66,8 @@ check_rule_markers() {
 }
 
 run_harness_dry() {
-  local work
-  work=$(mktemp -d)
-  bash template-only/Harness/run-mutations.sh --dry-run . "$work"
-  rm -rf -- "$work"
+  harness_work=$(mktemp -d)
+  bash template-only/Harness/run-mutations.sh --dry-run . "$harness_work"
 }
 
 linked_rulebook() {

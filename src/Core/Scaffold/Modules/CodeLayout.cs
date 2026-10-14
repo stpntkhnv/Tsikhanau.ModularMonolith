@@ -7,7 +7,7 @@ internal static class CodeLayout
 {
     public const Int32 MaxLineLength = 120;
 
-    private const String LineTooLong = "more than the 120 the build allows; choose a shorter name";
+    private const String LineTooLong = "more than the 120 the build allows; choose a shorter";
 
     public static readonly StringComparer NameOrder = StringComparer.OrdinalIgnoreCase;
 
@@ -30,10 +30,15 @@ internal static class CodeLayout
                 .Order(NamespaceOrder)
                 .Select(name => $"using {name};"));
 
-    public static Result<IReadOnlyList<NewFile>> EnsureLinesFit(IReadOnlyList<NewFile> newFiles, String chosenName) =>
+    public static Result<IReadOnlyList<NewFile>> EnsureLinesFit(
+        IReadOnlyList<NewFile> newFiles,
+        String chosenName,
+        String shorterChoice) =>
         FindTooLongLine(newFiles)
             .Match(
-                tooLongLine => Error.Failure("scaffold.name", $"{chosenName} makes {tooLongLine}, {LineTooLong}"),
+                tooLongLine => Error.Failure(
+                    "scaffold.name",
+                    $"{chosenName} makes {tooLongLine}, {LineTooLong} {shorterChoice}"),
                 () => Result.Success(newFiles));
 
     public static Optional<String> FindTooLongLine(IEnumerable<NewFile> newFiles) =>

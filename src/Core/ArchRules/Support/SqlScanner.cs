@@ -130,7 +130,9 @@ internal static class SqlScanner
     }
 
     private static Boolean InSubquery(UInt64 subqueryParens, Int32 depth) =>
-        depth <= 64 && (subqueryParens & (1UL << (depth - 1))) != 0;
+        (subqueryParens & EnclosingParens(depth)) != 0;
+
+    private static UInt64 EnclosingParens(Int32 depth) => depth >= 64 ? UInt64.MaxValue : (1UL << depth) - 1;
 
     private static Boolean EndsColumnList(SqlToken token, SqlToken previousToken, Boolean previousIsName) =>
         token.IsOneOf(ColumnListEnds) && !ContinuesColumn(token, previousToken, previousIsName);

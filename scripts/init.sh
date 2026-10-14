@@ -202,7 +202,7 @@ tree_rulebooks() {
 }
 
 check_rulebook_conflict() {
-  local books
+  local books main_folder
   if [[ -n ${RULEBOOK_PATH-} ]]; then
     return
   fi
@@ -211,6 +211,21 @@ check_rulebook_conflict() {
     echo "init: the rules links point to different rulebooks: ${books[*]}; set RULEBOOK_PATH to the one to keep and run init again" >&2
     exit 1
   fi
+  if [[ ${#books[@]} -eq 1 ]] || ! main_folder=$(own_main_tree); then
+    return
+  fi
+  mapfile -t books < <(tree_rulebooks "$main_folder/")
+  if [[ ${#books[@]} -gt 1 ]]; then
+    echo "init: the rules links of the main worktree $main_folder point to different rulebooks: ${books[*]}; set RULEBOOK_PATH to the one to keep and run init again" >&2
+    exit 1
+  fi
+}
+
+own_main_tree() {
+  local top
+  top=$(git rev-parse --show-toplevel 2> /dev/null) || return 1
+  [[ "$(CDPATH='' cd -- "$top" && pwd -P)" == "$root" ]] || return 1
+  main_tree
 }
 
 select_rulebook() {

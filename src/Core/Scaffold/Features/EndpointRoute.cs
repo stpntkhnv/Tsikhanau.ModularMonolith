@@ -84,7 +84,7 @@ internal sealed partial record EndpointRoute
     private static Optional<String> FindRepeatedParameterName(String path) =>
         ParameterPattern
             .Matches(path)
-            .CountBy(parameter => parameter.Groups["name"].Value)
+            .CountBy(parameter => parameter.Groups["name"].Value, StringComparer.OrdinalIgnoreCase)
             .Where(nameCount => nameCount.Value > 1)
             .Select(nameCount => nameCount.Key)
             .FirstOrDefault();
