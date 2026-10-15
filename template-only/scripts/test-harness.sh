@@ -87,12 +87,16 @@ case $1 in
     if [[ -n $planted && $planted == "${FAKE_EXTRA_SKIP-}" ]]; then
       skipped=2
     fi
+    prefix=$'\033[m'
+    if [[ " $* " == *" --no-ansi "* ]]; then
+      prefix=
+    fi
     if [[ $3 == */ArchTests && -n $planted && $planted == "${FAKE_TEST_CATCH-}" ]]; then
-      echo "failed Fake.ArchTests.Planted_mistake_fails(name: \"Fake\") (3ms)"
-      printf 'Test run summary: Failed!\n  skipped: %s\n' "$skipped"
+      echo "${prefix}failed Fake.ArchTests.Planted_mistake_fails(name: \"Fake\") (3ms)"
+      printf '%sTest run summary: Failed!\n%s  skipped: %s\n' "$prefix" "$prefix" "$skipped"
       exit 2
     fi
-    printf 'Test run summary: Passed!\n  skipped: %s\n' "$skipped"
+    printf '%sTest run summary: Passed!\n%s  skipped: %s\n' "$prefix" "$prefix" "$skipped"
     ;;
   *.dll)
     if [[ " ${FAKE_UNAPPLIED-} " == *" $2 "* ]]; then

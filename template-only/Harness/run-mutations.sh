@@ -185,7 +185,7 @@ run_checks() {
     stage=$(basename "$project")
     log=$out.$stage
     status=0
-    (cd "$repository" && dotnet test --project "$project" --no-build) > "$log" 2>&1 < /dev/null || status=$?
+    (cd "$repository" && dotnet test --project "$project" --no-build --no-ansi) > "$log" 2>&1 < /dev/null || status=$?
     skipped=$(sed -nE 's/^[[:space:]]*skipped:[[:space:]]*([0-9]+)[[:space:]]*$/\1/p' "$log")
     if [[ ! $skipped =~ ^[0-9]+$ ]]; then
       echo "ERROR $stage printed no single skipped count" > "$out"

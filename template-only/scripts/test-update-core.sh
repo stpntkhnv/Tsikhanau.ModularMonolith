@@ -798,7 +798,7 @@ case_legacy_app_skips_an_empty_subject() {
     tail -n 20 "$work/legacy-build"
     fail "the app with the legacy AppInputs and placeholder returns does not build after update-core"
   fi
-  if ! in_dotnet_tmp dotnet test --project src/Tests/ArchTests --no-build > "$work/legacy-test" 2>&1; then
+  if ! in_dotnet_tmp dotnet test --project src/Tests/ArchTests --no-build --no-ansi > "$work/legacy-test" 2>&1; then
     tail -n 20 "$work/legacy-test"
     fail "the arch tests of the legacy app failed"
   fi
