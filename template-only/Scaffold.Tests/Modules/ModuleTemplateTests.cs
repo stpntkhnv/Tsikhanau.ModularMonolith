@@ -13,7 +13,7 @@ public sealed class ModuleTemplateTests
     private const String LongFolder =
         "src/Modules/InventoryReservationAdjustmentApprovals/Acme.Shop.Modules.InventoryReservationAdjustmentApprovals";
 
-    private const String MaxName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String MaxName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     [Fact]
     public void Fresh_module_is_two_projects_and_five_wiring_files_without_markers()

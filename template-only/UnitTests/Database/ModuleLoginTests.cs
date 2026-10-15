@@ -12,11 +12,11 @@ public sealed class ModuleLoginTests
     private static readonly ModuleLoginNames LoginNames = new("monolith");
 
     [Fact]
-    public void Login_is_named_after_the_prefix_and_the_schema()
+    public void Login_is_named_after_the_database_and_the_schema()
     {
         var login = ModuleLogin.Create(LoginNames, "ping_echoes", TestSettings.LoginKey);
 
-        login.Name.ShouldBe("monolith_ping_echoes");
+        login.Name.ShouldBe("monolith__ping_echoes");
         login.Schema.ShouldBe("ping_echoes");
     }
 
@@ -24,7 +24,7 @@ public sealed class ModuleLoginTests
     public void Password_is_the_hmac_of_the_login_name_under_the_decoded_login_key()
     {
         var expectedPassword = Base64Url.EncodeToString(
-            HMACSHA256.HashData(Convert.FromBase64String(TestSettings.LoginKey), "monolith_pings"u8));
+            HMACSHA256.HashData(Convert.FromBase64String(TestSettings.LoginKey), "monolith__pings"u8));
 
         var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 

@@ -73,7 +73,7 @@ public sealed class TransactionTests : IDisposable
         outcome.ShouldBe(Result.Success());
         createdFiles.ShouldBe(NewFiles.Select(newFile => newFile.Content));
         program.ShouldContain("builder.AddPlatform();\nbuilder.AddModule<NotesModule>();\n", Case.Sensitive);
-        appSettings.ShouldContain("\"LoginPrefix\": \"acme_shop\",\n      \"Notes\": true", Case.Sensitive);
+        appSettings.ShouldContain("\"MaxConnections\": 20,\n      \"Notes\": true", Case.Sensitive);
         processRunner.Steps.ShouldBe(["bash scripts/add-migration.sh Notes Initial"]);
     }
 
@@ -386,7 +386,7 @@ public sealed class TransactionTests : IDisposable
                     "Infrastructure.csproj\" />\n",
                     "    <ProjectReference Include=\"Notes\" />\n"),
                 PlanEdit(app.Program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n"),
-                PlanEdit(app.AppSettings, "\"acme_shop\"", ",\n      \"Notes\": true"),
+                PlanEdit(app.AppSettings, "\"MaxConnections\": 20", ",\n      \"Notes\": true"),
             ],
             [MigrationStep]);
     }

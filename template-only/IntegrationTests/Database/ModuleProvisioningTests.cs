@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
@@ -17,8 +16,14 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
 
     private const String SuperuserSql = "SELECT rolsuper FROM pg_roles WHERE rolname = @Login";
 
+    private const String PingsLogin = "postgres__pings";
+
+    private const String PongsLogin = "postgres__pongs";
+
+    private const String Group = "postgres__modules";
+
     private const String OwnershipAdvice =
-        "If App:Database:LoginPrefix changed, set it back to the prefix that owns these schemas; "
+        "Module roles are named after the database: if it was renamed, give it back the name it was prepared under; "
         + "if this is a development database (the Aspire data volume), you can also drop it and start again.";
 
     private const String CreatePlainLoginSql = """
@@ -29,12 +34,12 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         END $$
         """;
 
-    private const String AdminOptionSql = """
+    private const String AdminOptionSql = $"""
         SELECT bool_or(admin_option) FROM pg_auth_members
-        WHERE roleid = 'monolith_modules'::regrole AND member = 'monolith_pings'::regrole
+        WHERE roleid = '{Group}'::regrole AND member = '{PingsLogin}'::regrole
         """;
 
-    private const String StoredSecretSql = "SELECT rolpassword FROM pg_authid WHERE rolname = 'monolith_pings'";
+    private const String StoredSecretSql = "SELECT rolpassword FROM pg_authid WHERE rolname = @Login";
 
     private const Int32 ParallelStartRounds = 5;
 
@@ -55,6 +60,11 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
     private const String RolesStartingWithSql =
         "SELECT rolname FROM pg_roles WHERE starts_with(rolname, @Prefix) ORDER BY rolname";
 
+    private const String DisconnectSql = """
+        SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+        WHERE datname = @Database AND pid <> pg_backend_pid()
+        """;
+
     private const String InboxDeliverySql = """
         SELECT has_table_privilege(@PingsLogin, 'pongs.inbox_messages', 'INSERT')
            AND has_column_privilege(@PingsLogin, 'pongs.inbox_messages', 'id', 'SELECT')
@@ -65,8 +75,8 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Theory]
-    [InlineData("pings", "monolith_pings")]
-    [InlineData("pongs", "monolith_pongs")]
+    [InlineData("pings", PingsLogin)]
+    [InlineData("pongs", PongsLogin)]
     public async Task Startup_gives_each_module_a_login_that_owns_its_schema(String schema, String loginName)
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
@@ -106,7 +116,7 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         }
 
         await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync(
-            "ALTER ROLE monolith_pings PASSWORD 'stale'");
+            $"ALTER ROLE {PingsLogin} PASSWORD 'stale'");
 
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         var pingId = await testModulesHost.CreatePingAsync("restored");
@@ -170,17 +180,17 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         }
 
         var superuserDatabaseProbe = new DatabaseProbe(postgresFixture.ConnectionString);
-        await superuserDatabaseProbe.ExecuteAsync("GRANT monolith_pongs TO monolith_pings");
+        await superuserDatabaseProbe.ExecuteAsync($"GRANT {PongsLogin} TO {PingsLogin}");
         try
         {
             var exception = await Should.ThrowAsync<InvalidOperationException>(
                 () => TestModulesHost.StartAsync(postgresFixture));
 
-            exception.Message.ShouldContain("monolith_pings is a member of monolith_pongs");
+            exception.Message.ShouldContain($"{PingsLogin} is a member of {PongsLogin}");
         }
         finally
         {
-            await superuserDatabaseProbe.ExecuteAsync("REVOKE monolith_pongs FROM monolith_pings");
+            await superuserDatabaseProbe.ExecuteAsync($"REVOKE {PongsLogin} FROM {PingsLogin}");
         }
     }
 
@@ -192,17 +202,17 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         }
 
         var superuserDatabaseProbe = new DatabaseProbe(postgresFixture.ConnectionString);
-        await superuserDatabaseProbe.ExecuteAsync("ALTER ROLE monolith_modules LOGIN");
+        await superuserDatabaseProbe.ExecuteAsync($"ALTER ROLE {Group} LOGIN");
         try
         {
             var exception = await Should.ThrowAsync<InvalidOperationException>(
                 () => TestModulesHost.StartAsync(postgresFixture));
 
-            exception.Message.ShouldContain("role monolith_modules has more rights than it needs");
+            exception.Message.ShouldContain($"role {Group} has more rights than it needs");
         }
         finally
         {
-            await superuserDatabaseProbe.ExecuteAsync("ALTER ROLE monolith_modules NOLOGIN");
+            await superuserDatabaseProbe.ExecuteAsync($"ALTER ROLE {Group} NOLOGIN");
         }
     }
 
@@ -214,8 +224,7 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         }
 
         var superuserDatabaseProbe = new DatabaseProbe(postgresFixture.ConnectionString);
-        await superuserDatabaseProbe.ExecuteAsync(
-            "GRANT monolith_modules TO monolith_pings WITH ADMIN TRUE");
+        await superuserDatabaseProbe.ExecuteAsync($"GRANT {Group} TO {PingsLogin} WITH ADMIN TRUE");
 
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         var hasAdminOption = await superuserDatabaseProbe.ExecuteScalarAsync<Boolean>(AdminOptionSql);
@@ -227,18 +236,21 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
     public async Task Server_receives_only_a_scram_verifier_of_the_module_password()
     {
         var connectionString = await CreateDatabaseAsync();
-        var databaseName = new NpgsqlConnectionStringBuilder(connectionString).Database;
+        var databaseName = ReadDatabaseName(connectionString);
         await new DatabaseProbe(connectionString).ExecuteAsync(
             $"ALTER DATABASE {databaseName} SET password_encryption = 'md5'");
 
         var wrongPasswordConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
         {
-            Username = "monolith_pings",
+            Username = $"{databaseName}__pings",
             Password = "wrong",
         };
 
         await using var testModulesHost = await TestModulesHost.StartAsync(connectionString);
-        var storedSecret = await testModulesHost.Database.ExecuteScalarAsync<String>(StoredSecretSql);
+        var storedSecret = await testModulesHost.Database.ExecuteScalarAsync<String>(
+            StoredSecretSql,
+            new { Login = $"{databaseName}__pings" });
+
         var pingId = await testModulesHost.CreatePingAsync("verifier");
         var exception = await Should.ThrowAsync<PostgresException>(
             () => OpenConnectionAsync(wrongPasswordConnectionStringBuilder.ConnectionString));
@@ -254,6 +266,7 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         for (var round = 0; round < ParallelStartRounds; round++)
         {
             var connectionString = await CreateDatabaseAsync();
+            var databaseName = ReadDatabaseName(connectionString);
 
             await PrepareTogetherAsync(connectionString);
 
@@ -261,20 +274,21 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
             var moduleOwnerships = await databaseProbe.QueryAsync<ModuleOwnership>(ModuleOwnershipSql);
             var canDeliverToInboxes = await databaseProbe.ExecuteScalarAsync<Boolean>(
                 InboxDeliverySql,
-                new { PingsLogin = "monolith_pings", PongsLogin = "monolith_pongs" });
+                new { PingsLogin = $"{databaseName}__pings", PongsLogin = $"{databaseName}__pongs" });
 
             moduleOwnerships.ShouldBe(
-                [new("pings", "monolith_pings", 0), new("pongs", "monolith_pongs", 0)]);
+                [new("pings", $"{databaseName}__pings", 0), new("pongs", $"{databaseName}__pongs", 0)]);
 
             canDeliverToInboxes.ShouldBeTrue();
         }
     }
 
     [Fact]
-    public async Task Roles_follow_the_configured_login_prefix()
+    public async Task Roles_follow_the_database_name()
     {
         var connectionString = await CreateDatabaseAsync();
-        using var host = TestModulesHost.BuildUnstarted(connectionString, UseLoginPrefix("prefix_probe"));
+        var databaseName = ReadDatabaseName(connectionString);
+        using var host = TestModulesHost.BuildUnstarted(connectionString);
 
         await host.Services.PrepareModuleDatabasesAsync(CancellationToken);
 
@@ -282,40 +296,50 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         var moduleOwnerships = await databaseProbe.QueryAsync<ModuleOwnership>(ModuleOwnershipSql);
         var groupMembers = await databaseProbe.QueryAsync<String>(
             GroupMembersSql,
-            new { Group = "prefix_probe_modules" });
+            new { Group = $"{databaseName}__modules" });
 
         var canDeliverToInboxes = await databaseProbe.ExecuteScalarAsync<Boolean>(
             InboxDeliverySql,
-            new { PingsLogin = "prefix_probe_pings", PongsLogin = "prefix_probe_pongs" });
+            new { PingsLogin = $"{databaseName}__pings", PongsLogin = $"{databaseName}__pongs" });
 
         moduleOwnerships.ShouldBe(
-            [new("pings", "prefix_probe_pings", 0), new("pongs", "prefix_probe_pongs", 0)]);
+            [new("pings", $"{databaseName}__pings", 0), new("pongs", $"{databaseName}__pongs", 0)]);
 
-        groupMembers.ShouldBe(["prefix_probe_pings", "prefix_probe_pongs"]);
+        groupMembers.ShouldBe([$"{databaseName}__pings", $"{databaseName}__pongs"]);
         canDeliverToInboxes.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task Renamed_login_prefix_stops_the_start_and_creates_no_role()
+    public async Task Renamed_database_stops_the_start_and_creates_no_role()
     {
         var connectionString = await CreateDatabaseAsync();
-        using (var firstHost = TestModulesHost.BuildUnstarted(connectionString, UseLoginPrefix("before_rename")))
+        var databaseName = ReadDatabaseName(connectionString);
+        var renamedDatabaseName = $"renamed_{Guid.CreateVersion7():N}";
+        using (var firstHost = TestModulesHost.BuildUnstarted(connectionString))
         {
             await firstHost.Services.PrepareModuleDatabasesAsync(CancellationToken);
         }
 
-        using var renamedHost = TestModulesHost.BuildUnstarted(connectionString, UseLoginPrefix("after_rename"));
+        await RenameDatabaseAsync(databaseName, renamedDatabaseName);
+        var renamedConnectionString = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Database = renamedDatabaseName,
+        }.ConnectionString;
+
+        using var renamedHost = TestModulesHost.BuildUnstarted(renamedConnectionString);
 
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => renamedHost.Services.PrepareModuleDatabasesAsync(CancellationToken));
 
-        var rolesOfTheNewPrefix = await new DatabaseProbe(connectionString).QueryAsync<String>(
+        var rolesOfTheNewName = await new DatabaseProbe(postgresFixture.ConnectionString).QueryAsync<String>(
             RolesStartingWithSql,
-            new { Prefix = "after_rename" });
+            new { Prefix = renamedDatabaseName });
 
-        exception.Message.ShouldContain("schema pings is owned by before_rename_pings, not after_rename_pings");
+        exception.Message.ShouldContain(
+            $"schema pings is owned by {databaseName}__pings, not {renamedDatabaseName}__pings");
+
         exception.Message.ShouldContain(OwnershipAdvice);
-        rolesOfTheNewPrefix.ShouldBeEmpty();
+        rolesOfTheNewName.ShouldBeEmpty();
     }
 
     [Fact]
@@ -326,20 +350,19 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
         }
 
         var superuserDatabaseProbe = new DatabaseProbe(postgresFixture.ConnectionString);
-        await superuserDatabaseProbe.ExecuteAsync("GRANT SELECT ON pongs.outbox_messages TO monolith_modules");
+        await superuserDatabaseProbe.ExecuteAsync($"GRANT SELECT ON pongs.outbox_messages TO {Group}");
         try
         {
             var exception = await Should.ThrowAsync<InvalidOperationException>(
                 () => TestModulesHost.StartAsync(postgresFixture));
 
-            exception.Message.ShouldContain("monolith_pings has SELECT on pongs.outbox_messages");
+            exception.Message.ShouldContain($"{PingsLogin} has SELECT on pongs.outbox_messages");
             exception.Message.ShouldContain(
-                "REVOKE SELECT ON pongs.outbox_messages FROM monolith_pings, monolith_modules, PUBLIC");
+                $"REVOKE SELECT ON pongs.outbox_messages FROM {PingsLogin}, {Group}, PUBLIC");
         }
         finally
         {
-            await superuserDatabaseProbe.ExecuteAsync(
-                "REVOKE SELECT ON pongs.outbox_messages FROM monolith_modules");
+            await superuserDatabaseProbe.ExecuteAsync($"REVOKE SELECT ON pongs.outbox_messages FROM {Group}");
         }
     }
 
@@ -357,7 +380,7 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
             var exception = await Should.ThrowAsync<InvalidOperationException>(
                 () => TestModulesHost.StartAsync(postgresFixture));
 
-            exception.Message.ShouldContain("monolith_pings has SELECT (payload) on pongs.inbox_messages");
+            exception.Message.ShouldContain($"{PingsLogin} has SELECT (payload) on pongs.inbox_messages");
         }
         finally
         {
@@ -369,24 +392,24 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
     public async Task Database_create_for_a_module_login_stops_startup()
     {
         var connectionString = await CreateDatabaseAsync();
-        var databaseName = new NpgsqlConnectionStringBuilder(connectionString).Database;
+        var databaseName = ReadDatabaseName(connectionString);
+        var pingsLogin = $"{databaseName}__pings";
         await using (await TestModulesHost.StartAsync(connectionString))
         {
         }
 
         var superuserDatabaseProbe = new DatabaseProbe(connectionString);
-        await superuserDatabaseProbe.ExecuteAsync($"GRANT CREATE ON DATABASE {databaseName} TO monolith_pings");
+        await superuserDatabaseProbe.ExecuteAsync($"GRANT CREATE ON DATABASE {databaseName} TO {pingsLogin}");
         try
         {
             var exception = await Should.ThrowAsync<InvalidOperationException>(
                 () => TestModulesHost.StartAsync(connectionString));
 
-            exception.Message.ShouldContain($"monolith_pings has CREATE on DATABASE {databaseName}");
+            exception.Message.ShouldContain($"{pingsLogin} has CREATE on DATABASE {databaseName}");
         }
         finally
         {
-            await superuserDatabaseProbe.ExecuteAsync(
-                $"REVOKE CREATE ON DATABASE {databaseName} FROM monolith_pings");
+            await superuserDatabaseProbe.ExecuteAsync($"REVOKE CREATE ON DATABASE {databaseName} FROM {pingsLogin}");
         }
     }
 
@@ -400,13 +423,20 @@ public sealed class ModuleProvisioningTests(PostgresFixture postgresFixture)
             secondHost.Services.PrepareModuleDatabasesAsync(CancellationToken));
     }
 
-    private static Action<IHostApplicationBuilder> UseLoginPrefix(String loginPrefix) =>
-        builder => builder.Configuration["App:Database:LoginPrefix"] = loginPrefix;
+    private static String ReadDatabaseName(String connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString).Database ?? String.Empty;
 
     private static async Task OpenConnectionAsync(String connectionString)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(CancellationToken);
+    }
+
+    private async Task RenameDatabaseAsync(String databaseName, String newDatabaseName)
+    {
+        var superuserDatabaseProbe = new DatabaseProbe(postgresFixture.ConnectionString);
+        await superuserDatabaseProbe.ExecuteScalarAsync<Int64>(DisconnectSql, new { Database = databaseName });
+        await superuserDatabaseProbe.ExecuteAsync($"ALTER DATABASE {databaseName} RENAME TO {newDatabaseName}");
     }
 
     private async Task<String> CreateDatabaseAsync()

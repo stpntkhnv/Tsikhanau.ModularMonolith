@@ -5,7 +5,7 @@ namespace Tsikhanau.Monolith.Scaffold.Apps;
 internal sealed record AppLayout(
     String ProjectPrefix,
     String RootNamespace,
-    String LoginPrefix,
+    String DatabaseName,
     TextFile Solution,
     TextFile HostProject,
     TextFile Program,

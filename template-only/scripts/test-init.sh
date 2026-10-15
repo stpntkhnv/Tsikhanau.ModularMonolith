@@ -19,8 +19,8 @@ fi
 readonly work
 rulebook=$work/rulebook
 custom_rulebook=$work/custom-rulebook
-host_settings=src/Bootstrapper/ModularMonolith.Bootstrapper/appsettings.json
-database_settings=src/Core/Infrastructure/Database/DatabaseSettings.cs
+app_host=src/Aspire/ModularMonolith.AppHost/AppHost.cs
+database_name_budget=30
 rule_links=(
   AGENTS.md=AGENTS.md
   CLAUDE.md=AGENTS.md
@@ -51,12 +51,12 @@ fail() {
 
 new_app() {
   local app=$work/cases/$1/app
-  mkdir -p "$app/scripts" "$app/.githooks" "$app/src/Bootstrapper/App.Bootstrapper" "$app/.claude"
+  mkdir -p "$app/scripts" "$app/.githooks" "$app/src/Aspire/App.AppHost" "$app/.claude"
   cp "$template_root/gate.sh" "$app/"
   cp "$template_root"/scripts/*.sh "$app/scripts/"
   cp "$template_root"/.githooks/* "$app/.githooks/"
   chmod -x "$app/gate.sh" "$app"/scripts/*.sh "$app"/.githooks/*
-  sed "s/\"modularmonolith\"/\"$2\"/" "$template_root/$host_settings" > "$app/src/Bootstrapper/App.Bootstrapper/appsettings.json"
+  sed "s/\"modularmonolith\"/\"$2\"/" "$template_root/$app_host" > "$app/src/Aspire/App.AppHost/AppHost.cs"
   printf '<Solution />\n' > "$app/App.slnx"
   printf '{}\n' > "$app/.claude/settings.json"
   : > "$(dotnet_calls "$app")"
@@ -148,13 +148,6 @@ snapshot_repository() {
   cat "$1/.git/config"
 }
 
-core_budget() {
-  local budget
-  budget=$(sed -nE 's/.*\[StringLength\(([0-9]+),.*/\1/p' "$template_root/$database_settings")
-  [[ "$budget" =~ ^[0-9]+$ ]] || fail "cannot read the login prefix length from $database_settings"
-  printf '%s\n' "$budget"
-}
-
 letters() {
   printf 'a%.0s' $(seq 1 "$1")
 }
@@ -170,15 +163,28 @@ case_digit_start() {
 }
 
 case_budget() {
-  local app budget
-  budget=$(core_budget)
+  local app budget=$database_name_budget
   app=$(new_app over "$(letters $((budget + 1)))")
   run_init "$app"
-  expect_refused "has $((budget + 1)) characters, and the core allows at most $budget "
+  expect_refused "has $((budget + 1)) characters, and init allows at most $budget "
+  expect_said "the database name in src/Aspire/App.AppHost/AppHost.cs"
   [[ ! -e "$app/.git" ]] || fail "a refused name must stop before the repository is created"
   app=$(new_app at "$(letters "$budget")")
   run_init "$app" --no-rules
   expect_success
+}
+
+case_database_name_rule() {
+  local app name
+  for name in acme__shop acme_ _acme; do
+    app=$(new_app "rule-$name" "$name")
+    run_init "$app"
+    expect_refused "app name, $name .*, must hold only a-z and 0-9 in groups joined by single underscores"
+    [[ ! -e "$app/.git" ]] || fail "a refused name must stop before the repository is created"
+  done
+  app=$(new_app reserved pg_shop)
+  run_init "$app"
+  expect_refused "app name, pg_shop .*, is pg or starts with pg_, which PostgreSQL reserves for its own roles"
 }
 
 case_fresh_repository() {
@@ -544,7 +550,8 @@ run_case() {
 }
 
 run_case "a name whose PostgreSQL form starts with a digit is refused before anything is made" case_digit_start
-run_case "a name longer than the core's login prefix budget is refused, one at the budget passes" case_budget
+run_case "a name longer than the database name budget is refused, one at the budget passes" case_budget
+run_case "a name whose PostgreSQL form breaks the database name rule is refused before anything is made" case_database_name_rule
 run_case "a fresh app gets a repository on main, the hooks path, executable bits, ignored rules links and one build; .claude is untouched" case_fresh_repository
 run_case "a second run changes nothing" case_repeat_run
 run_case "in a git worktree the links are made there from the default rulebook beside the app and the exclude lines go to the shared exclude file" case_worktree

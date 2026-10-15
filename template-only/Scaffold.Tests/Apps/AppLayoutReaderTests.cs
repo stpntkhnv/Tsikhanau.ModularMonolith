@@ -1,3 +1,4 @@
+using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Tests.Support;
 using Tsikhanau.Railway;
@@ -7,6 +8,10 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Apps;
 public sealed class AppLayoutReaderTests : IDisposable
 {
     private const String HostProjectPattern = "src/Bootstrapper/*.Bootstrapper/*.Bootstrapper.csproj";
+
+    private const String DatabaseNameRule =
+        "which cannot name the module roles <database>__<schema>: it must be groups of a-z and 0-9 joined by "
+        + "single underscores, and be neither pg nor start with pg_, which PostgreSQL reserves for its own roles";
 
     private readonly SampleApp _app = SampleApp.Create();
 
@@ -19,7 +24,7 @@ public sealed class AppLayoutReaderTests : IDisposable
 
         layout.ProjectPrefix.ShouldBe("Acme.Shop");
         layout.RootNamespace.ShouldBe("Acme.Shop");
-        layout.LoginPrefix.ShouldBe("acme_shop");
+        layout.DatabaseName.ShouldBe("acme_shop");
         layout.Solution.Path.ShouldBe(SampleApp.SolutionPath);
         layout.Solution.Text.ShouldBe(SampleApp.Solution);
         layout.HostProject.Path.ShouldBe(SampleApp.HostProjectPath);
@@ -118,43 +123,123 @@ public sealed class AppLayoutReaderTests : IDisposable
     }
 
     [Fact]
-    public void Login_prefix_is_read_from_app_settings_with_comments_and_trailing_commas()
+    public void Database_name_is_read_from_the_app_host()
     {
-        _app.Write(
-            SampleApp.AppSettingsPath,
-            """
-            {
-              // the database
-              "App": { "Database": { "LoginPrefix": "shop", }, },
-            }
-            """);
+        WriteDatabaseName("shop_eu");
 
         var layout = _app.ReadLayout();
 
-        layout.LoginPrefix.ShouldBe("shop");
-    }
-
-    [Theory]
-    [InlineData("{ \"App\": { \"Database\": {} } }")]
-    [InlineData("{ \"App\": { \"Database\": { \"LoginPrefix\": 7 } } }")]
-    public void App_settings_without_a_login_prefix_are_refused(String appSettings)
-    {
-        _app.Write(SampleApp.AppSettingsPath, appSettings);
-
-        var message = ReadMessage();
-
-        message.ShouldBe($"{SampleApp.AppSettingsPath} has no App:Database:LoginPrefix");
+        layout.DatabaseName.ShouldBe("shop_eu");
     }
 
     [Fact]
-    public void App_settings_that_are_not_json_are_refused()
+    public void App_without_an_app_host_is_refused()
     {
-        _app.Write(SampleApp.AppSettingsPath, "{ \"App\": ");
+        _app.Delete(SampleApp.AppHostPath);
 
         var message = ReadMessage();
 
-        message.ShouldStartWith($"cannot read {SampleApp.AppSettingsPath}: ", Case.Sensitive);
+        message.ShouldBe("expected one src/Aspire/*.AppHost/AppHost.cs, found 0: none");
     }
+
+    [Theory]
+    [InlineData("var builder = DistributedApplication.CreateBuilder(args);\n", 0)]
+    [InlineData("AddDatabase(\"a\", databaseName: \"a\");\nAddDatabase(\"b\", databaseName: \"b\");\n", 2)]
+    public void App_host_that_does_not_name_one_default_database_is_refused(String appHost, Int32 found)
+    {
+        _app.Write(SampleApp.AppHostPath, appHost);
+
+        var message = ReadMessage();
+
+        message.ShouldBe(
+            $"{SampleApp.AppHostPath} must name the default database once, as databaseName: \"<name>\"; "
+            + $"found {found}");
+    }
+
+    [Theory]
+    [InlineData("shop__eu")]
+    [InlineData("_shop")]
+    [InlineData("shop_")]
+    [InlineData("Shop")]
+    [InlineData("shop-eu")]
+    [InlineData("pg")]
+    [InlineData("pg_shop")]
+    [InlineData("")]
+    public void Database_name_that_breaks_the_rule_is_refused_with_the_rule(String databaseName)
+    {
+        WriteDatabaseName(databaseName);
+
+        var message = ReadMessage();
+
+        message.ShouldBe($"{SampleApp.AppHostPath} names the database '{databaseName}', {DatabaseNameRule}");
+    }
+
+    [Fact]
+    public void Database_name_of_54_characters_is_accepted()
+    {
+        var databaseName = new String('d', 54);
+        WriteDatabaseName(databaseName);
+
+        var layout = _app.ReadLayout();
+
+        layout.DatabaseName.ShouldBe(databaseName);
+    }
+
+    [Fact]
+    public void Database_name_whose_group_would_pass_63_characters_is_refused()
+    {
+        var databaseName = new String('d', 55);
+        WriteDatabaseName(databaseName);
+
+        var message = ReadMessage();
+
+        message.ShouldBe(
+            $"{SampleApp.AppHostPath} names the database '{databaseName}', which makes the group role "
+            + $"{databaseName}__modules 64 characters long, more than the 63 PostgreSQL allows in a role name: "
+            + "shorten it to at most 54 characters");
+    }
+
+    [Theory]
+    [InlineData("acme_shop")]
+    [InlineData("1shop")]
+    [InlineData("pgx")]
+    [InlineData("p_g")]
+    [InlineData("shop__eu")]
+    [InlineData("shop_")]
+    [InlineData("Shop")]
+    [InlineData("pg")]
+    [InlineData("pg_shop")]
+    [InlineData("dddddddddddddddddddddddddddddddddddddddddddddddddddddd")]
+    [InlineData("ddddddddddddddddddddddddddddddddddddddddddddddddddddddd")]
+    public void Scaffold_accepts_exactly_the_database_names_the_core_accepts(String databaseName)
+    {
+        WriteDatabaseName(databaseName);
+
+        var layout = new AppLayoutReader(_app.FileSystem).Read();
+
+        layout.IsSuccess.ShouldBe(AcceptsInCore(databaseName), ReadMessage());
+    }
+
+    private static Boolean AcceptsInCore(String databaseName)
+    {
+        try
+        {
+            _ = new ModuleLoginNames(databaseName);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private void WriteDatabaseName(String databaseName) =>
+        _app.Write(
+            SampleApp.AppHostPath,
+            SampleApp.AppHost.Replace(
+                $"databaseName: \"{SampleApp.DatabaseName}\"",
+                $"databaseName: \"{databaseName}\"",
+                StringComparison.Ordinal));
 
     private String ReadMessage() =>
         new AppLayoutReader(_app.FileSystem)

@@ -51,7 +51,7 @@ public static class ModuleDatabaseExtensions
             serviceProvider.GetRequiredService<IConfiguration>(),
             serviceProvider.GetRequiredService<IHostEnvironment>());
 
-        var loginNames = new ModuleLoginNames(settings.LoginPrefix);
+        var loginNames = new ModuleLoginNames(connectionStrings.DatabaseName);
         var logins = modules
             .Select(module => ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey))
             .ToList();

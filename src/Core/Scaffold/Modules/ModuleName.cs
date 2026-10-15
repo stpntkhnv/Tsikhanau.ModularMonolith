@@ -1,14 +1,11 @@
 using System.Text.RegularExpressions;
+using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;
 
 internal sealed partial record ModuleName
 {
-    private const Int32 MaxRoleNameLength = 63;
-
-    private const String LoginGroupSuffix = "modules";
-
     private const String PascalCaseRule = "must be PascalCase: an ASCII capital letter, then letters and digits";
 
     private const String TestsSuffixRule = "must not end in Tests: the build turns such a project into a test project";
@@ -39,7 +36,7 @@ internal sealed partial record ModuleName
     [GeneratedRegex(@"\A(?!pg(_|\z))[a-z][a-z0-9_]*\z")]
     private static partial Regex SchemaPattern { get; }
 
-    public static Result<ModuleName> Parse(String name, String loginPrefix) =>
+    public static Result<ModuleName> Parse(String name, String databaseName) =>
         Result
             .Success(name)
             .Ensure(IsPascalCase, BuildNameError(name, PascalCaseRule))
@@ -47,11 +44,11 @@ internal sealed partial record ModuleName
             .Ensure(HasNoModuleSuffix, BuildNameError(name, ModuleSuffixRule))
             .Map(validName => new ModuleName(validName))
             .Ensure(HasSchemaPattern, BuildSchemaError(PostgresPrefixRule))
-            .Ensure(IsNotLoginGroup, BuildSchemaError(BuildLoginGroupRule(loginPrefix)))
+            .Ensure(IsNotLoginGroup, BuildSchemaError(BuildLoginGroupRule(databaseName)))
             .Ensure(IsNotPostgresSchema, BuildSchemaError(PostgresSchemaRule))
             .Ensure(
-                moduleName => FitsRoleNameLength(moduleName, loginPrefix),
-                moduleName => BuildRoleNameLengthError(moduleName, loginPrefix));
+                moduleName => FitsRoleNameLength(moduleName, databaseName),
+                moduleName => BuildRoleNameLengthError(moduleName, databaseName));
 
     private static Boolean IsPascalCase(String name) => PascalCasePattern.IsMatch(name);
 
@@ -61,18 +58,18 @@ internal sealed partial record ModuleName
 
     private static Boolean HasSchemaPattern(ModuleName moduleName) => SchemaPattern.IsMatch(moduleName.Schema);
 
-    private static Boolean IsNotLoginGroup(ModuleName moduleName) => moduleName.Schema != LoginGroupSuffix;
+    private static Boolean IsNotLoginGroup(ModuleName moduleName) => moduleName.Schema != RoleNames.GroupSuffix;
 
     private static Boolean IsNotPostgresSchema(ModuleName moduleName) => !PostgresSchemas.Contains(moduleName.Schema);
 
-    private static Boolean FitsRoleNameLength(ModuleName moduleName, String loginPrefix) =>
-        BuildLoginName(moduleName, loginPrefix).Length <= MaxRoleNameLength;
+    private static Boolean FitsRoleNameLength(ModuleName moduleName, String databaseName) =>
+        BuildLoginName(moduleName, databaseName).Length <= RoleNames.MaxLength;
 
-    private static String BuildLoginName(ModuleName moduleName, String loginPrefix) =>
-        $"{loginPrefix}_{moduleName.Schema}";
+    private static String BuildLoginName(ModuleName moduleName, String databaseName) =>
+        RoleNames.BuildLogin(databaseName, moduleName.Schema);
 
-    private static String BuildLoginGroupRule(String loginPrefix) =>
-        $"its login would be {loginPrefix}_{LoginGroupSuffix}, the group role of the module logins";
+    private static String BuildLoginGroupRule(String databaseName) =>
+        $"its login would be {RoleNames.BuildGroup(databaseName)}, the group role of the module logins";
 
     private static Error BuildNameError(String name, String rule) =>
         Error.Failure("scaffold.name", $"module name '{name}' {rule}");
@@ -82,9 +79,9 @@ internal sealed partial record ModuleName
             "scaffold.name",
             $"module name '{moduleName.Name}' gives the schema '{moduleName.Schema}': {rule}");
 
-    private static Error BuildRoleNameLengthError(ModuleName moduleName, String loginPrefix) =>
+    private static Error BuildRoleNameLengthError(ModuleName moduleName, String databaseName) =>
         Error.Failure(
             "scaffold.name",
-            $"module name '{moduleName.Name}' gives the login {BuildLoginName(moduleName, loginPrefix)}, "
-            + $"longer than the {MaxRoleNameLength} characters PostgreSQL allows in a role name");
+            $"module name '{moduleName.Name}' gives the login {BuildLoginName(moduleName, databaseName)}, "
+            + $"longer than the {RoleNames.MaxLength} characters PostgreSQL allows in a role name");
 }

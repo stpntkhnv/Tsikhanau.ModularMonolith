@@ -3,8 +3,8 @@ set -euo pipefail
 shopt -s inherit_errexit nullglob
 
 hooks_path=.githooks
-host_settings_pattern=src/Bootstrapper/*.Bootstrapper/appsettings.json
-login_prefix_budget=30
+app_host_pattern=src/Aspire/*.AppHost/AppHost.cs
+database_name_budget=30
 rule_links=(
   AGENTS.md=AGENTS.md
   CLAUDE.md=AGENTS.md
@@ -64,46 +64,46 @@ clear_git_routing() {
 }
 
 check_app_name() {
-  local settings prefix problem
-  settings=$(host_settings)
-  prefix=$(login_prefix "$settings")
-  problem=$(name_problem "$prefix")
+  local app_host name problem
+  app_host=$(app_host_file)
+  name=$(database_name "$app_host")
+  problem=$(name_problem "$name")
   if [[ -n "$problem" ]]; then
-    echo "init: the PostgreSQL form of the app name, $prefix (the database name and App:Database:LoginPrefix in $settings), $problem; remove $root and create the app again with another name" >&2
+    echo "init: the PostgreSQL form of the app name, $name (the database name in $app_host), $problem; remove $root and create the app again with another name" >&2
     exit 1
   fi
-  echo "init: the PostgreSQL form of the app name, $prefix, is a valid database name and login prefix"
+  echo "init: the PostgreSQL form of the app name, $name, is a valid database name"
 }
 
-host_settings() {
-  local files=($host_settings_pattern)
+app_host_file() {
+  local files=($app_host_pattern)
   if [[ ${#files[@]} -ne 1 ]]; then
-    echo "init: expected one $host_settings_pattern, found ${#files[@]}: ${files[*]:-none}" >&2
+    echo "init: expected one $app_host_pattern, found ${#files[@]}: ${files[*]:-none}" >&2
     exit 1
   fi
   printf '%s\n' "${files[0]}"
 }
 
-login_prefix() {
-  local prefixes
-  mapfile -t prefixes < <(sed -nE 's/^[[:space:]]*"LoginPrefix"[[:space:]]*:[[:space:]]*"([^"]*)".*$/\1/p' "$1")
-  if [[ ${#prefixes[@]} -ne 1 ]]; then
-    echo "init: cannot read App:Database:LoginPrefix from $1: expected one \"LoginPrefix\": \"<name>\" line, found ${#prefixes[@]}" >&2
+database_name() {
+  local names
+  mapfile -t names < <(sed -nE 's/.*databaseName:[[:space:]]*"([^"]*)".*/\1/p' "$1")
+  if [[ ${#names[@]} -ne 1 ]]; then
+    echo "init: cannot read the database name from $1: expected one databaseName: \"<name>\", found ${#names[@]}" >&2
     exit 1
   fi
-  printf '%s\n' "${prefixes[0]}"
+  printf '%s\n' "${names[0]}"
 }
 
 name_problem() {
   local LC_ALL=C name=$1
   if [[ $name =~ ^[0-9] ]]; then
-    echo "starts with a digit, and these PostgreSQL names must start with a letter"
-  elif [[ ! $name =~ ^[a-z][a-z0-9_]*$ ]]; then
-    echo "must start with a letter and hold only a-z, 0-9 and _"
+    echo "starts with a digit, and SQL can name such a database only in double quotes"
+  elif [[ ! $name =~ ^[a-z0-9]+(_[a-z0-9]+)*$ ]]; then
+    echo "must hold only a-z and 0-9 in groups joined by single underscores, so that the module roles <database>__<schema> split one way"
   elif [[ $name == pg || $name == pg_* ]]; then
-    echo "is pg or starts with pg_, which PostgreSQL reserves"
-  elif [[ ${#name} -gt $login_prefix_budget ]]; then
-    echo "has ${#name} characters, and the core allows at most $login_prefix_budget so that every module login <prefix>_<schema> fits the 63 characters of a PostgreSQL role name"
+    echo "is pg or starts with pg_, which PostgreSQL reserves for its own roles"
+  elif [[ ${#name} -gt $database_name_budget ]]; then
+    echo "has ${#name} characters, and init allows at most $database_name_budget so that every module login <database>__<schema> keeps room for the schema within the 63 characters of a PostgreSQL role name"
   fi
 }
 

@@ -13,7 +13,7 @@ internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffol
 
     public Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem) =>
         ModuleName
-            .Parse(name, app.LoginPrefix)
+            .Parse(name, app.DatabaseName)
             .Map(moduleName => new ScaffoldedModule(app, moduleName))
             .Bind(module => EnsureNoSuchModule(module, fileSystem))
             .Bind(PlanModule);

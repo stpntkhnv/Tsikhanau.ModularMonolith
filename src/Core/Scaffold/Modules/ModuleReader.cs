@@ -12,7 +12,7 @@ internal sealed class ModuleReader(IFileSystem fileSystem)
 
         return moduleNames.Contains(name, StringComparer.Ordinal)
             ? ModuleName
-                .Parse(name, app.LoginPrefix)
+                .Parse(name, app.DatabaseName)
                 .Map(moduleName => new ScaffoldedModule(app, moduleName))
                 .Bind(EnsureProjects)
             : Error.Failure(

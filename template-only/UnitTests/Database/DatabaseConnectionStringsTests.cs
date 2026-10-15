@@ -40,6 +40,30 @@ public sealed class DatabaseConnectionStringsTests
     }
 
     [Fact]
+    public void Connection_string_without_a_database_is_refused()
+    {
+        var configuration = CreateConfiguration("Host=db;Username=postgres;Password=p");
+
+        var exception = Should.Throw<InvalidOperationException>(
+            () => DatabaseConnectionStrings.From(configuration, Development));
+
+        exception.Message.ShouldBe(
+            "Connection string 'database' names no Database; the module roles are named after the database");
+    }
+
+    [Fact]
+    public void Database_name_is_the_database_of_the_connection_string()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=shop_eu;Username=postgres;Password=p"),
+            Development);
+
+        var databaseName = connectionStrings.DatabaseName;
+
+        databaseName.ShouldBe("shop_eu");
+    }
+
+    [Fact]
     public void Module_connection_keeps_the_server_and_swaps_the_identity()
     {
         var connectionStrings = DatabaseConnectionStrings.From(
@@ -54,7 +78,7 @@ public sealed class DatabaseConnectionStringsTests
         moduleConnectionStringBuilder.Host.ShouldBe("db");
         moduleConnectionStringBuilder.Port.ShouldBe(5433);
         moduleConnectionStringBuilder.Database.ShouldBe("monolith");
-        moduleConnectionStringBuilder.Username.ShouldBe("monolith_pings");
+        moduleConnectionStringBuilder.Username.ShouldBe("monolith__pings");
         moduleConnectionStringBuilder.Password.ShouldBe(login.Password);
         moduleConnectionStringBuilder.ApplicationName.ShouldBe("monolith-pings");
         moduleConnectionStringBuilder.MaxPoolSize.ShouldBe(7);

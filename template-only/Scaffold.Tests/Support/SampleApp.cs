@@ -9,7 +9,7 @@ internal sealed class SampleApp : IDisposable
 {
     public const String Name = "Acme.Shop";
 
-    public const String LoginPrefix = "acme_shop";
+    public const String DatabaseName = "acme_shop";
 
     public const String SolutionPath = "Acme.Shop.slnx";
 
@@ -21,9 +21,11 @@ internal sealed class SampleApp : IDisposable
 
     public const String IntegrationTestsProjectPath = "src/Tests/IntegrationTests/Acme.Shop.IntegrationTests.csproj";
 
+    public const String AppHostPath = "src/Aspire/Acme.Shop.AppHost/AppHost.cs";
+
     private const String TemplateName = "ModularMonolith";
 
-    private const String TemplateLoginPrefix = "modularmonolith";
+    private const String TemplateDatabaseName = "modularmonolith";
 
     private const String TemplateHostFolder = $"src/Bootstrapper/{TemplateName}.Bootstrapper";
 
@@ -41,6 +43,8 @@ internal sealed class SampleApp : IDisposable
     public static String IntegrationTestsProject { get; } =
         ReadTemplateFile($"src/Tests/IntegrationTests/{TemplateName}.IntegrationTests.csproj");
 
+    public static String AppHost { get; } = ReadTemplateFile($"src/Aspire/{TemplateName}.AppHost/AppHost.cs");
+
     public String Root { get; }
 
     public PhysicalFileSystem FileSystem => new(Root);
@@ -53,6 +57,7 @@ internal sealed class SampleApp : IDisposable
         app.Write(ProgramPath, Program);
         app.Write(AppSettingsPath, AppSettings);
         app.Write(IntegrationTestsProjectPath, IntegrationTestsProject);
+        app.Write(AppHostPath, AppHost);
         app.Write("src/Modules/.gitkeep", String.Empty);
         app.Write(".gitignore", "bin/\nobj/\n");
         app.RunGit("init", "-q", "-b", "main");
@@ -95,7 +100,7 @@ internal sealed class SampleApp : IDisposable
         File
             .ReadAllText(Path.Combine(TemplateFolder.Root, relativePath))
             .Replace(TemplateName, Name, StringComparison.Ordinal)
-            .Replace(TemplateLoginPrefix, LoginPrefix, StringComparison.Ordinal);
+            .Replace(TemplateDatabaseName, DatabaseName, StringComparison.Ordinal);
 
     private String HashFiles() =>
         String.Join(

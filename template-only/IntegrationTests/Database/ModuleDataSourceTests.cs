@@ -19,17 +19,20 @@ public sealed class ModuleDataSourceTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public void Module_connects_under_the_names_of_the_configured_login_prefix()
+    public void Module_connects_under_the_names_of_the_database()
     {
-        using var host = TestModulesHost.BuildUnstarted(
-            postgresFixture.ConnectionString,
-            builder => builder.Configuration["App:Database:LoginPrefix"] = "prefix_probe");
+        var connectionString = new NpgsqlConnectionStringBuilder(postgresFixture.ConnectionString)
+        {
+            Database = "names_probe",
+        }.ConnectionString;
 
+        using var host = TestModulesHost.BuildUnstarted(connectionString);
         var dataSource = host.Services.GetRequiredKeyedService<NpgsqlDataSource>(typeof(IPingsModule));
 
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(dataSource.ConnectionString);
 
-        connectionStringBuilder.Username.ShouldBe("prefix_probe_pings");
-        connectionStringBuilder.ApplicationName.ShouldBe("prefix_probe-pings");
+        connectionStringBuilder.Database.ShouldBe("names_probe");
+        connectionStringBuilder.Username.ShouldBe("names_probe__pings");
+        connectionStringBuilder.ApplicationName.ShouldBe("names_probe-pings");
     }
 }

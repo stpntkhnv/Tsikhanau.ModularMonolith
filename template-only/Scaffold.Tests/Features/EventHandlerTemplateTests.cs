@@ -23,7 +23,7 @@ public sealed class EventHandlerTemplateTests
 
     private const String LongModule = "InventoryReservationAdjustments";
 
-    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     private const String LongEvent = "ReservationAdjustmentTotalsRecalculated";
 

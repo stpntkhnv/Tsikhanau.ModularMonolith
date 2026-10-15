@@ -18,7 +18,7 @@ public sealed class FeatureTemplateTests
 
     private const String LongFeature = "RecalculateReservationAdjustmentTotals";
 
-    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     private const String MaxModuleFeature = "RecalculateAdjustmentTotals";
 

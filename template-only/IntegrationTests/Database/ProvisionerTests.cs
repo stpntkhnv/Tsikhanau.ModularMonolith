@@ -17,10 +17,6 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         ORDER BY nspname
         """;
 
-    private static readonly ModuleLoginNames LoginNames = new("monolith");
-
-    private static readonly ModuleLogin[] RaceLogins = [CreateLogin("race_a"), CreateLogin("race_b")];
-
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -34,10 +30,11 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
 
             foreach (var connectionString in connectionStrings)
             {
+                var databaseName = ReadDatabaseName(connectionString);
                 var schemaOwners = await new DatabaseProbe(connectionString).QueryAsync<SchemaOwner>(RaceOwnersSql);
 
                 schemaOwners.ShouldBe(
-                    [new("race_a", "monolith_race_a"), new("race_b", "monolith_race_b")]);
+                    [new("race_a", $"{databaseName}__race_a"), new("race_b", $"{databaseName}__race_b")]);
             }
         }
     }
@@ -51,7 +48,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             connectionString,
             canCreateSchemas: true);
 
-        var login = CreateLogin("creator_probe");
+        var login = CreateLogin(connectionString, "creator_probe");
 
         await ProvisionAsync(creatorConnectionString, [login], maxConnections: 10);
 
@@ -59,7 +56,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             OwnerSql,
             new { Schema = "creator_probe" });
 
-        owner.ShouldBe("monolith_creator_probe");
+        owner.ShouldBe($"{ReadDatabaseName(connectionString)}__creator_probe");
     }
 
     [Fact]
@@ -74,7 +71,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [CreateLogin("nocreate_probe")],
+                [CreateLogin(connectionString, "nocreate_probe")],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("CREATE on the database");
@@ -84,9 +81,9 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
     public async Task Admin_without_the_admin_option_on_an_existing_login_is_refused()
     {
         var connectionString = await CreateDatabaseAsync();
+        var foreignLogin = CreateLogin(connectionString, "foreign_probe");
         await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync(
-            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'monolith_foreign_probe') "
-            + "THEN CREATE ROLE monolith_foreign_probe LOGIN; END IF; END $$");
+            $"CREATE ROLE {foreignLogin.Name} LOGIN");
 
         var creatorConnectionString = await CreateAdminLoginAsync(
             "creator_foreign",
@@ -96,7 +93,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [CreateLogin("foreign_probe")],
+                [foreignLogin],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("ADMIN option");
@@ -114,7 +111,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [CreateLogin("budget_probe")],
+                [CreateLogin(connectionString, "budget_probe")],
                 maxConnections: 5000));
 
         exception.Message.ShouldContain("MaxConnections");
@@ -132,7 +129,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [CreateLogin("budget_a"), CreateLogin("budget_b")],
+                [CreateLogin(connectionString, "budget_a"), CreateLogin(connectionString, "budget_b")],
                 maxConnections: 3));
 
         exception.Message.ShouldContain(
@@ -151,12 +148,18 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await Should.NotThrowAsync(
             () => ProvisionAsync(
                 adminConnectionString,
-                [CreateLogin("budget_exact_a"), CreateLogin("budget_exact_b")],
+                [CreateLogin(connectionString, "budget_exact_a"), CreateLogin(connectionString, "budget_exact_b")],
                 maxConnections: 4));
     }
 
-    private static ModuleLogin CreateLogin(String schema) =>
-        ModuleLogin.Create(LoginNames, schema, TestSettings.LoginKey);
+    private static ModuleLoginNames CreateLoginNames(String connectionString) =>
+        new(ReadDatabaseName(connectionString));
+
+    private static ModuleLogin CreateLogin(String connectionString, String schema) =>
+        ModuleLogin.Create(CreateLoginNames(connectionString), schema, TestSettings.LoginKey);
+
+    private static String ReadDatabaseName(String connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString).Database ?? String.Empty;
 
     private static Task ProvisionRaceLoginsAsync(String connectionString)
     {
@@ -165,7 +168,10 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             Pooling = false,
         }.ConnectionString;
 
-        return ProvisionAsync(adminConnectionString, RaceLogins, maxConnections: 10);
+        return ProvisionAsync(
+            adminConnectionString,
+            [CreateLogin(connectionString, "race_a"), CreateLogin(connectionString, "race_b")],
+            maxConnections: 10);
     }
 
     private static async Task ProvisionAsync(
@@ -176,7 +182,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await using var adminSession = await AdminSession.OpenLockedAsync(adminConnectionString, CancellationToken);
         await ModuleDatabaseProvisioner.ProvisionAsync(
             adminSession.DataSource,
-            LoginNames.Group,
+            CreateLoginNames(adminConnectionString).Group,
             logins,
             maxConnections,
             CancellationToken);
@@ -201,13 +207,6 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await superuserDatabaseProbe.ExecuteAsync(
             $"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{roleName}') "
             + $"THEN CREATE ROLE {roleName} LOGIN CREATEROLE PASSWORD '{roleName}'; END IF; END $$");
-
-        await superuserDatabaseProbe.ExecuteAsync(
-            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'monolith_modules') "
-            + "THEN CREATE ROLE monolith_modules NOLOGIN; END IF; END $$");
-
-        await superuserDatabaseProbe.ExecuteAsync(
-            $"GRANT monolith_modules TO {roleName} WITH ADMIN TRUE, INHERIT FALSE, SET FALSE");
 
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
         {

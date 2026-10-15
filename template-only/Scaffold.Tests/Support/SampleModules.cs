@@ -11,7 +11,7 @@ internal static class SampleModules
         new(
             CreateLayout(appName),
             ModuleName
-                .Parse(name, SampleApp.LoginPrefix)
+                .Parse(name, SampleApp.DatabaseName)
                 .Value);
 
     public static TextFile CreateFile(String path, String text) => new(path, Encoding.UTF8.GetBytes(text));
@@ -23,7 +23,7 @@ internal static class SampleModules
         new(
             appName,
             appName,
-            SampleApp.LoginPrefix,
+            SampleApp.DatabaseName,
             CreateFile(RenameApp(SampleApp.SolutionPath, appName), RenameApp(SampleApp.Solution, appName)),
             CreateFile(RenameApp(SampleApp.HostProjectPath, appName), RenameApp(SampleApp.HostProject, appName)),
             CreateFile(RenameApp(SampleApp.ProgramPath, appName), RenameApp(SampleApp.Program, appName)),

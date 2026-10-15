@@ -6,15 +6,15 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Modules;
 
 public sealed class ModuleNameTests
 {
-    private const String LoginPrefix = "acme_shop";
+    private const String DatabaseName = "acme_shop";
 
     private const String PostgresReservesRule = "PostgreSQL reserves pg and every name that starts with pg_";
 
     private const String PostgresSchemaRule = "every PostgreSQL database already has a schema of that name";
 
-    private const String LongestName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String LongestName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-    private const String TooLongName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String TooLongName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     [Theory]
     [InlineData("Notes", "notes", "notes")]
@@ -25,7 +25,7 @@ public sealed class ModuleNameTests
     public void Valid_name_gives_a_snake_case_schema_and_a_kebab_route(String name, String schema, String route)
     {
         var names = ModuleName
-            .Parse(name, LoginPrefix)
+            .Parse(name, DatabaseName)
             .Map(moduleName => (moduleName.Name, moduleName.Schema, moduleName.Route));
 
         names.ShouldBe(Result.Success((name, schema, route)));
@@ -41,7 +41,7 @@ public sealed class ModuleNameTests
     [InlineData("NotesModule", "must not end in Module: scaffold adds the suffix itself")]
     public void Name_that_breaks_a_naming_rule_is_refused_with_the_rule(String name, String rule)
     {
-        var message = ReadMessage(ModuleName.Parse(name, LoginPrefix));
+        var message = ReadMessage(ModuleName.Parse(name, DatabaseName));
 
         message.ShouldBe($"module name '{name}' {rule}");
     }
@@ -49,12 +49,12 @@ public sealed class ModuleNameTests
     [Theory]
     [InlineData("Pg", "pg", PostgresReservesRule)]
     [InlineData("PgStats", "pg_stats", PostgresReservesRule)]
-    [InlineData("Modules", "modules", "its login would be acme_shop_modules, the group role of the module logins")]
+    [InlineData("Modules", "modules", "its login would be acme_shop__modules, the group role of the module logins")]
     [InlineData("Public", "public", PostgresSchemaRule)]
     [InlineData("InformationSchema", "information_schema", PostgresSchemaRule)]
     public void Name_whose_schema_breaks_a_rule_is_refused_with_the_rule(String name, String schema, String rule)
     {
-        var message = ReadMessage(ModuleName.Parse(name, LoginPrefix));
+        var message = ReadMessage(ModuleName.Parse(name, DatabaseName));
 
         message.ShouldBe($"module name '{name}' gives the schema '{schema}': {rule}");
     }
@@ -63,14 +63,14 @@ public sealed class ModuleNameTests
     public void Login_of_63_characters_fits_and_one_of_64_is_refused()
     {
         var longest = ModuleName
-            .Parse(LongestName, LoginPrefix)
+            .Parse(LongestName, DatabaseName)
             .Map(moduleName => moduleName.Schema.Length);
 
-        var message = ReadMessage(ModuleName.Parse(TooLongName, LoginPrefix));
+        var message = ReadMessage(ModuleName.Parse(TooLongName, DatabaseName));
 
-        longest.ShouldBe(Result.Success(63 - "acme_shop_".Length));
+        longest.ShouldBe(Result.Success(63 - "acme_shop__".Length));
         message.ShouldBe(
-            $"module name '{TooLongName}' gives the login acme_shop_{TooLongName.ToLowerInvariant()}, "
+            $"module name '{TooLongName}' gives the login acme_shop__{TooLongName.ToLowerInvariant()}, "
             + "longer than the 63 characters PostgreSQL allows in a role name");
     }
 
@@ -87,7 +87,7 @@ public sealed class ModuleNameTests
     [InlineData(TooLongName)]
     public void Scaffold_accepts_exactly_the_schemas_the_core_accepts(String name)
     {
-        var moduleName = ModuleName.Parse(name, LoginPrefix);
+        var moduleName = ModuleName.Parse(name, DatabaseName);
         var coreAccepts = AcceptsInCore(name.ToSnakeCase());
 
         moduleName.IsSuccess.ShouldBe(coreAccepts, ReadMessage(moduleName));
@@ -97,7 +97,7 @@ public sealed class ModuleNameTests
     {
         try
         {
-            _ = new ModuleLoginNames(LoginPrefix).BuildLoginName(schema);
+            _ = new ModuleLoginNames(DatabaseName).BuildLoginName(schema);
             return true;
         }
         catch (InvalidOperationException)

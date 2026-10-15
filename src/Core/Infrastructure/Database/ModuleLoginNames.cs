@@ -4,32 +4,64 @@ namespace Tsikhanau.Monolith.Infrastructure.Database;
 
 internal sealed partial class ModuleLoginNames
 {
-    public const String IdentifierPattern = @"\A(?!pg(_|\z))[a-z][a-z0-9_]*\z";
+    private const String Separator = "__";
 
     private const String GroupSuffix = "modules";
 
-    private const Int32 MaxIdentifierLength = 63;
+    private const Int32 MaxRoleNameLength = 63;
+
+    private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
+
+    private const String DatabaseNameRule =
+        $"cannot name the module roles <database>{Separator}<schema>: it must be groups of a-z and 0-9 joined by "
+        + "single underscores, and be neither pg nor start with pg_, which PostgreSQL reserves for its own roles";
+
+    private const String SchemaRule =
+        "is not a valid module schema name: it must start with a letter, hold only a-z, 0-9 and _, "
+        + "and be neither pg nor start with pg_, which PostgreSQL reserves";
 
     private const String PostgresSchemaProblem = "every PostgreSQL database already has a schema of that name";
 
+    private static readonly String RoleNameLimit =
+        $"more than the {MaxRoleNameLength} PostgreSQL allows in a role name";
+
     private static readonly String[] PostgresSchemas = ["public", "information_schema"];
 
-    private readonly String _roleNamePrefix;
+    private readonly String _databaseName;
 
-    private readonly String _applicationNamePrefix;
-
-    public ModuleLoginNames(String loginPrefix)
+    public ModuleLoginNames(String databaseName)
     {
-        _roleNamePrefix = $"{loginPrefix}_";
-        _applicationNamePrefix = $"{loginPrefix}-";
-        Group = $"{_roleNamePrefix}{GroupSuffix}";
+        _databaseName = ValidateDatabaseName(databaseName);
+        Group = ValidateGroupLength(BuildRoleName(GroupSuffix));
     }
 
     public String Group { get; }
 
-    public String BuildLoginName(String schema) => $"{_roleNamePrefix}{ValidateSchema(schema)}";
+    [GeneratedRegex(@"\A(?!pg(_|\z))[a-z0-9]+(_[a-z0-9]+)*\z")]
+    private static partial Regex DatabaseNamePattern { get; }
 
-    public String BuildApplicationName(String schema) => $"{_applicationNamePrefix}{schema}";
+    [GeneratedRegex(@"\A(?!pg(_|\z))[a-z][a-z0-9_]*\z")]
+    private static partial Regex SchemaPattern { get; }
+
+    public String BuildLoginName(String schema) => ValidateLoginLength(schema, BuildRoleName(ValidateSchema(schema)));
+
+    public String BuildApplicationName(String schema) => $"{_databaseName}-{schema}";
+
+    private static String ValidateDatabaseName(String databaseName) =>
+        DatabaseNamePattern.IsMatch(databaseName)
+            ? databaseName
+            : throw new InvalidOperationException(
+                $"The database name '{databaseName}' in {ConnectionStringSetting} {DatabaseNameRule}");
+
+    private String BuildRoleName(String name) => $"{_databaseName}{Separator}{name}";
+
+    private String ValidateGroupLength(String group) =>
+        group.Length <= MaxRoleNameLength
+            ? group
+            : throw new InvalidOperationException(
+                $"The database name '{_databaseName}' makes the group role {group} {group.Length} characters long, "
+                + $"{RoleNameLimit}: shorten the database name to at most "
+                + $"{MaxRoleNameLength - Separator.Length - GroupSuffix.Length} characters");
 
     private String ValidateSchema(String schema)
     {
@@ -45,20 +77,15 @@ internal sealed partial class ModuleLoginNames
             throw new InvalidOperationException($"Module schema '{schema}' is reserved: {PostgresSchemaProblem}");
         }
 
-        return IsIdentifier(schema) && _roleNamePrefix.Length + schema.Length <= MaxIdentifierLength
+        return SchemaPattern.IsMatch(schema)
             ? schema
+            : throw new InvalidOperationException($"'{schema}' {SchemaRule}");
+    }
+
+    private String ValidateLoginLength(String schema, String login) =>
+        login.Length <= MaxRoleNameLength
+            ? login
             : throw new InvalidOperationException(
-                $"'{schema}' is not a valid module schema name: it must start with a letter, hold only a-z, 0-9 and _, "
-                + "be neither pg nor start with pg_, which PostgreSQL reserves, "
-                + $"and its login {_roleNamePrefix}{schema} must fit in {MaxIdentifierLength} characters");
-    }
-
-    private static Boolean IsIdentifier(String schema)
-    {
-        var pattern = SchemaNamePattern();
-        return pattern.IsMatch(schema);
-    }
-
-    [GeneratedRegex(IdentifierPattern)]
-    private static partial Regex SchemaNamePattern();
+                $"Module schema '{schema}' makes the login {login} {login.Length} characters long, "
+                + $"{RoleNameLimit}: shorten the module schema or the database name '{_databaseName}'");
 }

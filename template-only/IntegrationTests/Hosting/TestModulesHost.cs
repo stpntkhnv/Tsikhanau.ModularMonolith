@@ -43,8 +43,6 @@ internal sealed class TestModulesHost : IAsyncDisposable
 {
     public const Int32 ClaimBatchSize = 16;
 
-    private const String LoginPrefix = "monolith";
-
     public static readonly DateTimeOffset TestStartedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     public static readonly TimeSpan HandlerTimeout = TimeSpan.FromMinutes(1);
@@ -300,7 +298,6 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.Interval)}"] = "01:00:00";
         builder.Configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.KeepFor)}"] = "7.00:00:00";
 
-        builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginPrefix)}"] = LoginPrefix;
         builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginKey)}"] =
             TestSettings.LoginKey;
 

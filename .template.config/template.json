@@ -27,7 +27,7 @@
       "valueSource": "name",
       "valueTransform": "postgresForm",
       "replaces": "modularmonolith",
-      "description": "Lower-case name with dots and hyphens turned into underscores: database name and login prefix."
+      "description": "Lower-case name with dots and hyphens turned into underscores: the database name, which also names the module roles."
     },
     "fileName": {
       "type": "derived",

@@ -8,7 +8,7 @@ public sealed class FacadeTemplateTests
 {
     private const String LongName = "InventoryReservationAdjustmentApprovals";
 
-    private const String MaxName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String MaxName = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     private static readonly FacadeShape WithCommands = FacadeShape.Fresh.WithCommands();
 

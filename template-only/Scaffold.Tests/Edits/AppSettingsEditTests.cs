@@ -136,7 +136,7 @@ public sealed class AppSettingsEditTests
               },
               "App": {
                 "Database": {
-                  "LoginPrefix": "acme_shop", // lower case, with underscores
+                  "MaxConnections": 20, // per instance
                 },
               },
             }
@@ -156,7 +156,7 @@ public sealed class AppSettingsEditTests
               },
               "App": {
                 "Database": {
-                  "LoginPrefix": "acme_shop", // lower case, with underscores
+                  "MaxConnections": 20, // per instance
                 },
                 "Modules": {
                   "Notes": {}
@@ -225,7 +225,7 @@ public sealed class AppSettingsEditTests
     [Theory]
     [InlineData("{\n  \"Logging\": {}\n}\n", "an object App")]
     [InlineData("{\n  \"App\": []\n}\n", "an object App")]
-    [InlineData("{\n  \"App\": { \"Database\": { \"LoginPrefix\": \"acme_shop\" } }\n}\n", $"App {LayoutRule}")]
+    [InlineData("{\n  \"App\": { \"Database\": { \"MaxConnections\": 20 } }\n}\n", $"App {LayoutRule}")]
     public void App_section_the_edit_cannot_take_the_modules_into_is_refused(String text, String expected)
     {
         var notes = SampleModules.Create("Notes");

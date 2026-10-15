@@ -10,7 +10,7 @@ internal sealed class ModuleDatabaseProvisioner
     private const String DropAdvice = "Drop the old development database (the Aspire data volume) and start again.";
 
     private const String OwnershipAdvice =
-        $"If {DatabaseSettings.LoginPrefixSetting} changed, set it back to the prefix that owns these schemas; "
+        "Module roles are named after the database: if it was renamed, give it back the name it was prepared under; "
         + "if this is a development database (the Aspire data volume), you can also drop it and start again.";
 
     private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";

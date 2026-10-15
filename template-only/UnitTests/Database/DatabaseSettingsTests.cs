@@ -9,10 +9,6 @@ namespace Tsikhanau.Monolith.UnitTests.Database;
 
 public sealed class DatabaseSettingsTests
 {
-    private const String IdentifierRuleMessage =
-        "App:Database:LoginPrefix must start with a letter, hold only a-z, 0-9 and _, "
-        + "and be neither pg nor start with pg_, which PostgreSQL reserves";
-
     private const String LoginKeyOf31Bytes = "dGhpcnR5LW9uZS1ieXRlcy1pcy1vbmUtdG9vLWZldw==";
 
     private const String LoginKeyAdvice =
@@ -25,7 +21,6 @@ public sealed class DatabaseSettingsTests
         var settings = ResolveSettings(
             new()
             {
-                ["App:Database:LoginPrefix"] = "monolith",
                 ["App:Database:LoginKey"] = TestSettings.LoginKey,
                 ["App:Database:MaxConnections"] = "20",
                 ["App:Database:PrepareTimeout"] = "00:05:00",
@@ -40,7 +35,6 @@ public sealed class DatabaseSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["App:Database:LoginPrefix"] = "monolith",
                     ["App:Database:LoginKey"] = TestSettings.LoginKey,
                     ["App:Database:MaxConnections"] = "20",
                 }));
@@ -53,71 +47,10 @@ public sealed class DatabaseSettingsTests
             () => ResolveSettings(
                 new()
                 {
-                    ["App:Database:LoginPrefix"] = "monolith",
                     ["App:Database:LoginKey"] = TestSettings.LoginKey,
                     ["App:Database:MaxConnections"] = "20",
                     ["App:Database:PrepareTimeout"] = prepareTimeout,
                 }));
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    public void Missing_login_prefix_is_refused(String? loginPrefix)
-    {
-        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginPrefix(loginPrefix));
-
-        exception.Message.ShouldContain("App:Database:LoginPrefix is required");
-    }
-
-    [Theory]
-    [InlineData("1monolith")]
-    [InlineData("Monolith")]
-    [InlineData("mono-lith")]
-    public void Login_prefix_that_is_not_a_plain_identifier_is_refused(String loginPrefix)
-    {
-        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginPrefix(loginPrefix));
-
-        exception.Message.ShouldContain(IdentifierRuleMessage);
-    }
-
-    [Theory]
-    [InlineData("pg")]
-    [InlineData("pg_tools")]
-    public void Login_prefix_whose_roles_postgres_reserves_is_refused(String loginPrefix)
-    {
-        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginPrefix(loginPrefix));
-
-        exception.Message.ShouldContain(IdentifierRuleMessage);
-    }
-
-    [Theory]
-    [InlineData("pgx")]
-    [InlineData("p_g")]
-    public void Login_prefix_that_only_starts_like_a_reserved_name_is_accepted(String loginPrefix)
-    {
-        var settings = ResolveSettingsWithLoginPrefix(loginPrefix);
-
-        settings.LoginPrefix.ShouldBe(loginPrefix);
-    }
-
-    [Fact]
-    public void Login_prefix_longer_than_30_characters_is_refused()
-    {
-        var exception = Should.Throw<OptionsValidationException>(
-            () => ResolveSettingsWithLoginPrefix(new String('a', 31)));
-
-        exception.Message.ShouldContain("App:Database:LoginPrefix must be at most 30 characters long");
-    }
-
-    [Fact]
-    public void Login_prefix_of_30_characters_is_accepted()
-    {
-        var loginPrefix = new String('a', 30);
-
-        var settings = ResolveSettingsWithLoginPrefix(loginPrefix);
-
-        settings.LoginPrefix.ShouldBe(loginPrefix);
-    }
 
     [Theory]
     [InlineData(null)]
@@ -164,7 +97,6 @@ public sealed class DatabaseSettingsTests
     {
         var settings = new DatabaseSettings
         {
-            LoginPrefix = "monolith",
             LoginKey = TestSettings.LoginKey,
             MaxConnections = maxConnections,
             PrepareTimeout = TimeSpan.FromMinutes(10),
@@ -175,21 +107,10 @@ public sealed class DatabaseSettingsTests
         calculatedPoolSizePerModule.ShouldBe(poolSizePerModule);
     }
 
-    private static DatabaseSettings ResolveSettingsWithLoginPrefix(String? loginPrefix) =>
-        ResolveSettings(
-            new()
-            {
-                ["App:Database:LoginPrefix"] = loginPrefix,
-                ["App:Database:LoginKey"] = TestSettings.LoginKey,
-                ["App:Database:MaxConnections"] = "20",
-                ["App:Database:PrepareTimeout"] = "00:10:00",
-            });
-
     private static DatabaseSettings ResolveSettingsWithLoginKey(String? loginKey) =>
         ResolveSettings(
             new()
             {
-                ["App:Database:LoginPrefix"] = "monolith",
                 ["App:Database:LoginKey"] = loginKey,
                 ["App:Database:MaxConnections"] = "20",
                 ["App:Database:PrepareTimeout"] = "00:10:00",

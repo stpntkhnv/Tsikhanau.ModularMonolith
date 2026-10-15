@@ -10,7 +10,7 @@ public sealed class InternalCommandTemplateTests
 
     private const String LongModule = "InventoryReservationAdjustments";
 
-    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private const String MaxModule = "Abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     private const String LongFeature = "RecalculateEveryReservationAdjustmentTotalOfTheMonth";
 

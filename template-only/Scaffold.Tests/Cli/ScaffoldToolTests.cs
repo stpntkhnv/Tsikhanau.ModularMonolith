@@ -270,7 +270,8 @@ public sealed class ScaffoldToolTests : IDisposable
         exitCode.ShouldBe(1);
         error.ShouldBe(
             "scaffold: expected one *.slnx in the app root, found 0: none; "
-            + "expected one src/Bootstrapper/*.Bootstrapper/*.Bootstrapper.csproj, found 0: none\n");
+            + "expected one src/Bootstrapper/*.Bootstrapper/*.Bootstrapper.csproj, found 0: none; "
+            + "expected one src/Aspire/*.AppHost/AppHost.cs, found 0: none\n");
     }
 
     [Fact]

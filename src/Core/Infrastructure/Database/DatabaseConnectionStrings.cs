@@ -18,8 +18,13 @@ internal sealed class DatabaseConnectionStrings
 
     private readonly NpgsqlConnectionStringBuilder _adminConnectionStringBuilder;
 
-    private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder) =>
+    private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder, String databaseName)
+    {
         _adminConnectionStringBuilder = adminConnectionStringBuilder;
+        DatabaseName = databaseName;
+    }
+
+    public String DatabaseName { get; }
 
     public static DatabaseConnectionStrings From(IConfiguration configuration, IHostEnvironment hostEnvironment)
     {
@@ -40,8 +45,15 @@ internal sealed class DatabaseConnectionStrings
                 $"Connection string '{Name}' has no password; database preparation signs in with it");
         }
 
+        var databaseName = adminConnectionStringBuilder.Database;
+        if (String.IsNullOrEmpty(databaseName))
+        {
+            throw new InvalidOperationException(
+                $"Connection string '{Name}' names no Database; the module roles are named after the database");
+        }
+
         EnsureSslModeIsExplicit(adminConnectionStringBuilder.SslMode, hostEnvironment);
-        return new DatabaseConnectionStrings(adminConnectionStringBuilder);
+        return new DatabaseConnectionStrings(adminConnectionStringBuilder, databaseName);
     }
 
     public String BuildForAdmin(TimeSpan prepareTimeout) =>
