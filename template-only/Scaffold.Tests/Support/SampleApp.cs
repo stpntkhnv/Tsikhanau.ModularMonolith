@@ -23,11 +23,15 @@ internal sealed class SampleApp : IDisposable
 
     public const String AppHostPath = "src/Aspire/Acme.Shop.AppHost/AppHost.cs";
 
+    private const Int32 DeleteAttempts = 5;
+
     private const String TemplateName = "ModularMonolith";
 
     private const String TemplateDatabaseName = "modularmonolith";
 
     private const String TemplateHostFolder = $"src/Bootstrapper/{TemplateName}.Bootstrapper";
+
+    private static readonly TimeSpan DeleteRetryDelay = TimeSpan.FromMilliseconds(200);
 
     private SampleApp(String root) => Root = root;
 
@@ -92,7 +96,23 @@ internal sealed class SampleApp : IDisposable
     public TreeSnapshot TakeSnapshot() =>
         new(RunGit("status", "--porcelain=v1", "--untracked-files=all"), HashFiles());
 
-    public void Dispose() => Directory.Delete(Root, recursive: true);
+    public void Dispose()
+    {
+        for (var attempt = 1; attempt < DeleteAttempts; attempt++)
+        {
+            try
+            {
+                Directory.Delete(Root, recursive: true);
+                return;
+            }
+            catch (IOException)
+            {
+                Thread.Sleep(DeleteRetryDelay);
+            }
+        }
+
+        Directory.Delete(Root, recursive: true);
+    }
 
     private String ToFullPath(String relativePath) => Path.Combine(Root, relativePath);
 
@@ -150,6 +170,13 @@ internal sealed class SampleApp : IDisposable
 
         startInfo.Environment["GIT_CONFIG_GLOBAL"] = "/dev/null";
         startInfo.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        startInfo.Environment["GIT_CONFIG_COUNT"] = "3";
+        startInfo.Environment["GIT_CONFIG_KEY_0"] = "gc.auto";
+        startInfo.Environment["GIT_CONFIG_VALUE_0"] = "0";
+        startInfo.Environment["GIT_CONFIG_KEY_1"] = "maintenance.auto";
+        startInfo.Environment["GIT_CONFIG_VALUE_1"] = "false";
+        startInfo.Environment["GIT_CONFIG_KEY_2"] = "gc.autoDetach";
+        startInfo.Environment["GIT_CONFIG_VALUE_2"] = "false";
         startInfo.Environment["GIT_AUTHOR_NAME"] = "test";
         startInfo.Environment["GIT_AUTHOR_EMAIL"] = "test@example.com";
         startInfo.Environment["GIT_COMMITTER_NAME"] = "test";
