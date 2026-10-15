@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.Shared.Time;
 
 namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
@@ -140,8 +139,11 @@ public static class ModuleDatabaseExtensions
         await MigrateAndGrantInboxDeliveryAsync(
             serviceProvider,
             modules,
+            module => connectionStrings.BuildForModulePreparation(
+                ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey),
+                loginNames.BuildApplicationName(module.Schema),
+                settings.PrepareTimeout),
             loginNames.Group,
-            settings.PrepareTimeout,
             cancellationToken);
 
         await ModuleBoundaryVerifier.VerifyAsync(adminSession.Connection, loginNames.Group, logins, cancellationToken);
@@ -152,23 +154,30 @@ public static class ModuleDatabaseExtensions
     private static async Task MigrateAndGrantInboxDeliveryAsync(
         IServiceProvider serviceProvider,
         IEnumerable<ModuleDescriptor> modules,
+        Func<ModuleDescriptor, String> buildConnectionString,
         String group,
-        TimeSpan prepareTimeout,
         CancellationToken cancellationToken)
     {
         await using var scope = serviceProvider.CreateAsyncScope();
         foreach (var module in modules)
         {
-            var dbContext = ResolveDbContext(module, scope.ServiceProvider);
-            dbContext.Database.SetCommandTimeout(prepareTimeout.TotalSecondsRoundedUp);
-            await BoundedConnectionOpener.WarmUpAsync(
-                serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
+            await using var preparationConnection = await PreparationConnection.OpenAsync(
+                buildConnectionString(module),
                 cancellationToken);
 
-            await dbContext.Database.MigrateAsync(cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                BuildInboxDeliveryGrantsSql(module.Schema, group),
-                cancellationToken);
+            var dbContext = ResolveDbContext(module, scope.ServiceProvider);
+            dbContext.Database.SetDbConnection(preparationConnection.Connection);
+            try
+            {
+                await dbContext.Database.MigrateAsync(cancellationToken);
+                await dbContext.Database.ExecuteSqlRawAsync(
+                    BuildInboxDeliveryGrantsSql(module.Schema, group),
+                    cancellationToken);
+            }
+            finally
+            {
+                dbContext.Database.SetDbConnection(null, contextOwnsConnection: true);
+            }
         }
     }
 

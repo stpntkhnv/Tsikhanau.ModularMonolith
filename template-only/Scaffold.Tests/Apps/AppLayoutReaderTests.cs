@@ -13,6 +13,12 @@ public sealed class AppLayoutReaderTests : IDisposable
         "which cannot name the module roles <database>__<schema>: it must be groups of a-z and 0-9 joined by "
         + "single underscores, and be neither pg nor start with pg_, which PostgreSQL reserves for its own roles";
 
+    private const String ReportsDatabase =
+        "var reports = postgres.AddDatabase(\"reports\", databaseName: \"Reports\");\n";
+
+    private const String TwoAppDatabases =
+        "AddDatabase(\"database\", databaseName: \"a\");\nAddDatabase(\"database\", databaseName: \"b\");\n";
+
     private readonly SampleApp _app = SampleApp.Create();
 
     public void Dispose() => _app.Dispose();
@@ -133,6 +139,16 @@ public sealed class AppLayoutReaderTests : IDisposable
     }
 
     [Fact]
+    public void Another_database_in_the_app_host_leaves_the_database_name_of_the_app()
+    {
+        _app.Write(SampleApp.AppHostPath, SampleApp.AppHost + ReportsDatabase);
+
+        var layout = _app.ReadLayout();
+
+        layout.DatabaseName.ShouldBe(SampleApp.DatabaseName);
+    }
+
+    [Fact]
     public void App_without_an_app_host_is_refused()
     {
         _app.Delete(SampleApp.AppHostPath);
@@ -144,16 +160,17 @@ public sealed class AppLayoutReaderTests : IDisposable
 
     [Theory]
     [InlineData("var builder = DistributedApplication.CreateBuilder(args);\n", 0)]
-    [InlineData("AddDatabase(\"a\", databaseName: \"a\");\nAddDatabase(\"b\", databaseName: \"b\");\n", 2)]
-    public void App_host_that_does_not_name_one_default_database_is_refused(String appHost, Int32 found)
+    [InlineData(ReportsDatabase, 0)]
+    [InlineData(TwoAppDatabases, 2)]
+    public void App_host_that_does_not_name_the_app_database_once_is_refused(String appHost, Int32 found)
     {
         _app.Write(SampleApp.AppHostPath, appHost);
 
         var message = ReadMessage();
 
         message.ShouldBe(
-            $"{SampleApp.AppHostPath} must name the default database once, as databaseName: \"<name>\"; "
-            + $"found {found}");
+            $"{SampleApp.AppHostPath} must name the app database once, as "
+            + $"AddDatabase(\"database\", databaseName: \"<name>\"); found {found}");
     }
 
     [Theory]

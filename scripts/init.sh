@@ -86,9 +86,9 @@ app_host_file() {
 
 database_name() {
   local names
-  mapfile -t names < <(sed -nE 's/.*databaseName:[[:space:]]*"([^"]*)".*/\1/p' "$1")
+  mapfile -t names < <(sed -nE 's/.*AddDatabase\([[:blank:]]*"database"[[:blank:]]*,[[:blank:]]*databaseName:[[:blank:]]*"([^"]*)".*/\1/p' "$1")
   if [[ ${#names[@]} -ne 1 ]]; then
-    echo "init: cannot read the database name from $1: expected one databaseName: \"<name>\", found ${#names[@]}" >&2
+    echo "init: cannot read the database name from $1: expected one AddDatabase(\"database\", databaseName: \"<name>\"), found ${#names[@]}" >&2
     exit 1
   fi
   printf '%s\n' "${names[0]}"

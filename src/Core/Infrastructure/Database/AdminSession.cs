@@ -9,33 +9,24 @@ internal sealed class AdminSession : IAsyncDisposable
     private const String LockSql = "SELECT pg_advisory_lock(@Lock)";
     private const String UnlockSql = "SELECT pg_advisory_unlock(@Lock)";
 
-    private AdminSession(NpgsqlDataSource npgsqlDataSource, NpgsqlConnection connection)
+    private readonly PreparationConnection _preparationConnection;
+
+    private AdminSession(PreparationConnection preparationConnection)
     {
-        DataSource = npgsqlDataSource;
-        Connection = connection;
+        _preparationConnection = preparationConnection;
     }
 
-    public NpgsqlDataSource DataSource { get; }
+    public NpgsqlDataSource DataSource => _preparationConnection.DataSource;
 
-    public NpgsqlConnection Connection { get; }
+    public NpgsqlConnection Connection => _preparationConnection.Connection;
 
     public static async Task<AdminSession> OpenLockedAsync(
         String adminConnectionString,
         CancellationToken cancellationToken)
     {
-        var npgsqlDataSource = NpgsqlDataSource.Create(adminConnectionString);
-        NpgsqlConnection connection;
-        try
-        {
-            connection = await BoundedConnectionOpener.OpenAsync(npgsqlDataSource, cancellationToken);
-        }
-        catch
-        {
-            await npgsqlDataSource.DisposeAsync();
-            throw;
-        }
+        var session = new AdminSession(
+            await PreparationConnection.OpenAsync(adminConnectionString, cancellationToken));
 
-        var session = new AdminSession(npgsqlDataSource, connection);
         try
         {
             await session.ExecuteAsync(LockSql, cancellationToken);
@@ -50,11 +41,7 @@ internal sealed class AdminSession : IAsyncDisposable
 
     public Task UnlockAsync(CancellationToken cancellationToken) => ExecuteAsync(UnlockSql, cancellationToken);
 
-    public async ValueTask DisposeAsync()
-    {
-        await Connection.DisposeAsync();
-        await DataSource.DisposeAsync();
-    }
+    public ValueTask DisposeAsync() => _preparationConnection.DisposeAsync();
 
     private Task ExecuteAsync(String sql, CancellationToken cancellationToken) =>
         Connection.ExecuteAsync(

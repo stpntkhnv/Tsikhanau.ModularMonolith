@@ -66,6 +66,18 @@ internal sealed class DatabaseConnectionStrings
         new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Pooling = false,
+            HostRecheckSeconds = 0,
+            CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
+        }.ConnectionString;
+
+    public String BuildForModulePreparation(ModuleLogin login, String applicationName, TimeSpan prepareTimeout) =>
+        new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
+        {
+            Username = login.Name,
+            Password = login.Password,
+            ApplicationName = applicationName,
+            Pooling = false,
+            HostRecheckSeconds = 0,
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
 

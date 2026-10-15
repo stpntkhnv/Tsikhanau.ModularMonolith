@@ -22,7 +22,7 @@ internal static class BoundedConnectionOpener
                 _ = DisposeWhenOpenEndsAsync(connection, opening);
                 throw;
             }
-            catch (NpgsqlException exception) when (exception.InnerException is TimeoutException)
+            catch (NpgsqlException exception) when (IsConnectTimeout(exception))
             {
                 await connection.DisposeAsync();
             }
@@ -34,10 +34,14 @@ internal static class BoundedConnectionOpener
         }
     }
 
-    public static async Task WarmUpAsync(NpgsqlDataSource npgsqlDataSource, CancellationToken cancellationToken)
-    {
-        await using var connection = await OpenAsync(npgsqlDataSource, cancellationToken);
-    }
+    private static Boolean IsConnectTimeout(Exception exception) =>
+        exception switch
+        {
+            NpgsqlException { InnerException: TimeoutException } => true,
+            NpgsqlException { InnerException: AggregateException aggregateException } =>
+                aggregateException.InnerExceptions.All(IsConnectTimeout),
+            _ => false,
+        };
 
     private static async Task DisposeWhenOpenEndsAsync(NpgsqlConnection connection, Task opening)
     {

@@ -187,6 +187,15 @@ case_database_name_rule() {
   expect_refused "app name, pg_shop .*, is pg or starts with pg_, which PostgreSQL reserves for its own roles"
 }
 
+case_another_database() {
+  local app
+  app=$(new_app another acme_shop)
+  printf '%s\n' 'var reports = postgres.AddDatabase("reports", databaseName: "Reports");' >> "$app/src/Aspire/App.AppHost/AppHost.cs"
+  run_init "$app" --no-rules
+  expect_success
+  expect_said "app name, acme_shop, is a valid database name"
+}
+
 case_fresh_repository() {
   local app hooks file
   app=$(new_app fresh acme_shop)
@@ -552,6 +561,7 @@ run_case() {
 run_case "a name whose PostgreSQL form starts with a digit is refused before anything is made" case_digit_start
 run_case "a name longer than the database name budget is refused, one at the budget passes" case_budget
 run_case "a name whose PostgreSQL form breaks the database name rule is refused before anything is made" case_database_name_rule
+run_case "another database in the AppHost leaves the name of the app's database" case_another_database
 run_case "a fresh app gets a repository on main, the hooks path, executable bits, ignored rules links and one build; .claude is untouched" case_fresh_repository
 run_case "a second run changes nothing" case_repeat_run
 run_case "in a git worktree the links are made there from the default rulebook beside the app and the exclude lines go to the shared exclude file" case_worktree

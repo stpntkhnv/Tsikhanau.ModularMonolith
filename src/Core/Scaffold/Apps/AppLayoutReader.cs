@@ -24,8 +24,8 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
     [GeneratedRegex(@"^using (?<root>[A-Za-z_][\w.]*)\.Bootstrapper\.Platform;\r?$", RegexOptions.Multiline)]
     private static partial Regex PlatformUsingPattern { get; }
 
-    [GeneratedRegex(@"\bdatabaseName:\s*""(?<name>[^""\r\n]*)""")]
-    private static partial Regex DatabaseNameArgumentPattern { get; }
+    [GeneratedRegex(@"\bAddDatabase\([ \t]*""database""[ \t]*,[ \t]*databaseName:[ \t]*""(?<name>[^""\r\n]*)""")]
+    private static partial Regex AppDatabasePattern { get; }
 
     [GeneratedRegex(@"\A(?!pg(_|\z))[a-z0-9]+(_[a-z0-9]+)*\z")]
     private static partial Regex DatabaseNamePattern { get; }
@@ -102,14 +102,14 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
 
     private static Result<String> ReadDatabaseName(TextFile appHost)
     {
-        var matches = DatabaseNameArgumentPattern.Matches(appHost.Text);
+        var matches = AppDatabasePattern.Matches(appHost.Text);
 
         return matches is [var match]
             ? ValidateDatabaseName(appHost.Path, match.Groups["name"].Value)
             : Error.Failure(
                 "scaffold.app-layout",
-                $"{appHost.Path} must name the default database once, as databaseName: \"<name>\"; "
-                + $"found {matches.Count}");
+                $"{appHost.Path} must name the app database once, as "
+                + $"AddDatabase(\"database\", databaseName: \"<name>\"); found {matches.Count}");
     }
 
     private static Result<String> ValidateDatabaseName(String appHostPath, String databaseName) =>
