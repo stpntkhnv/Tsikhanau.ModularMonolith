@@ -70,7 +70,7 @@ public static class MonolithHost
 
     private static async Task PrepareOnlyAsync(WebApplication app)
     {
-        await app.Services.PrepareModuleDatabasesAsync(CancellationToken.None);
+        await app.Services.PrepareModuleDatabasesOnlyAsync(CancellationToken.None);
         HostLog.PreparedOnly(app.Logger);
     }
 

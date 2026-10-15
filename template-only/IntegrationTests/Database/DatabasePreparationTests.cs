@@ -22,6 +22,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     private const String TimeoutMessage = "Database preparation did not finish within PrepareTimeout";
     private const Int32 AdminConnectionCount = 2;
     private const String ModuleSchemasSql = "SELECT nspname FROM pg_namespace WHERE nspname IN ('pings', 'pongs')";
+    private const String UpgradeNotes = "the upgrade notes in docs/engineering-principles.md, section 5.6";
 
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan SilenceLimit = TimeSpan.FromSeconds(1);
@@ -258,20 +259,24 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         moduleSchemas.ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task Preparation_refuses_to_run_when_the_prepare_mode_is_never()
+    [Theory]
+    [InlineData("Only", "App:Database:PrepareMode is Only, which prepares the database and stops")]
+    [InlineData("Never", "App:Database:PrepareMode is Never, so nothing may prepare the database")]
+    public async Task Host_that_prepares_and_then_serves_refuses_a_mode_of_the_core_entry_point(
+        String prepareMode,
+        String refusal)
     {
         var connectionString = await CreateDatabaseAsync();
-        using var host = TestModulesHost.BuildUnstarted(
-            connectionString,
-            builder => builder.Configuration["App:Database:PrepareMode"] = "Never");
 
         var exception = await Should.ThrowAsync<InvalidOperationException>(
-            () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
+            () => TestModulesHost.StartAsync(
+                connectionString,
+                configure: builder => builder.Configuration["App:Database:PrepareMode"] = prepareMode));
 
         var moduleSchemas = await new DatabaseProbe(connectionString).QueryAsync<String>(ModuleSchemasSql);
 
-        exception.Message.ShouldStartWith("App:Database:PrepareMode is Never, so nothing may prepare the database");
+        exception.Message.ShouldStartWith(refusal);
+        exception.Message.ShouldContain(UpgradeNotes);
         moduleSchemas.ShouldBeEmpty();
     }
 

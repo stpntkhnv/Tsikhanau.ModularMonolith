@@ -18,34 +18,26 @@ public static class ModuleDatabaseExtensions
         + "with MonolithHost.RunAsync, which checks it through the module logins instead "
         + $"({DatabaseSettings.UpgradeNotes})";
 
+    private const String OnlyStops =
+        $"{DatabaseSettings.PrepareModeSetting} is Only, which prepares the database and stops, but this host "
+        + "would prepare it and then serve: start the host with MonolithHost.RunAsync, which stops after preparing "
+        + $"({DatabaseSettings.UpgradeNotes})";
+
     public static async Task PrepareModuleDatabasesAsync(
         this IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
         var settings = ValidateSettings(serviceProvider);
-        if (settings.PrepareMode == DatabasePrepareMode.Never)
-        {
-            throw new InvalidOperationException(NeverPrepares);
-        }
+        EnsurePreparesOnStartup(settings.PrepareMode);
+        await PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
+    }
 
-        using var deadline = new CancellationTokenSource(
-            settings.PrepareTimeout,
-            serviceProvider.GetRequiredService<TimeProvider>());
-
-        using var deadlineOrCancellation = CancellationTokenSource.CreateLinkedTokenSource(
-            deadline.Token,
-            cancellationToken);
-
-        try
-        {
-            await PrepareAsync(serviceProvider, settings, deadlineOrCancellation.Token);
-        }
-        catch (OperationCanceledException exception) when (HasRunOutOfTime(deadline, cancellationToken))
-        {
-            throw new TimeoutException(
-                $"Database preparation did not finish within PrepareTimeout ({settings.PrepareTimeout})",
-                exception);
-        }
+    internal static async Task PrepareModuleDatabasesOnlyAsync(
+        this IServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        var settings = ValidateSettings(serviceProvider);
+        await PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
     }
 
     public static async Task VerifyModuleDatabasesAsync(
@@ -81,6 +73,44 @@ public static class ModuleDatabaseExtensions
             .Validate();
 
         return serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
+    }
+
+    private static void EnsurePreparesOnStartup(DatabasePrepareMode prepareMode)
+    {
+        if (prepareMode == DatabasePrepareMode.Never)
+        {
+            throw new InvalidOperationException(NeverPrepares);
+        }
+
+        if (prepareMode == DatabasePrepareMode.Only)
+        {
+            throw new InvalidOperationException(OnlyStops);
+        }
+    }
+
+    private static async Task PrepareWithinTimeoutAsync(
+        IServiceProvider serviceProvider,
+        DatabaseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        using var deadline = new CancellationTokenSource(
+            settings.PrepareTimeout,
+            serviceProvider.GetRequiredService<TimeProvider>());
+
+        using var deadlineOrCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            deadline.Token,
+            cancellationToken);
+
+        try
+        {
+            await PrepareAsync(serviceProvider, settings, deadlineOrCancellation.Token);
+        }
+        catch (OperationCanceledException exception) when (HasRunOutOfTime(deadline, cancellationToken))
+        {
+            throw new TimeoutException(
+                $"Database preparation did not finish within PrepareTimeout ({settings.PrepareTimeout})",
+                exception);
+        }
     }
 
     private static async Task PrepareAsync(
