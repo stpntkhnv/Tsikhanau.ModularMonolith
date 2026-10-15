@@ -22,7 +22,7 @@ internal static class ModuleDataSourceFactory
         var handlerTimeout = serviceProvider.GetRequiredService<IOptions<QueueSettings>>().Value.HandlerTimeout;
         var moduleCount = serviceProvider.GetRequiredService<ModuleRegistry>().Modules.Count;
         var loginNames = new ModuleLoginNames(settings.LoginPrefix);
-        var login = connectionStrings.CreateModuleLogin(loginNames, module.Schema);
+        var login = ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey);
         var connectionString = connectionStrings.BuildForModule(
             login,
             loginNames.BuildApplicationName(module.Schema),

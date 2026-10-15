@@ -37,7 +37,7 @@ internal sealed class DatabaseConnectionStrings
         if (String.IsNullOrEmpty(adminConnectionStringBuilder.Password))
         {
             throw new InvalidOperationException(
-                $"Connection string '{Name}' has no password; module logins derive their passwords from it");
+                $"Connection string '{Name}' has no password; database preparation signs in with it");
         }
 
         EnsureSslModeIsExplicit(adminConnectionStringBuilder.SslMode, hostEnvironment);
@@ -50,9 +50,6 @@ internal sealed class DatabaseConnectionStrings
             Pooling = false,
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
-
-    public ModuleLogin CreateModuleLogin(ModuleLoginNames loginNames, String schema) =>
-        ModuleLogin.Create(loginNames, schema, _adminConnectionStringBuilder.Password!);
 
     public String BuildForModule(
         ModuleLogin login,

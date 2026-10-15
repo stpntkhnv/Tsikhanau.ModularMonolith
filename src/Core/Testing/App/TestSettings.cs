@@ -2,10 +2,13 @@ namespace Tsikhanau.Monolith.Testing.App;
 
 public static class TestSettings
 {
+    public const String LoginKey = "dHNpa2hhbmF1LW1vbm9saXRoLXRlc3QtbG9naW5rZXk=";
+
     public static IReadOnlyDictionary<String, String> CreateEnvironmentVariables(String connectionString) =>
         new Dictionary<String, String>
         {
             ["ConnectionStrings__database"] = connectionString,
+            ["App__Database__LoginKey"] = LoginKey,
             ["App__Queues__RunInBackground"] = "false",
             ["App__Cleanup__RunInBackground"] = "false",
         };

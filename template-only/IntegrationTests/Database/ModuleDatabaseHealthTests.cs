@@ -46,7 +46,7 @@ public sealed class ModuleDatabaseHealthTests(PostgresFixture postgresFixture)
         await using var host = await TestModulesHost.StartAsync(databaseProxy.ConnectionString);
         var moduleCount = host.Services.GetRequiredService<ModuleRegistry>().Modules.Count;
 
-        ClearModulePools(host);
+        host.ClearModulePools();
         databaseProxy.StopAnswering();
         var unansweredChecks = new List<HealthCheckOutcome>();
         for (var checkNumber = 0; checkNumber < 3; checkNumber++)
@@ -82,7 +82,7 @@ public sealed class ModuleDatabaseHealthTests(PostgresFixture postgresFixture)
         var healthCheck = ResolveHealthCheckOfTheFirstModule(host);
         var healthCheckContext = new HealthCheckContext();
 
-        ClearModulePools(host);
+        host.ClearModulePools();
         databaseProxy.StopAnswering();
         var firstCheck = healthCheck.CheckHealthAsync(healthCheckContext, CancellationToken);
         await WaitUntilHeldAsync(databaseProxy, connectionCount: 1);
@@ -143,12 +143,6 @@ public sealed class ModuleDatabaseHealthTests(PostgresFixture postgresFixture)
 
         return host.Services.GetRequiredKeyedService<ModuleDatabaseHealthCheck>(module.Key);
     }
-
-    private static void ClearModulePools(TestModulesHost host) =>
-        host.Services
-            .GetRequiredService<ModuleRegistry>().Modules
-            .Select(module => host.Services.GetRequiredKeyedService<NpgsqlDataSource>(module.Key))
-            .ForEach(npgsqlDataSource => npgsqlDataSource.Clear());
 
     private sealed record HealthCheckOutcome(HealthStatus Status, TimeSpan Elapsed);
 

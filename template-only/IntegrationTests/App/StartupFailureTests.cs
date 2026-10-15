@@ -48,6 +48,17 @@ public sealed class StartupFailureTests(TestAppFixture testAppFixture) : TestApp
             startupFailure == $"{nameof(OptionsValidationException)}: {PingsLimitFailure}");
     }
 
+    [Fact]
+    public void Missing_login_key_stops_the_start_with_the_setting_it_needs()
+    {
+        var startupFailure = App.CaptureStartupFailure(
+            Environments.Development,
+            new Dictionary<String, String> { ["App:Database:LoginKey"] = String.Empty });
+
+        startupFailure.ShouldBeOfType<OptionsValidationException>();
+        startupFailure.Message.ShouldContain("App:Database:LoginKey is required");
+    }
+
     private IReadOnlyDictionary<String, String> CreateEnvironmentVariables() =>
         new Dictionary<String, String>(TestSettings.CreateEnvironmentVariables(App.ConnectionString))
         {

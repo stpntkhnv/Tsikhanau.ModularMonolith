@@ -13,6 +13,8 @@ refused_name=1Shop
 generated_lines=('localhost:[0-9]' '<UserSecretsId>')
 postgres_image=postgres:17-alpine
 postgres_password=check-template
+login_key=Y2hlY2stdGVtcGxhdGUtbG9naW4ta2V5LTMyLWJ5dGU=
+login_key_bytes=32
 patience=300
 settle=3
 
@@ -211,18 +213,18 @@ read_ports() {
 }
 
 start_app() {
-  local mode=$1 app=$2 file_name database log connection
+  local mode=$1 app=$2 round=$3 file_name database log connection
   file_name=$(app_file_name "$app")
   database=${file_name,,}
   database=${database//./_}
-  log=$work/logs/$number-$file_name.log
+  log=$work/logs/$number-$file_name-$round.log
   if [[ $mode == aspire ]]; then
     ASPIRE_ALLOW_UNSECURED_TRANSPORT=true setsid dotnet run --project "$app/src/Aspire/$file_name.AppHost" \
       -c Release --no-build --launch-profile http > "$log" 2>&1 &
   else
     docker exec "$postgres" createdb -h 127.0.0.1 -U postgres "$database"
     connection="Host=$postgres_host;Port=$postgres_port;Database=$database;Username=postgres;Password=$postgres_password"
-    ConnectionStrings__database=$connection setsid dotnet run \
+    ConnectionStrings__database=$connection App__Database__LoginKey=$login_key setsid dotnet run \
       --project "$app/src/Bootstrapper/$file_name.Bootstrapper" \
       -c Release --no-build --launch-profile http > "$log" 2>&1 &
   fi
@@ -264,15 +266,11 @@ stop_apps() {
   groups=()
 }
 
-run_apps() {
-  local index
+run_round() {
+  local mode=$1 round=$2 index
   logs=()
-  read_ports
-  if [[ $1 == project ]]; then
-    start_postgres
-  fi
   for index in "${!apps[@]}"; do
-    start_app "$1" "${apps[$index]}"
+    start_app "$mode" "${apps[$index]}" "$round"
   done
   for index in "${!apps[@]}"; do
     await_health "$index"
@@ -282,8 +280,43 @@ run_apps() {
     expect_still_healthy "$index"
   done
   stop_apps
+}
+
+persisted_login_key() {
+  local app=$1 file_name key
+  file_name=$(app_file_name "$app")
+  key=$(dotnet user-secrets list --project "$app/src/Aspire/$file_name.AppHost" \
+    | sed -n 's/^Parameters:login-key = //p')
+  [[ $(printf '%s' "$key" | base64 -d 2> /dev/null | wc -c) -eq $login_key_bytes ]] \
+    || fail "the AppHost of $app keeps no login-key of $login_key_bytes bytes in its user secrets"
+  printf '%s\n' "$key"
+}
+
+restart_with_persisted_keys() {
+  local index key keys=()
+  for index in "${!apps[@]}"; do
+    key=$(persisted_login_key "${apps[$index]}")
+    keys+=("$key")
+  done
+  run_round aspire restart
+  for index in "${!apps[@]}"; do
+    key=$(persisted_login_key "${apps[$index]}")
+    [[ $key == "${keys[$index]}" ]] || fail "the AppHost of ${apps[$index]} made a new login-key on the restart"
+  done
+  summary+="; restarted, they answered Healthy again with the login-key each AppHost generated and persisted"
+}
+
+run_apps() {
+  read_ports
+  if [[ $1 == project ]]; then
+    start_postgres
+  fi
+  run_round "$1" first
   summary="${apps[*]##*/} answered Healthy on /health at the same time and kept running"
   summary+=" on distinct ports ${ports[*]} from their launchSettings.json"
+  if [[ $1 == aspire ]]; then
+    restart_with_persisted_keys
+  fi
 }
 
 finish() {

@@ -1,6 +1,7 @@
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
@@ -18,8 +19,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
 
     private static readonly ModuleLoginNames LoginNames = new("monolith");
 
-    private static readonly ModuleLogin[] RaceLogins =
-        [ModuleLogin.Create(LoginNames, "race_a", "race"), ModuleLogin.Create(LoginNames, "race_b", "race")];
+    private static readonly ModuleLogin[] RaceLogins = [CreateLogin("race_a"), CreateLogin("race_b")];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -51,7 +51,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             connectionString,
             canCreateSchemas: true);
 
-        var login = ModuleLogin.Create(LoginNames, "creator_probe", "creator_ok");
+        var login = CreateLogin("creator_probe");
 
         await ProvisionAsync(creatorConnectionString, [login], maxConnections: 10);
 
@@ -74,7 +74,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [ModuleLogin.Create(LoginNames, "nocreate_probe", "x")],
+                [CreateLogin("nocreate_probe")],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("CREATE on the database");
@@ -96,7 +96,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 creatorConnectionString,
-                [ModuleLogin.Create(LoginNames, "foreign_probe", "x")],
+                [CreateLogin("foreign_probe")],
                 maxConnections: 10));
 
         exception.Message.ShouldContain("ADMIN option");
@@ -114,7 +114,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [ModuleLogin.Create(LoginNames, "budget_probe", "x")],
+                [CreateLogin("budget_probe")],
                 maxConnections: 5000));
 
         exception.Message.ShouldContain("MaxConnections");
@@ -132,7 +132,7 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         var exception = await Should.ThrowAsync<InvalidOperationException>(
             () => ProvisionAsync(
                 adminConnectionString,
-                [ModuleLogin.Create(LoginNames, "budget_a", "x"), ModuleLogin.Create(LoginNames, "budget_b", "x")],
+                [CreateLogin("budget_a"), CreateLogin("budget_b")],
                 maxConnections: 3));
 
         exception.Message.ShouldContain(
@@ -151,12 +151,12 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
         await Should.NotThrowAsync(
             () => ProvisionAsync(
                 adminConnectionString,
-                [
-                    ModuleLogin.Create(LoginNames, "budget_exact_a", "x"),
-                    ModuleLogin.Create(LoginNames, "budget_exact_b", "x"),
-                ],
+                [CreateLogin("budget_exact_a"), CreateLogin("budget_exact_b")],
                 maxConnections: 4));
     }
+
+    private static ModuleLogin CreateLogin(String schema) =>
+        ModuleLogin.Create(LoginNames, schema, TestSettings.LoginKey);
 
     private static Task ProvisionRaceLoginsAsync(String connectionString)
     {

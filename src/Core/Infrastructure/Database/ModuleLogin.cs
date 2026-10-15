@@ -19,17 +19,17 @@ internal sealed class ModuleLogin
 
     public String Password { get; }
 
-    public static ModuleLogin Create(ModuleLoginNames loginNames, String schema, String adminPassword)
+    public static ModuleLogin Create(ModuleLoginNames loginNames, String schema, String loginKey)
     {
         var name = loginNames.BuildLoginName(schema);
-        return new ModuleLogin(schema, name, DerivePassword(name, adminPassword));
+        return new ModuleLogin(schema, name, DerivePassword(name, loginKey));
     }
 
     public override String ToString() => Name;
 
-    private static String DerivePassword(String loginName, String adminPassword)
+    private static String DerivePassword(String loginName, String loginKey)
     {
-        var key = Encoding.UTF8.GetBytes(adminPassword);
+        var key = Convert.FromBase64String(loginKey);
         var message = Encoding.UTF8.GetBytes(loginName);
         return Base64Url.EncodeToString(HMACSHA256.HashData(key, message));
     }

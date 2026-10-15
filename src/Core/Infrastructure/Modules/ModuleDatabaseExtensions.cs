@@ -53,7 +53,7 @@ public static class ModuleDatabaseExtensions
 
         var loginNames = new ModuleLoginNames(settings.LoginPrefix);
         var logins = modules
-            .Select(module => connectionStrings.CreateModuleLogin(loginNames, module.Schema))
+            .Select(module => ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey))
             .ToList();
 
         DatabasePreparationLog.WaitingForLock(CreateLogger(serviceProvider));

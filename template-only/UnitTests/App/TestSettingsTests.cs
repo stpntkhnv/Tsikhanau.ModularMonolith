@@ -25,6 +25,7 @@ public sealed class TestSettingsTests
             new Dictionary<String, String>
             {
                 ["ConnectionStrings__database"] = "Host=database",
+                ["App__Database__LoginKey"] = TestSettings.LoginKey,
                 ["App__Queues__RunInBackground"] = "true",
                 ["App__Cleanup__RunInBackground"] = "false",
                 ["App__Modules__Pings__Limit"] = "20",

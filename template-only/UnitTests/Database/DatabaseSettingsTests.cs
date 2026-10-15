@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Platform;
+using Tsikhanau.Monolith.Testing.App;
 
 namespace Tsikhanau.Monolith.UnitTests.Database;
 
@@ -12,6 +13,12 @@ public sealed class DatabaseSettingsTests
         "App:Database:LoginPrefix must start with a letter, hold only a-z, 0-9 and _, "
         + "and be neither pg nor start with pg_, which PostgreSQL reserves";
 
+    private const String LoginKeyOf31Bytes = "dGhpcnR5LW9uZS1ieXRlcy1pcy1vbmUtdG9vLWZldw==";
+
+    private const String LoginKeyAdvice =
+        "base64 of at least 32 random bytes (openssl rand -base64 32), kept as a secret: "
+        + "the AppHost passes its login-key parameter, a server sets App__Database__LoginKey";
+
     [Fact]
     public void Prepare_timeout_comes_from_configuration()
     {
@@ -19,6 +26,7 @@ public sealed class DatabaseSettingsTests
             new()
             {
                 ["App:Database:LoginPrefix"] = "monolith",
+                ["App:Database:LoginKey"] = TestSettings.LoginKey,
                 ["App:Database:MaxConnections"] = "20",
                 ["App:Database:PrepareTimeout"] = "00:05:00",
             });
@@ -33,6 +41,7 @@ public sealed class DatabaseSettingsTests
                 new()
                 {
                     ["App:Database:LoginPrefix"] = "monolith",
+                    ["App:Database:LoginKey"] = TestSettings.LoginKey,
                     ["App:Database:MaxConnections"] = "20",
                 }));
 
@@ -45,6 +54,7 @@ public sealed class DatabaseSettingsTests
                 new()
                 {
                     ["App:Database:LoginPrefix"] = "monolith",
+                    ["App:Database:LoginKey"] = TestSettings.LoginKey,
                     ["App:Database:MaxConnections"] = "20",
                     ["App:Database:PrepareTimeout"] = prepareTimeout,
                 }));
@@ -110,6 +120,40 @@ public sealed class DatabaseSettingsTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Missing_login_key_is_refused_with_what_to_set(String? loginKey)
+    {
+        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginKey(loginKey));
+
+        exception.Message.ShouldContain($"App:Database:LoginKey is required: {LoginKeyAdvice}");
+    }
+
+    [Theory]
+    [InlineData("not base64 at all")]
+    [InlineData(LoginKeyOf31Bytes)]
+    public void Login_key_that_is_not_base64_of_32_bytes_is_refused(String loginKey)
+    {
+        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginKey(loginKey));
+
+        exception.Message.ShouldContain($"App:Database:LoginKey must be {LoginKeyAdvice}");
+    }
+
+    [Fact]
+    public void Login_key_of_32_bytes_is_accepted() =>
+        Should.NotThrow(() => ResolveSettingsWithLoginKey(TestSettings.LoginKey));
+
+    [Fact]
+    public void Text_form_never_shows_the_login_key()
+    {
+        var settings = ResolveSettingsWithLoginKey(TestSettings.LoginKey);
+
+        var text = settings.ToString();
+
+        text.ShouldNotContain(TestSettings.LoginKey);
+    }
+
+    [Theory]
     [InlineData(20, 2, 10)]
     [InlineData(21, 2, 10)]
     [InlineData(3, 2, 2)]
@@ -121,6 +165,7 @@ public sealed class DatabaseSettingsTests
         var settings = new DatabaseSettings
         {
             LoginPrefix = "monolith",
+            LoginKey = TestSettings.LoginKey,
             MaxConnections = maxConnections,
             PrepareTimeout = TimeSpan.FromMinutes(10),
         };
@@ -135,6 +180,17 @@ public sealed class DatabaseSettingsTests
             new()
             {
                 ["App:Database:LoginPrefix"] = loginPrefix,
+                ["App:Database:LoginKey"] = TestSettings.LoginKey,
+                ["App:Database:MaxConnections"] = "20",
+                ["App:Database:PrepareTimeout"] = "00:10:00",
+            });
+
+    private static DatabaseSettings ResolveSettingsWithLoginKey(String? loginKey) =>
+        ResolveSettings(
+            new()
+            {
+                ["App:Database:LoginPrefix"] = "monolith",
+                ["App:Database:LoginKey"] = loginKey,
                 ["App:Database:MaxConnections"] = "20",
                 ["App:Database:PrepareTimeout"] = "00:10:00",
             });

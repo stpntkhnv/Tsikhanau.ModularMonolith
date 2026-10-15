@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Tsikhanau.Monolith.Api.Callers;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Hosting;
@@ -17,9 +18,12 @@ using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Shared.Collections;
+using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.Testing.Queues;
 using Tsikhanau.Monolith.TestModules.Pings;
@@ -184,6 +188,12 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     public Task<Int32> RunCleanupAsync() => CleanupDriver.RunAllAsync(Services);
 
+    public void ClearModulePools() =>
+        Services
+            .GetRequiredService<ModuleRegistry>().Modules
+            .Select(module => Services.GetRequiredKeyedService<NpgsqlDataSource>(module.Key))
+            .ForEach(npgsqlDataSource => npgsqlDataSource.Clear());
+
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);
 
     public Task ProcessQueuesAllowingFailuresAsync() => QueueDriver.ProcessAllAllowingFailuresAsync(Services);
@@ -291,6 +301,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.KeepFor)}"] = "7.00:00:00";
 
         builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginPrefix)}"] = LoginPrefix;
+        builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginKey)}"] =
+            TestSettings.LoginKey;
+
         builder.Configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}"] =
             maxConnections.ToString(CultureInfo.InvariantCulture);
 

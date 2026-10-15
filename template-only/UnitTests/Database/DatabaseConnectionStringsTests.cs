@@ -3,6 +3,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Testing.App;
 
 namespace Tsikhanau.Monolith.UnitTests.Database;
 
@@ -45,7 +46,7 @@ public sealed class DatabaseConnectionStringsTests
             CreateConfiguration("Host=db;Port=5433;Database=monolith;Username=postgres;Password=p"),
             Development);
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
@@ -72,7 +73,7 @@ public sealed class DatabaseConnectionStringsTests
             CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p"),
             Development);
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
         var handlerTimeout = TimeSpan.FromSeconds(handlerTimeoutSeconds);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
@@ -101,7 +102,7 @@ public sealed class DatabaseConnectionStringsTests
             CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p"),
             Development);
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
@@ -116,7 +117,7 @@ public sealed class DatabaseConnectionStringsTests
             CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p;Pooling=false"),
             Development);
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForAdmin(PrepareTimeout));
@@ -136,7 +137,7 @@ public sealed class DatabaseConnectionStringsTests
                 "Host=db;Database=monolith;Username=postgres;Password=p;Persist Security Info=true"),
             Development);
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForAdmin(PrepareTimeout));
@@ -166,10 +167,7 @@ public sealed class DatabaseConnectionStringsTests
         var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
             connectionStrings.BuildForAdmin(PrepareTimeout));
 
-        var login = connectionStrings.CreateModuleLogin(LoginNames, "pings");
-
         adminConnectionStringBuilder.Password.ShouldBe("a;b'c=d");
-        login.Password.ShouldBe(ModuleLogin.Create(LoginNames, "pings", "a;b'c=d").Password);
     }
 
     [Theory]

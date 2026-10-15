@@ -16,6 +16,8 @@ internal static class PerfHost
 {
     private const String LoginPrefix = "monolith";
 
+    private const String LoginKey = "dHNpa2hhbmF1LW1vbm9saXRoLXRlc3QtbG9naW5rZXk=";
+
     public static IHost Build(String connectionString, PerfHostSettings settings)
     {
         var builder = Host.CreateApplicationBuilder(
@@ -70,6 +72,7 @@ internal static class PerfHost
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.Interval)}"] = "01:00:00";
         configuration[$"{CleanupSettings.Section}:{nameof(CleanupSettings.KeepFor)}"] = "7.00:00:00";
         configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginPrefix)}"] = LoginPrefix;
+        configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.LoginKey)}"] = LoginKey;
         configuration[$"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}"] =
             settings.MaxConnections.ToString(CultureInfo.InvariantCulture);
 
