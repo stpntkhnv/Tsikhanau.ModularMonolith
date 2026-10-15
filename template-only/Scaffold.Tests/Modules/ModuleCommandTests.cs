@@ -17,7 +17,9 @@ public sealed class ModuleCommandTests : IDisposable
 
     private const String PlatformUsing = "using Acme.Shop.Bootstrapper.Platform;\n";
 
-    private const String PlatformCall = "        builder.AddPlatform();\n";
+    private const String PlatformCall = "    builder.AddPlatform();\n";
+
+    private const String ModuleApiUsing = "using Tsikhanau.Monolith.Api.Modules;\n";
 
     private const String NotesProjectFolder = "src/Modules/Notes/Acme.Shop.Modules.Notes";
 
@@ -105,7 +107,7 @@ public sealed class ModuleCommandTests : IDisposable
         hostProject.ShouldBe(Insert(SampleApp.HostProject, CoreReference, BuildReference("Notes")));
         program.ShouldBe(
             Insert(
-                Insert(SampleApp.Program, PlatformUsing, BuildUsing("Notes")),
+                Insert(SampleApp.Program, PlatformUsing, BuildUsing("Notes") + ModuleApiUsing),
                 PlatformCall,
                 BuildCall("Notes")));
     }
@@ -378,7 +380,10 @@ public sealed class ModuleCommandTests : IDisposable
                 Insert(SampleApp.HostProject, CoreReference, BuildReference(earlier) + BuildReference(later))),
             () => program.ShouldBe(
                 Insert(
-                    Insert(SampleApp.Program, PlatformUsing, BuildUsing(earlier) + BuildUsing(later)),
+                    Insert(
+                        SampleApp.Program,
+                        PlatformUsing,
+                        BuildUsing(earlier) + BuildUsing(later) + ModuleApiUsing),
                     PlatformCall,
                     BuildCall(earlier) + BuildCall(later))),
             () => appSettings.ShouldBe(
@@ -410,5 +415,5 @@ public sealed class ModuleCommandTests : IDisposable
 
     private static String BuildUsing(String name) => $"using Acme.Shop.Modules.{name};\n";
 
-    private static String BuildCall(String name) => $"        builder.AddModule<{name}Module>();\n";
+    private static String BuildCall(String name) => $"    builder.AddModule<{name}Module>();\n";
 }

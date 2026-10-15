@@ -15,6 +15,10 @@ public sealed class DatabaseSettingsTests
         "base64 of at least 32 random bytes (openssl rand -base64 32), kept as a secret: "
         + "the AppHost passes its login-key parameter, a server sets App__Database__LoginKey";
 
+    private const String UpgradeNotes =
+        "an app that took this core with update-core follows the upgrade notes in docs/engineering-principles.md, "
+        + "section 5.6";
+
     [Fact]
     public void Prepare_timeout_comes_from_configuration()
     {
@@ -55,11 +59,11 @@ public sealed class DatabaseSettingsTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void Missing_login_key_is_refused_with_what_to_set(String? loginKey)
+    public void Missing_login_key_is_refused_with_what_to_set_and_the_upgrade_notes(String? loginKey)
     {
         var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithLoginKey(loginKey));
 
-        exception.Message.ShouldContain($"App:Database:LoginKey is required: {LoginKeyAdvice}");
+        exception.Message.ShouldContain($"App:Database:LoginKey is required: {LoginKeyAdvice}; {UpgradeNotes}");
     }
 
     [Theory]
@@ -84,6 +88,41 @@ public sealed class DatabaseSettingsTests
         var text = settings.ToString();
 
         text.ShouldNotContain(TestSettings.LoginKey);
+    }
+
+    [Fact]
+    public void Prepare_mode_is_on_startup_when_the_setting_is_absent()
+    {
+        var settings = ResolveSettingsWithLoginKey(TestSettings.LoginKey);
+
+        settings.PrepareMode.ShouldBe(DatabasePrepareMode.OnStartup);
+    }
+
+    [Theory]
+    [InlineData("OnStartup", DatabasePrepareMode.OnStartup)]
+    [InlineData("Only", DatabasePrepareMode.Only)]
+    [InlineData("Never", DatabasePrepareMode.Never)]
+    public void Prepare_mode_comes_from_configuration(String configuredMode, DatabasePrepareMode prepareMode)
+    {
+        var settings = ResolveSettingsWithPrepareMode(configuredMode);
+
+        settings.PrepareMode.ShouldBe(prepareMode);
+    }
+
+    [Fact]
+    public void Prepare_mode_by_a_number_that_names_no_mode_is_refused_with_the_modes_it_takes()
+    {
+        var exception = Should.Throw<OptionsValidationException>(() => ResolveSettingsWithPrepareMode("7"));
+
+        exception.Message.ShouldContain("App:Database:PrepareMode must be OnStartup, Only or Never");
+    }
+
+    [Fact]
+    public void Prepare_mode_by_an_unknown_name_is_refused_naming_the_setting()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() => ResolveSettingsWithPrepareMode("Sometimes"));
+
+        exception.Message.ShouldContain("'Sometimes' at 'App:Database:PrepareMode'");
     }
 
     [Theory]
@@ -114,6 +153,16 @@ public sealed class DatabaseSettingsTests
                 ["App:Database:LoginKey"] = loginKey,
                 ["App:Database:MaxConnections"] = "20",
                 ["App:Database:PrepareTimeout"] = "00:10:00",
+            });
+
+    private static DatabaseSettings ResolveSettingsWithPrepareMode(String prepareMode) =>
+        ResolveSettings(
+            new()
+            {
+                ["App:Database:LoginKey"] = TestSettings.LoginKey,
+                ["App:Database:MaxConnections"] = "20",
+                ["App:Database:PrepareTimeout"] = "00:10:00",
+                ["App:Database:PrepareMode"] = prepareMode,
             });
 
     private static DatabaseSettings ResolveSettings(Dictionary<String, String?> configurationValues)

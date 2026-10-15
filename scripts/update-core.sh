@@ -524,7 +524,8 @@ report() {
   fi
   git_core diff --cached --stat -- "${paths[@]}"
   echo "update-core: the core moved from version $old_version to version $new_version, template commit $commit from $source; the changes are staged"
-  echo "update-core: next, run ./gate.sh; if it stops on pending model changes of a module (PendingModelChangesWarning), add a migration with scripts/add-migration.sh <Module> <Name> and run the gate again; then commit"
+  echo "update-core: next, make the edits that the upgrade notes of the core versions after $old_version list (docs/engineering-principles.md, section 5.6)"
+  echo "update-core: then run ./gate.sh; if it stops on pending model changes of a module (PendingModelChangesWarning), add a migration with scripts/add-migration.sh <Module> <Name> and run the gate again; then commit"
 }
 
 rollback() {

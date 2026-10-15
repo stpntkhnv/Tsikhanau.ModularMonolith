@@ -10,6 +10,10 @@ internal static partial class ProgramEdit
 {
     private const String PlatformCall = "builder.AddPlatform();";
 
+    private const String ModuleApiNamespace = "Tsikhanau.Monolith.Api.Modules";
+
+    private const String CoreNamespacePrefix = "Tsikhanau.";
+
     [GeneratedRegex(@"^using (?<namespace>[A-Za-z_][\w.]*);$")]
     private static partial Regex UsingPattern { get; }
 
@@ -34,7 +38,19 @@ internal static partial class ProgramEdit
             .Ensure(_ => !lines.Contains(moduleUsing), BuildAnchorError(path, $"no {moduleUsing} yet"))
             .Map(_ => AddModuleCall(lines, platformIndexes[0], module.Name, moduleCall))
             .Map(withCall => AddUsing(withCall, usingIndexes, module.Namespace))
+            .Map(AddModuleApiUsingWhenMissing)
             .Map(updatedLines => updatedLines.Join());
+    }
+
+    private static TextLines AddModuleApiUsingWhenMissing(TextLines lines) =>
+        lines.Contains($"using {ModuleApiNamespace};")
+            ? lines
+            : AddUsing(lines, GetCoreUsingIndexes(lines), ModuleApiNamespace);
+
+    private static IReadOnlyList<Int32> GetCoreUsingIndexes(TextLines lines)
+    {
+        var coreUsingIndexes = lines.GetIndexes(IsCoreUsing);
+        return coreUsingIndexes.Count > 0 ? coreUsingIndexes : lines.GetIndexes(UsingPattern.IsMatch);
     }
 
     private static TextLines AddModuleCall(TextLines lines, Int32 platformIndex, String moduleName, String moduleCall)
@@ -67,6 +83,12 @@ internal static partial class ProgramEdit
     }
 
     private static Boolean IsModuleCall(String line) => ModuleCallPattern.IsMatch(line);
+
+    private static Boolean IsCoreUsing(String line) =>
+        UsingPattern.IsMatch(line) && IsCoreNamespace(ReadNamespace(line));
+
+    private static Boolean IsCoreNamespace(String usedNamespace) =>
+        usedNamespace.StartsWith(CoreNamespacePrefix, StringComparison.Ordinal);
 
     private static String ReadModuleName(String line) => ModuleCallPattern.Match(line).Groups["module"].Value;
 

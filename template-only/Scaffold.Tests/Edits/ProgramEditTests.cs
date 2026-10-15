@@ -8,9 +8,11 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Edits;
 
 public sealed class ProgramEditTests
 {
-    private const String PlatformCall = "        builder.AddPlatform();\n";
+    private const String PlatformCall = "    builder.AddPlatform();\n";
 
     private const String PlatformUsing = "using Acme.Shop.Bootstrapper.Platform;\n";
+
+    private const String ModuleApiUsing = "using Tsikhanau.Monolith.Api.Modules;";
 
     [Fact]
     public void Using_goes_after_the_system_usings_and_in_order_among_the_others()
@@ -43,7 +45,6 @@ public sealed class ProgramEditTests
             using Tsikhanau.Monolith.Api.Modules;
             using Tsikhanau.Monolith.Hosting;
             using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-            using Tsikhanau.Monolith.Infrastructure.Modules;
             using Zeta.Modules.Notes;
 
             """,
@@ -64,6 +65,24 @@ public sealed class ProgramEditTests
             using Tsikhanau.Monolith.Api.Modules;
             """,
             Case.Sensitive);
+    }
+
+    [Fact]
+    public void Second_module_keeps_the_one_using_of_the_module_api()
+    {
+        var notes = SampleModules.Create("Notes");
+        var tags = SampleModules.Create("Tags");
+        var withNotes = SampleModules.CreateFile(
+            SampleApp.ProgramPath,
+            ReadText(ProgramEdit.AddModule(notes.App.Program, notes)));
+
+        var edited = ReadText(ProgramEdit.AddModule(withNotes, tags));
+
+        var moduleApiUsings = edited
+            .Split('\n')
+            .Count(line => line == ModuleApiUsing);
+
+        moduleApiUsings.ShouldBe(1);
     }
 
     [Fact]
@@ -101,7 +120,7 @@ public sealed class ProgramEditTests
             SampleApp.ProgramPath,
             SampleApp.Program.Replace(
                 PlatformCall,
-                $"{PlatformCall}        builder.AddModule<NotesModule>();\n",
+                $"{PlatformCall}    builder.AddModule<NotesModule>();\n",
                 StringComparison.Ordinal));
 
         var message = ReadMessage(ProgramEdit.AddModule(program, notes));

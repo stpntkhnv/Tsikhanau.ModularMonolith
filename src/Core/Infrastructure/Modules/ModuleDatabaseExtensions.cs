@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Shared.Time;
@@ -12,15 +13,21 @@ namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 public static class ModuleDatabaseExtensions
 {
+    private const String NeverPrepares =
+        $"{DatabaseSettings.PrepareModeSetting} is Never, so nothing may prepare the database: start the host "
+        + "with MonolithHost.RunAsync, which checks it through the module logins instead "
+        + $"({DatabaseSettings.UpgradeNotes})";
+
     public static async Task PrepareModuleDatabasesAsync(
         this IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
-        serviceProvider
-            .GetRequiredService<IStartupValidator>()
-            .Validate();
+        var settings = ValidateSettings(serviceProvider);
+        if (settings.PrepareMode == DatabasePrepareMode.Never)
+        {
+            throw new InvalidOperationException(NeverPrepares);
+        }
 
-        var settings = serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
         using var deadline = new CancellationTokenSource(
             settings.PrepareTimeout,
             serviceProvider.GetRequiredService<TimeProvider>());
@@ -41,25 +48,57 @@ public static class ModuleDatabaseExtensions
         }
     }
 
+    public static async Task VerifyModuleDatabasesAsync(
+        this IServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        var settings = ValidateSettings(serviceProvider);
+        var connectionStrings = ReadConnectionStrings(serviceProvider);
+        var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
+
+        await using var scope = serviceProvider.CreateAsyncScope();
+        foreach (var module in modules)
+        {
+            await PreparedModuleVerifier.VerifyAsync(
+                module,
+                serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
+                ResolveDbContext(module, scope.ServiceProvider),
+                settings.MaxConnections,
+                modules.Count,
+                cancellationToken);
+        }
+
+        DatabasePreparationLog.Verified(
+            CreateLogger(serviceProvider),
+            connectionStrings.DatabaseName,
+            JoinNames(modules));
+    }
+
+    private static DatabaseSettings ValidateSettings(IServiceProvider serviceProvider)
+    {
+        serviceProvider
+            .GetRequiredService<IStartupValidator>()
+            .Validate();
+
+        return serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
+    }
+
     private static async Task PrepareAsync(
         IServiceProvider serviceProvider,
         DatabaseSettings settings,
         CancellationToken cancellationToken)
     {
         var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
-        var connectionStrings = DatabaseConnectionStrings.From(
-            serviceProvider.GetRequiredService<IConfiguration>(),
-            serviceProvider.GetRequiredService<IHostEnvironment>());
-
+        var connectionStrings = ReadConnectionStrings(serviceProvider);
+        var adminConnectionString = connectionStrings.BuildForAdmin(settings.PrepareTimeout);
         var loginNames = new ModuleLoginNames(connectionStrings.DatabaseName);
         var logins = modules
             .Select(module => ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey))
             .ToList();
 
-        DatabasePreparationLog.WaitingForLock(CreateLogger(serviceProvider));
-        await using var adminSession = await AdminSession.OpenLockedAsync(
-            connectionStrings.BuildForAdmin(settings.PrepareTimeout),
-            cancellationToken);
+        var logger = CreateLogger(serviceProvider);
+        DatabasePreparationLog.WaitingForLock(logger);
+        await using var adminSession = await AdminSession.OpenLockedAsync(adminConnectionString, cancellationToken);
 
         await ModuleDatabaseProvisioner.ProvisionAsync(
             adminSession.DataSource,
@@ -77,6 +116,7 @@ public static class ModuleDatabaseExtensions
 
         await ModuleBoundaryVerifier.VerifyAsync(adminSession.Connection, loginNames.Group, logins, cancellationToken);
         await adminSession.UnlockAsync(cancellationToken);
+        DatabasePreparationLog.Prepared(logger, connectionStrings.DatabaseName, JoinNames(modules));
     }
 
     private static async Task MigrateAndGrantInboxDeliveryAsync(
@@ -98,6 +138,11 @@ public static class ModuleDatabaseExtensions
         }
     }
 
+    private static DatabaseConnectionStrings ReadConnectionStrings(IServiceProvider serviceProvider) =>
+        DatabaseConnectionStrings.From(
+            serviceProvider.GetRequiredService<IConfiguration>(),
+            serviceProvider.GetRequiredService<IHostEnvironment>());
+
     private static Boolean HasRunOutOfTime(CancellationTokenSource deadline, CancellationToken cancellationToken) =>
         deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested;
 
@@ -105,6 +150,9 @@ public static class ModuleDatabaseExtensions
         serviceProvider
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(ModuleDatabaseExtensions));
+
+    private static String JoinNames(IEnumerable<ModuleDescriptor> modules) =>
+        String.Join(", ", modules.Select(module => module.Name));
 
     private static String BuildInboxDeliveryGrantsSql(String schema, String group) =>
         $"""

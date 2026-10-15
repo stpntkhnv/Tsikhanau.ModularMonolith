@@ -58,7 +58,7 @@ index 79eb23a..01a8253 100644
    </ItemGroup>
  </Project>
 diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-index 1b3951a..cf983d4 100644
+index 341c78e..89fa0b7 100644
 --- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
 +++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
 @@ -1,5 +1,6 @@
@@ -68,14 +68,14 @@ index 1b3951a..cf983d4 100644
  using Tsikhanau.Monolith.Api.Modules;
  using Tsikhanau.Monolith.Hosting;
  using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-@@ -30,6 +31,7 @@ static WebApplication BuildApp(String[] args)
-         builder.AddServiceDefaults(AppDiagnostics.SourceName);
-         builder.AddPlatform();
-         builder.AddModule<NotesModule>();
-+        builder.AddModule<TagsModule>();
-         return builder.Build();
-     }
-     catch (Exception exception) when (exception is not HostAbortedException)
+@@ -11,6 +12,7 @@
+     builder.AddServiceDefaults(AppDiagnostics.SourceName);
+     builder.AddPlatform();
+     builder.AddModule<NotesModule>();
++    builder.AddModule<TagsModule>();
+ }
+ 
+ public partial class Program;
 diff --git a/src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj b/src/Modules/Tags/ModularMonolith.Modules.Tags.Contracts/ModularMonolith.Modules.Tags.Contracts.csproj
 new file mode 100644
 index 0000000..6d93395

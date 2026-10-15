@@ -16,11 +16,22 @@ internal sealed class DatabaseConnectionStrings
     private const String SslModeRequirement =
         "must set SSL Mode to VerifyFull, VerifyCA, Require or Disable outside Development";
 
-    private readonly NpgsqlConnectionStringBuilder _adminConnectionStringBuilder;
+    private const String MissingAdminPassword =
+        $"Connection string '{Name}' has no password; {DatabaseSettings.PrepareModeSetting} OnStartup (the default) "
+        + "and Only sign in with it to prepare the database";
 
-    private DatabaseConnectionStrings(NpgsqlConnectionStringBuilder adminConnectionStringBuilder, String databaseName)
+    private const String PasswordWithoutPreparation =
+        $"Connection string '{Name}' holds a password, but {DatabaseSettings.PrepareModeSetting} is Never, "
+        + "which does no admin work: give it only the server, the Database and the SSL Mode; "
+        + $"the module logins sign in with passwords derived from {DatabaseSettings.LoginKeySetting}";
+
+    private readonly NpgsqlConnectionStringBuilder _configuredConnectionStringBuilder;
+
+    private DatabaseConnectionStrings(
+        NpgsqlConnectionStringBuilder configuredConnectionStringBuilder,
+        String databaseName)
     {
-        _adminConnectionStringBuilder = adminConnectionStringBuilder;
+        _configuredConnectionStringBuilder = configuredConnectionStringBuilder;
         DatabaseName = databaseName;
     }
 
@@ -34,30 +45,25 @@ internal sealed class DatabaseConnectionStrings
             throw new InvalidOperationException($"Connection string '{Name}' is missing");
         }
 
-        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+        var configuredConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
         {
             PersistSecurityInfo = false,
         };
 
-        if (String.IsNullOrEmpty(adminConnectionStringBuilder.Password))
-        {
-            throw new InvalidOperationException(
-                $"Connection string '{Name}' has no password; database preparation signs in with it");
-        }
-
-        var databaseName = adminConnectionStringBuilder.Database;
+        var databaseName = configuredConnectionStringBuilder.Database;
         if (String.IsNullOrEmpty(databaseName))
         {
             throw new InvalidOperationException(
                 $"Connection string '{Name}' names no Database; the module roles are named after the database");
         }
 
-        EnsureSslModeIsExplicit(adminConnectionStringBuilder.SslMode, hostEnvironment);
-        return new DatabaseConnectionStrings(adminConnectionStringBuilder, databaseName);
+        EnsurePasswordFitsThePrepareMode(configuredConnectionStringBuilder.Password, ReadPrepareMode(configuration));
+        EnsureSslModeIsExplicit(configuredConnectionStringBuilder.SslMode, hostEnvironment);
+        return new DatabaseConnectionStrings(configuredConnectionStringBuilder, databaseName);
     }
 
     public String BuildForAdmin(TimeSpan prepareTimeout) =>
-        new NpgsqlConnectionStringBuilder(_adminConnectionStringBuilder.ConnectionString)
+        new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Pooling = false,
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
@@ -68,7 +74,7 @@ internal sealed class DatabaseConnectionStrings
         String applicationName,
         Int32 maxPoolSize,
         TimeSpan handlerTimeout) =>
-        new NpgsqlConnectionStringBuilder(_adminConnectionStringBuilder.ConnectionString)
+        new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Username = login.Name,
             Password = login.Password,
@@ -78,6 +84,28 @@ internal sealed class DatabaseConnectionStrings
             CommandTimeout = CalculateCommandTimeout(handlerTimeout),
             MaxAutoPrepare = MaxAutoPreparedStatements,
         }.ConnectionString;
+
+    private static DatabasePrepareMode ReadPrepareMode(IConfiguration configuration)
+    {
+        var prepareMode = configuration.GetValue(DatabaseSettings.PrepareModeSetting, DatabasePrepareMode.OnStartup);
+        return Enum.IsDefined(prepareMode)
+            ? prepareMode
+            : throw new InvalidOperationException(DatabaseSettings.UnknownPrepareMode);
+    }
+
+    private static void EnsurePasswordFitsThePrepareMode(String? password, DatabasePrepareMode prepareMode)
+    {
+        var hasPassword = !String.IsNullOrEmpty(password);
+        if (prepareMode == DatabasePrepareMode.Never && hasPassword)
+        {
+            throw new InvalidOperationException(PasswordWithoutPreparation);
+        }
+
+        if (prepareMode != DatabasePrepareMode.Never && !hasPassword)
+        {
+            throw new InvalidOperationException(MissingAdminPassword);
+        }
+    }
 
     private static void EnsureSslModeIsExplicit(SslMode sslMode, IHostEnvironment hostEnvironment)
     {

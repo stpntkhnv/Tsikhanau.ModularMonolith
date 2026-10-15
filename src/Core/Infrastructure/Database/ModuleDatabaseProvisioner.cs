@@ -15,28 +15,17 @@ internal sealed class ModuleDatabaseProvisioner
 
     private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
 
-    private const String MaxConnectionsSetting =
-        $"{DatabaseSettings.Section}:{nameof(DatabaseSettings.MaxConnections)}";
-
     private const String CannotCreateRoles =
         $"The login in {ConnectionStringSetting} must be a superuser or have CREATEROLE to create module logins";
 
     private const String CannotCreateSchemas =
         $"The login in {ConnectionStringSetting} needs CREATE on the database to create module schemas";
 
-    private const String ServerVersionNumberSql = "SELECT current_setting('server_version_num')::int";
-
     private const String CanCreateRolesSql =
         "SELECT rolsuper OR rolcreaterole FROM pg_roles WHERE rolname = current_user";
 
     private const String CanCreateSchemasSql =
         "SELECT has_database_privilege(current_user, current_database(), 'CREATE')";
-
-    private const String AvailableConnectionsSql = """
-        SELECT current_setting('max_connections')::int
-             - current_setting('superuser_reserved_connections')::int
-             - current_setting('reserved_connections')::int
-        """;
 
     private const String RoleExistsSql = "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = @Name)";
 
@@ -138,9 +127,8 @@ internal sealed class ModuleDatabaseProvisioner
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         var provisioner = new ModuleDatabaseProvisioner(connection, transaction, group, cancellationToken);
 
-        await provisioner.EnsureSupportedServerAsync();
+        await DatabaseServerVerifier.VerifyAsync(connection, maxConnections, logins.Count, cancellationToken);
         await provisioner.EnsureAdminCanProvisionAsync();
-        await provisioner.EnsureConnectionBudgetAsync(maxConnections, logins.Count);
         await provisioner.EnsureGroupAsync();
         foreach (var login in logins)
         {
@@ -150,9 +138,6 @@ internal sealed class ModuleDatabaseProvisioner
 
         await transaction.CommitAsync(cancellationToken);
     }
-
-    private async Task EnsureSupportedServerAsync() =>
-        PostgresVersion.EnsureSupported(await ExecuteScalarAsync<Int32>(ServerVersionNumberSql));
 
     private async Task EnsureAdminCanProvisionAsync()
     {
@@ -164,19 +149,6 @@ internal sealed class ModuleDatabaseProvisioner
         if (!await ExecuteScalarAsync<Boolean>(CanCreateSchemasSql))
         {
             throw new InvalidOperationException(CannotCreateSchemas);
-        }
-    }
-
-    private async Task EnsureConnectionBudgetAsync(Int32 maxConnections, Int32 moduleCount)
-    {
-        var availableConnections = await ExecuteScalarAsync<Int32>(AvailableConnectionsSql);
-        var neededConnections = DatabaseSettings.MinConnectionsPerModule * moduleCount;
-        if (maxConnections > availableConnections || maxConnections < neededConnections)
-        {
-            throw new InvalidOperationException(
-                $"{MaxConnectionsSetting} is {maxConnections}; it must be at least {neededConnections} "
-                + $"({DatabaseSettings.MinConnectionsPerModule} for each of the {moduleCount} modules) "
-                + $"and at most the {availableConnections} connections the server leaves to ordinary logins");
         }
     }
 

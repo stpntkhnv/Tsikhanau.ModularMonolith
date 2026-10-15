@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -34,7 +36,7 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/*.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: Template check (two installs, three apps, part 3 path, update-core, two apps running, Aspire)
+      - name: Template check (two installs, three apps, part 3 path, update-core, two apps running, Aspire, upgrade)
         run: bash template-only/scripts/check-template.sh --aspire
 
   harness:

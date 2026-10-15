@@ -3,7 +3,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Api\Tsikhanau.Monolith.Api.csproj" />
     <ProjectReference Include="..\Contracts\Tsikhanau.Monolith.Contracts.csproj" />
+    <ProjectReference Include="..\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

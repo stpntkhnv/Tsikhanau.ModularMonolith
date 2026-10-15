@@ -6,7 +6,7 @@ Subject: [PATCH 1/4] scratch: notes module
 ---
  ModularMonolith.slnx                          |   4 +
  .../ModularMonolith.Bootstrapper.csproj       |   1 +
- .../ModularMonolith.Bootstrapper/Program.cs   |   2 +
+ .../ModularMonolith.Bootstrapper/Program.cs   |   3 +
  .../INotesQuery.cs                            |   6 +
  .../INotesQueryFacade.cs                      |  10 +
  .../NoteCreatedIntegrationEvent.cs            |   7 +
@@ -38,7 +38,7 @@ Subject: [PATCH 1/4] scratch: notes module
  .../ModularMonolith.Modules.Notes.csproj      |  12 +
  .../NotesModule.cs                            |  17 ++
  .../Settings/NotesSettings.cs                 |   9 +
- 34 files changed, 936 insertions(+)
+ 34 files changed, 937 insertions(+)
  create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs
  create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQueryFacade.cs
  create mode 100644 src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/IntegrationEvents/NoteCreatedIntegrationEvent.cs
@@ -98,23 +98,24 @@ index c5243d7..79eb23a 100644
    </ItemGroup>
  </Project>
 diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-index 9ae84d6..1b3951a 100644
+index a2cd8da..341c78e 100644
 --- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
 +++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
  using ModularMonolith.Bootstrapper.Platform;
 +using ModularMonolith.Modules.Notes;
- using Tsikhanau.Monolith.Api.Modules;
++using Tsikhanau.Monolith.Api.Modules;
  using Tsikhanau.Monolith.Hosting;
  using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-@@ -28,6 +29,7 @@ static WebApplication BuildApp(String[] args)
  
-         builder.AddServiceDefaults(AppDiagnostics.SourceName);
-         builder.AddPlatform();
-+        builder.AddModule<NotesModule>();
-         return builder.Build();
-     }
-     catch (Exception exception) when (exception is not HostAbortedException)
+@@ -8,6 +10,7 @@
+ {
+     builder.AddServiceDefaults(AppDiagnostics.SourceName);
+     builder.AddPlatform();
++    builder.AddModule<NotesModule>();
+ }
+ 
+ public partial class Program;
 diff --git a/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs b/src/Modules/Notes/ModularMonolith.Modules.Notes.Contracts/INotesQuery.cs
 new file mode 100644
 index 0000000..b558be4

@@ -3,6 +3,7 @@
     <InternalsVisibleTo Include="Tsikhanau.Monolith.IntegrationTests" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.Perf" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.TestHost" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />

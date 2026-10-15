@@ -170,6 +170,23 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         moduleSchemas.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Preparation_refuses_to_run_when_the_prepare_mode_is_never()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        using var host = TestModulesHost.BuildUnstarted(
+            connectionString,
+            builder => builder.Configuration["App:Database:PrepareMode"] = "Never");
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
+
+        var moduleSchemas = await new DatabaseProbe(connectionString).QueryAsync<String>(ModuleSchemasSql);
+
+        exception.Message.ShouldStartWith("App:Database:PrepareMode is Never, so nothing may prepare the database");
+        moduleSchemas.ShouldBeEmpty();
+    }
+
     private static Task<AdminSession> HoldPreparationLockAsync(String connectionString) =>
         AdminSession.OpenLockedAsync(BuildUnpooled(connectionString), CancellationToken);
 

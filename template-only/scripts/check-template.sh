@@ -39,6 +39,7 @@ main() {
   else
     echo "check-template: 7 Aspire skipped: it needs a container runtime it can drive (CI runs it with --aspire)"
   fi
+  step 8 "an app of core 77 takes this core" upgrade
   echo "check-template: green ($((SECONDS - started)) s)"
 }
 
@@ -178,6 +179,13 @@ scaffold_path() {
   local log=$work/logs/5-scaffold.log
   bash "$scripts/check-scaffold.sh" Acme.Shop > "$log" 2>&1 || fail_with_log "$log" "check-scaffold.sh Acme.Shop failed"
   summary=$(tail -n 1 "$log" | sed -E 's/^check-scaffold: //; s/ \([0-9]+ s\)$//')
+}
+
+upgrade() {
+  local log=$work/logs/8-upgrade.log
+  bash "$scripts/check-upgrade.sh" > "$log" 2>&1 || fail_with_log "$log" "check-upgrade.sh failed"
+  summary="check-upgrade.sh: $(sed -n -E 's/^check-upgrade: ([0-9]) ([^:]*):.*\(([0-9]+ s)\)$/\2 \3/p' "$log" \
+    | paste -sd ';' | sed 's/;/; /g')"
 }
 
 start_postgres() {

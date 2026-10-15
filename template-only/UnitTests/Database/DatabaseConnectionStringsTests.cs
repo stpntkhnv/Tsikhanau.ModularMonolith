@@ -28,15 +28,74 @@ public sealed class DatabaseConnectionStringsTests
         exception.Message.ShouldContain("Connection string 'database' is missing");
     }
 
-    [Fact]
-    public void Connection_string_without_a_password_is_refused()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("OnStartup")]
+    [InlineData("Only")]
+    public void Connection_string_without_a_password_is_refused_where_the_database_is_prepared(String? prepareMode)
     {
-        var configuration = CreateConfiguration("Host=db;Database=monolith;Username=postgres");
+        var configuration = CreateConfiguration("Host=db;Database=monolith;Username=postgres", prepareMode);
 
         var exception = Should.Throw<InvalidOperationException>(
             () => DatabaseConnectionStrings.From(configuration, Development));
 
-        exception.Message.ShouldContain("password");
+        exception.Message.ShouldBe(
+            "Connection string 'database' has no password; App:Database:PrepareMode OnStartup (the default) "
+            + "and Only sign in with it to prepare the database");
+    }
+
+    [Fact]
+    public void Connection_string_without_credentials_is_read_where_nothing_is_prepared()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=monolith;SSL Mode=Disable", "Never"),
+            Production);
+
+        var databaseName = connectionStrings.DatabaseName;
+
+        databaseName.ShouldBe("monolith");
+    }
+
+    [Fact]
+    public void Connection_string_with_a_password_is_refused_where_nothing_is_prepared()
+    {
+        var configuration = CreateConfiguration(ServerConnectionString, "Never");
+
+        var exception = Should.Throw<InvalidOperationException>(
+            () => DatabaseConnectionStrings.From(configuration, Development));
+
+        exception.Message.ShouldStartWith(
+            "Connection string 'database' holds a password, but App:Database:PrepareMode is Never");
+    }
+
+    [Fact]
+    public void Prepare_mode_that_names_no_mode_is_refused_when_the_connection_string_is_read()
+    {
+        var configuration = CreateConfiguration(ServerConnectionString, "7");
+
+        var exception = Should.Throw<InvalidOperationException>(
+            () => DatabaseConnectionStrings.From(configuration, Development));
+
+        exception.Message.ShouldBe("App:Database:PrepareMode must be OnStartup, Only or Never");
+    }
+
+    [Fact]
+    public void Module_connection_needs_no_admin_credentials()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Port=5433;Database=monolith;SSL Mode=Require", "Never"),
+            Production);
+
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
+
+        var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+
+        moduleConnectionStringBuilder.Host.ShouldBe("db");
+        moduleConnectionStringBuilder.Port.ShouldBe(5433);
+        moduleConnectionStringBuilder.SslMode.ShouldBe(SslMode.Require);
+        moduleConnectionStringBuilder.Username.ShouldBe("monolith__pings");
+        moduleConnectionStringBuilder.Password.ShouldBe(login.Password);
     }
 
     [Fact]
@@ -236,10 +295,14 @@ public sealed class DatabaseConnectionStringsTests
         Should.NotThrow(() => DatabaseConnectionStrings.From(configuration, Development));
     }
 
-    private static IConfiguration CreateConfiguration(String? connectionString) =>
+    private static IConfiguration CreateConfiguration(String? connectionString, String? prepareMode = null) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(
-                new Dictionary<String, String?> { ["ConnectionStrings:database"] = connectionString })
+                new Dictionary<String, String?>
+                {
+                    ["ConnectionStrings:database"] = connectionString,
+                    ["App:Database:PrepareMode"] = prepareMode,
+                })
             .Build();
 
     private sealed class TestHostEnvironment(String environmentName) : IHostEnvironment
