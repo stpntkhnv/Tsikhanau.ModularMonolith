@@ -66,7 +66,6 @@ internal sealed class DatabaseConnectionStrings
         new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Pooling = false,
-            Timeout = prepareTimeout.TotalSecondsRoundedUp,
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
 

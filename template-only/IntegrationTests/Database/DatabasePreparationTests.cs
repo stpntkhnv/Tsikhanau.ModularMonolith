@@ -113,6 +113,41 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Prepare_timeout_above_the_npgsql_connect_timeout_cap_still_prepares()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        using var host = TestModulesHost.BuildUnstarted(
+            connectionString,
+            builder => builder.Configuration["App:Database:PrepareTimeout"] = "00:20:00");
+
+        await Should.NotThrowAsync(
+            () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
+    }
+
+    [Fact]
+    public async Task Silent_module_connection_with_a_short_connect_timeout_fails_at_the_real_deadline()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        await using var databaseProxy = DatabaseProxy.Start(connectionString);
+        databaseProxy.AnswerOnlyNext(AdminConnectionCount);
+        using var host = TestModulesHost.BuildUnstarted(
+            WithConnectTimeout(databaseProxy.ConnectionString),
+            builder =>
+            {
+                builder.Configuration["App:Database:PrepareTimeout"] = "00:00:10";
+                builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+            });
+
+        var stopwatch = Stopwatch.StartNew();
+        var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+        var exception = await Should.ThrowAsync<TimeoutException>(
+            () => preparation.WaitAsync(RealTimeLimit, CancellationToken));
+
+        exception.Message.ShouldStartWith(TimeoutMessage);
+        stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(9));
+    }
+
+    [Fact]
     public async Task Silent_server_during_the_lock_phase_ends_preparation_with_the_prepare_timeout_error()
     {
         var connectionString = await CreateDatabaseAsync();
@@ -177,7 +212,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         await using var databaseProxy = DatabaseProxy.Start(connectionString);
         databaseProxy.AnswerOnlyNext(0);
         using var host = TestModulesHost.BuildUnstarted(
-            databaseProxy.ConnectionString,
+            WithConnectTimeout(databaseProxy.ConnectionString),
             builder =>
             {
                 builder.Configuration["App:Database:PrepareTimeout"] = "00:00:10";
@@ -322,6 +357,12 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         using var host = TestModulesHost.BuildUnstarted(connectionString);
         await host.Services.PrepareModuleDatabasesAsync(CancellationToken);
     }
+
+    private static String WithConnectTimeout(String connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Timeout = 2,
+        }.ConnectionString;
 
     private static String BuildUnpooled(String connectionString) =>
         new NpgsqlConnectionStringBuilder(connectionString)

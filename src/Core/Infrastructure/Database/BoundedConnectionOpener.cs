@@ -8,17 +8,29 @@ internal static class BoundedConnectionOpener
         NpgsqlDataSource npgsqlDataSource,
         CancellationToken cancellationToken)
     {
-        var connection = npgsqlDataSource.CreateConnection();
-        var opening = connection.OpenAsync(cancellationToken);
-        try
+        while (true)
         {
-            await opening.WaitAsync(cancellationToken);
-            return connection;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            _ = DisposeWhenOpenEndsAsync(connection, opening);
-            throw;
+            var connection = npgsqlDataSource.CreateConnection();
+            var opening = connection.OpenAsync(cancellationToken);
+            try
+            {
+                await opening.WaitAsync(cancellationToken);
+                return connection;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _ = DisposeWhenOpenEndsAsync(connection, opening);
+                throw;
+            }
+            catch (NpgsqlException exception) when (exception.InnerException is TimeoutException)
+            {
+                await connection.DisposeAsync();
+            }
+            catch
+            {
+                await connection.DisposeAsync();
+                throw;
+            }
         }
     }
 
