@@ -213,6 +213,44 @@ public sealed class DatabaseConnectionStringsTests
     }
 
     [Fact]
+    public void Module_preparation_connection_signs_in_as_the_module_unpooled_with_the_prepare_timeout()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db;Database=monolith;Username=postgres;Password=p;Command Timeout=1"),
+            Development);
+
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
+
+        var preparationConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForModulePreparation(login, "monolith-pings", TimeSpan.FromSeconds(90.5)));
+
+        preparationConnectionStringBuilder.Username.ShouldBe(login.Name);
+        preparationConnectionStringBuilder.Password.ShouldBe(login.Password);
+        preparationConnectionStringBuilder.ApplicationName.ShouldBe("monolith-pings");
+        preparationConnectionStringBuilder.Pooling.ShouldBeFalse();
+        preparationConnectionStringBuilder.CommandTimeout.ShouldBe(91);
+    }
+
+    [Fact]
+    public void Preparation_connections_try_every_host_again_on_each_open()
+    {
+        var connectionStrings = DatabaseConnectionStrings.From(
+            CreateConfiguration("Host=db1,db2;Database=monolith;Username=postgres;Password=p;Host Recheck Seconds=60"),
+            Development);
+
+        var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
+
+        var adminConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForAdmin(PrepareTimeout));
+
+        var preparationConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+            connectionStrings.BuildForModulePreparation(login, "monolith-pings", PrepareTimeout));
+
+        adminConnectionStringBuilder.HostRecheckSeconds.ShouldBe(0);
+        preparationConnectionStringBuilder.HostRecheckSeconds.ShouldBe(0);
+    }
+
+    [Fact]
     public void Connection_strings_never_persist_security_info()
     {
         var connectionStrings = DatabaseConnectionStrings.From(

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -29,6 +30,8 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     private static readonly TimeSpan ClosingLimit = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan LockWait = TimeSpan.FromMinutes(6);
     private static readonly TimeSpan MigrationWait = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ConnectionLifetimeOverrun = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan AuthenticationSettling = TimeSpan.FromMilliseconds(300);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -132,11 +135,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         databaseProxy.AnswerOnlyNext(AdminConnectionCount);
         using var host = TestModulesHost.BuildUnstarted(
             WithConnectTimeout(databaseProxy.ConnectionString),
-            builder =>
-            {
-                builder.Configuration["App:Database:PrepareTimeout"] = "00:00:10";
-                builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-            });
+            UseTenSecondsOfRealTime);
 
         var stopwatch = Stopwatch.StartNew();
         var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
@@ -145,6 +144,53 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
 
         exception.Message.ShouldStartWith(TimeoutMessage);
         stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(9));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(AdminConnectionCount)]
+    public async Task Two_silent_hosts_with_a_short_connect_timeout_fail_at_the_real_deadline(
+        Int32 answeredConnectionCount)
+    {
+        var connectionString = await CreateDatabaseAsync();
+        await using var firstDatabaseProxy = DatabaseProxy.Start(connectionString);
+        await using var secondDatabaseProxy = DatabaseProxy.Start(connectionString);
+        firstDatabaseProxy.AnswerOnlyNext(answeredConnectionCount);
+        secondDatabaseProxy.AnswerOnlyNext(0);
+        using var host = TestModulesHost.BuildUnstarted(
+            WithConnectTimeout(WithHosts(firstDatabaseProxy, secondDatabaseProxy)),
+            UseTenSecondsOfRealTime);
+
+        var stopwatch = Stopwatch.StartNew();
+        var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+        var exception = await Should.ThrowAsync<TimeoutException>(
+            () => preparation.WaitAsync(RealTimeLimit, CancellationToken));
+
+        exception.Message.ShouldStartWith(TimeoutMessage);
+        stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(9));
+    }
+
+    [Fact]
+    public async Task Module_opens_no_connection_besides_the_one_held_through_a_migration_longer_than_its_lifetime()
+    {
+        var connectionString = await CreatePreparedDatabaseAsync();
+        await using var databaseProxy = DatabaseProxy.Start(connectionString);
+        var oneSecondLifetimeConnectionString = new NpgsqlConnectionStringBuilder(databaseProxy.ConnectionString)
+        {
+            ConnectionLifetime = 1,
+        }.ConnectionString;
+
+        using var host = TestModulesHost.BuildUnstarted(oneSecondLifetimeConnectionString);
+        var moduleCount = host.Services.GetRequiredService<ModuleRegistry>().Modules.Count;
+        var migrationHistoryHolder = await HoldMigrationHistoryAsync(connectionString);
+        var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+        await WaitUntilAwaitingAsync(connectionString, TableLock, preparation);
+        await Task.Delay(ConnectionLifetimeOverrun, CancellationToken);
+        await migrationHistoryHolder.DisposeAsync();
+
+        await Should.NotThrowAsync(() => preparation.WaitAsync(RealTimeLimit, CancellationToken));
+
+        databaseProxy.ConnectionCount.ShouldBe(AdminConnectionCount + moduleCount);
     }
 
     [Fact]
@@ -166,25 +212,24 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Silent_module_connection_after_provisioning_fails_at_the_original_deadline()
+    public async Task Silent_module_connection_after_a_long_lock_wait_fails_at_the_original_deadline()
     {
         var connectionString = await CreateDatabaseAsync();
         await using var databaseProxy = DatabaseProxy.Start(connectionString);
         databaseProxy.AnswerOnlyNext(AdminConnectionCount);
         var fakeTimeProvider = new FakeTimeProvider(TestModulesHost.TestStartedOn);
         using var host = TestModulesHost.BuildUnstarted(databaseProxy.ConnectionString, fakeTimeProvider);
+        await using var lockHolder = await HoldPreparationLockAsync(connectionString);
         var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
-        await WaitUntilHeldAsync(databaseProxy, connectionCount: 1, preparation);
-
+        await WaitUntilAwaitingAsync(connectionString, AdvisoryLock, preparation);
         fakeTimeProvider.Advance(TestModulesHost.PrepareTimeout - TimeSpan.FromMinutes(1));
-        await Task.Delay(SilenceLimit, CancellationToken);
-        var isFinishedBeforeDeadline = preparation.IsCompleted;
+        await lockHolder.UnlockAsync(CancellationToken);
+        await WaitUntilHeldAsync(databaseProxy, connectionCount: 1, preparation);
 
         fakeTimeProvider.Advance(TimeSpan.FromMinutes(1));
         var exception = await Should.ThrowAsync<TimeoutException>(
             () => preparation.WaitAsync(SilenceLimit, CancellationToken));
 
-        isFinishedBeforeDeadline.ShouldBeFalse();
         exception.Message.ShouldStartWith(TimeoutMessage);
     }
 
@@ -213,11 +258,7 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         databaseProxy.AnswerOnlyNext(0);
         using var host = TestModulesHost.BuildUnstarted(
             WithConnectTimeout(databaseProxy.ConnectionString),
-            builder =>
-            {
-                builder.Configuration["App:Database:PrepareTimeout"] = "00:00:10";
-                builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-            });
+            UseTenSecondsOfRealTime);
 
         var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
         await Should.ThrowAsync<TimeoutException>(() => preparation.WaitAsync(RealTimeLimit, CancellationToken));
@@ -229,6 +270,35 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         }
 
         databaseProxy.OpenSilentConnectionCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Open_that_completes_after_the_prepare_timeout_is_closed()
+    {
+        var connectionString = await CreateDatabaseAsync();
+        await using var databaseProxy = DatabaseProxy.Start(connectionString);
+        var fakeTimeProvider = new FakeTimeProvider(TestModulesHost.TestStartedOn);
+        using var host = TestModulesHost.BuildUnstarted(databaseProxy.ConnectionString, fakeTimeProvider);
+        await using var lockHolder = await HoldPreparationLockAsync(connectionString);
+        var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+        await WaitUntilAwaitingAsync(connectionString, AdvisoryLock, preparation);
+        databaseProxy.HoldAfterAuthentication();
+        await lockHolder.UnlockAsync(CancellationToken);
+        await WaitUntilAuthenticatedAsync(databaseProxy, preparation);
+        await Task.Delay(AuthenticationSettling, CancellationToken);
+        fakeTimeProvider.Advance(TestModulesHost.PrepareTimeout);
+        var exception = await Should.ThrowAsync<TimeoutException>(
+            () => preparation.WaitAsync(SilenceLimit, CancellationToken));
+
+        databaseProxy.ReleaseAfterAuthentication();
+        var stopwatch = Stopwatch.StartNew();
+        while (databaseProxy.OpenForwardedConnectionCount > 0 && stopwatch.Elapsed < ClosingLimit)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(50), CancellationToken);
+        }
+
+        exception.Message.ShouldStartWith(TimeoutMessage);
+        databaseProxy.OpenForwardedConnectionCount.ShouldBe(0);
     }
 
     [Fact]
@@ -352,6 +422,18 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         preparation.IsCompleted.ShouldBeFalse();
     }
 
+    private static async Task WaitUntilAuthenticatedAsync(DatabaseProxy databaseProxy, Task preparation)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (!preparation.IsCompleted && databaseProxy.AuthenticatedHeldConnectionCount == 0)
+        {
+            stopwatch.Elapsed.ShouldBeLessThan(RealTimeLimit);
+            await Task.Delay(TimeSpan.FromMilliseconds(10), CancellationToken);
+        }
+
+        preparation.IsCompleted.ShouldBeFalse();
+    }
+
     private static async Task PrepareAsync(String connectionString)
     {
         using var host = TestModulesHost.BuildUnstarted(connectionString);
@@ -363,6 +445,18 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         {
             Timeout = 2,
         }.ConnectionString;
+
+    private static String WithHosts(DatabaseProxy firstDatabaseProxy, DatabaseProxy secondDatabaseProxy) =>
+        new NpgsqlConnectionStringBuilder(firstDatabaseProxy.ConnectionString)
+        {
+            Host = $"{firstDatabaseProxy.Endpoint},{secondDatabaseProxy.Endpoint}",
+        }.ConnectionString;
+
+    private static void UseTenSecondsOfRealTime(IHostApplicationBuilder builder)
+    {
+        builder.Configuration["App:Database:PrepareTimeout"] = "00:00:10";
+        builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+    }
 
     private static String BuildUnpooled(String connectionString) =>
         new NpgsqlConnectionStringBuilder(connectionString)
