@@ -9,10 +9,10 @@ internal sealed class AdminSession : IAsyncDisposable
     private const String LockSql = "SELECT pg_advisory_lock(@Lock)";
     private const String UnlockSql = "SELECT pg_advisory_unlock(@Lock)";
 
-    private AdminSession(NpgsqlDataSource npgsqlDataSource)
+    private AdminSession(NpgsqlDataSource npgsqlDataSource, NpgsqlConnection connection)
     {
         DataSource = npgsqlDataSource;
-        Connection = npgsqlDataSource.CreateConnection();
+        Connection = connection;
     }
 
     public NpgsqlDataSource DataSource { get; }
@@ -23,10 +23,21 @@ internal sealed class AdminSession : IAsyncDisposable
         String adminConnectionString,
         CancellationToken cancellationToken)
     {
-        var session = new AdminSession(NpgsqlDataSource.Create(adminConnectionString));
+        var npgsqlDataSource = NpgsqlDataSource.Create(adminConnectionString);
+        NpgsqlConnection connection;
         try
         {
-            await session.Connection.OpenAsync(cancellationToken);
+            connection = await BoundedConnectionOpener.OpenAsync(npgsqlDataSource, cancellationToken);
+        }
+        catch
+        {
+            await npgsqlDataSource.DisposeAsync();
+            throw;
+        }
+
+        var session = new AdminSession(npgsqlDataSource, connection);
+        try
+        {
             await session.ExecuteAsync(LockSql, cancellationToken);
             return session;
         }

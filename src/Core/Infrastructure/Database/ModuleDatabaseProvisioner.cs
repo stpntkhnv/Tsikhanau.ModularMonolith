@@ -123,7 +123,7 @@ internal sealed class ModuleDatabaseProvisioner
         Int32 maxConnections,
         CancellationToken cancellationToken)
     {
-        await using var connection = await adminNpgsqlDataSource.OpenConnectionAsync(cancellationToken);
+        await using var connection = await BoundedConnectionOpener.OpenAsync(adminNpgsqlDataSource, cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         var provisioner = new ModuleDatabaseProvisioner(connection, transaction, group, cancellationToken);
 

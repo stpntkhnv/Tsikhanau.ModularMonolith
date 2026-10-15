@@ -131,6 +131,10 @@ public static class ModuleDatabaseExtensions
         {
             var dbContext = ResolveDbContext(module, scope.ServiceProvider);
             dbContext.Database.SetCommandTimeout(prepareTimeout.TotalSecondsRoundedUp);
+            await BoundedConnectionOpener.WarmUpAsync(
+                serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
+                cancellationToken);
+
             await dbContext.Database.MigrateAsync(cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 BuildInboxDeliveryGrantsSql(module.Schema, group),
