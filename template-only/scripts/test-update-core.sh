@@ -809,7 +809,8 @@ case_legacy_app_skips_an_empty_subject() {
     'NullabilityTests.Domain_and_feature_classes_return_optional_instead_of_null(name: "(none)")' \
     'LegacyPlaceholderTests.Module_name_is_not_empty(name: "(none)")' \
     'LegacyPlaceholderTests.Module_names_differ(name: "(none)", otherName: "(none)")'; do
-    grep -qF "skipped ModularMonolith.ArchTests.Modules.$skipped_test (" "$work/legacy-test" \
+    grep -qxF "skipped ModularMonolith.ArchTests.Modules.$skipped_test" "$work/legacy-test" \
+      || grep -qF "skipped ModularMonolith.ArchTests.Modules.$skipped_test (" "$work/legacy-test" \
       || fail "$skipped_test was not skipped"
   done
 }
