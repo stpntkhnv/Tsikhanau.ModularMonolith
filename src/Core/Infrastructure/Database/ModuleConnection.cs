@@ -3,7 +3,7 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 
 namespace Tsikhanau.Monolith.Infrastructure.Database;
 
-internal static class ModuleSignIn
+internal static class ModuleConnection
 {
     public static async Task<NpgsqlConnection> OpenAsync(
         ModuleDescriptor module,

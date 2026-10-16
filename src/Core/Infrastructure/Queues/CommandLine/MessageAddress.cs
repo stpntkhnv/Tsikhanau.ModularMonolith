@@ -12,7 +12,7 @@ internal sealed record MessageAddress(ModuleDescriptor Module, String Queue, Gui
     public Task<NpgsqlConnection> OpenConnectionAsync(
         IServiceProvider serviceProvider,
         CancellationToken cancellationToken) =>
-        ModuleSignIn.OpenAsync(
+        ModuleConnection.OpenAsync(
             Module,
             serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(Module.Key),
             cancellationToken);

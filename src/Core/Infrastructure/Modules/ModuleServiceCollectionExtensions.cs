@@ -287,7 +287,10 @@ public static class ModuleServiceCollectionExtensions
     }
 
     private static QueueMetrics CreateQueueMetrics(IServiceProvider serviceProvider) =>
-        new(serviceProvider.GetRequiredService<IMeterFactory>(), serviceProvider.GetRequiredService<ModuleRegistry>());
+        new(
+            serviceProvider.GetRequiredService<IMeterFactory>(),
+            serviceProvider.GetRequiredService<ModuleRegistry>(),
+            serviceProvider.GetRequiredService<TimeProvider>());
 
     private static QueueSampler ResolveQueueSampler(IServiceProvider serviceProvider) =>
         serviceProvider.GetRequiredService<QueueSampler>();

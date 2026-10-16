@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
@@ -536,7 +537,7 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Sample_of_a_module_without_a_free_connection_ends_at_its_timeout_and_keeps_its_values()
+    public async Task Sample_of_a_module_without_a_free_connection_ends_at_its_timeout_and_keeps_its_counts()
     {
         var capturingLoggerProvider = new CapturingLoggerProvider();
         await using var testModulesHost = await TestModulesHost.StartAsync(
@@ -577,6 +578,78 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Age_of_the_oldest_due_message_keeps_growing_while_its_module_cannot_be_sampled()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var metricRecorder = MetricRecorder.StartFor(testModulesHost.Services);
+        var sampledOn = testModulesHost.Time.GetUtcNow();
+        await InsertPendingRowAsync(testModulesHost, InsertPongsInboxRowSql, 0, sampledOn - TimeSpan.FromSeconds(10));
+        await InsertFailedRowAsync(testModulesHost, InsertPongsInboxRowSql);
+        await testModulesHost.SampleQueuesAsync();
+        var heldConnections = await HoldEveryConnectionAsync(testModulesHost, typeof(IPongsModule));
+        try
+        {
+            var agesBefore = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
+            var sampling = testModulesHost.SampleQueuesAsync();
+            testModulesHost.Time.Advance(SampleTimeout);
+            await sampling.WaitAsync(SampleTimeout, CancellationToken);
+            testModulesHost.Time.Advance(TimeSpan.FromMinutes(2));
+
+            var agesAfter = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
+            var pendingCounts = ObserveGauge(metricRecorder, PendingInstrument);
+            var failedCounts = ObserveGauge(metricRecorder, FailedInstrument);
+
+            agesBefore.ShouldBe(ForEveryQueue((Pongs, Inbox, 10)), ignoreOrder: true);
+            agesAfter.ShouldBe(ForEveryQueue((Pongs, Inbox, 135)), ignoreOrder: true);
+            pendingCounts.ShouldBe(ForEveryQueue((Pongs, Inbox, 1)), ignoreOrder: true);
+            failedCounts.ShouldBe(ForEveryQueue((Pongs, Inbox, 1)), ignoreOrder: true);
+        }
+        finally
+        {
+            await DisposeAllAsync(heldConnections);
+        }
+    }
+
+    [Fact]
+    public async Task Stop_of_the_sampler_during_a_blocked_sample_ends_it_without_a_warning()
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            runInBackground: true,
+            configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
+
+        using var metricRecorder = MetricRecorder.StartFor(testModulesHost.Services);
+        await WaitUntilAsync(() => Task.FromResult(HasSampledEveryModule(metricRecorder)));
+        var heldConnections = await HoldEveryConnectionAsync(testModulesHost, typeof(IPongsModule));
+        try
+        {
+            await InsertFailedRowAsync(testModulesHost, InsertPingsOutboxRowSql);
+            capturingLoggerProvider.Clear();
+            await AdvanceUntilAsync(
+                testModulesHost,
+                SampleInterval,
+                () => IsObserved(metricRecorder, FailedInstrument, Pings, Outbox, 1));
+
+            await testModulesHost.Services
+                .GetServices<IHostedService>()
+                .OfType<QueueSampler>()
+                .Single()
+                .StopAsync(CancellationToken);
+
+            var samplerWarnings = capturingLoggerProvider.Entries
+                .Where(entry => entry.Level >= LogLevel.Warning && entry.Category.EndsWith(nameof(QueueSampler)))
+                .ToList();
+
+            samplerWarnings.ShouldBeEmpty();
+        }
+        finally
+        {
+            await DisposeAllAsync(heldConnections);
+        }
+    }
+
+    [Fact]
     public async Task Two_hosts_in_one_process_never_see_each_others_measurements()
     {
         await using var firstHost = await TestModulesHost.StartAsync(postgresFixture);
@@ -594,7 +667,7 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
         var secondPendingCounts = ObserveGauge(secondMetricRecorder, PendingInstrument);
 
         firstMessageCounts.ShouldBe([(Pings, Outbox, Processed, 1), (Pongs, Inbox, Processed, 1)], ignoreOrder: true);
-        firstPendingCounts.Count.ShouldBe(6);
+        firstPendingCounts.Count.ShouldBe(EveryQueue.Length);
         secondRecorded.ShouldBeEmpty();
         secondPendingCounts.ShouldBeEmpty();
     }
@@ -645,7 +718,7 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
             .Contains((module, queue, value));
 
     private static Boolean HasSampledEveryModule(MetricRecorder metricRecorder) =>
-        ObserveGauge(metricRecorder, PendingInstrument).Count == 6;
+        ObserveGauge(metricRecorder, PendingInstrument).Count == EveryQueue.Length;
 
     private static Boolean IsOf(RecordedMeasurement measurement, String module, String queue) =>
         measurement.Tags[ModuleTag] == module && measurement.Tags[QueueTag] == queue;

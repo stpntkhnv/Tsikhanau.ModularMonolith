@@ -1,3 +1,5 @@
+using Tsikhanau.Railway;
+
 namespace Tsikhanau.Monolith.Infrastructure.Diagnostics;
 
 internal sealed record QueueSample(
@@ -5,7 +7,7 @@ internal sealed record QueueSample(
     String Queue,
     Int64 PendingCount,
     Int64 FailedCount,
-    TimeSpan OldestDueAge)
+    Optional<DateTimeOffset> OldestDueOn)
 {
     public KeyValuePair<String, Object?>[] Tags { get; } = QueueTags.Create(Module, Queue);
 }

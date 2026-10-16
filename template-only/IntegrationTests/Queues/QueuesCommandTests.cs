@@ -77,6 +77,11 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         WHERE id IN (SELECT id FROM pongs.inbox_messages WHERE failed_on < '{0}' LIMIT 1000) AND failed_on < '{0}'
         """;
 
+    private const String ColumnNamesSql = """
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = @Schema AND table_name = @Queue
+        """;
+
     private const String WaitingOnLockSql = """
         SELECT count(*) FROM pg_stat_activity
         WHERE datname = current_database() AND wait_event_type = 'Lock' AND starts_with(query, @Statement)
@@ -168,6 +173,38 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
             + "\tHandler.Exception",
             $"Pongs\tinbox_messages\t{CreateId(3)}\t{PingCreatedType}\t1\t2026-09-28T08:00:02.0000000Z\tPong.Rejected",
             $"Pongs\tinbox_messages\t{CreateId(5)}\t{PingCreatedType}\t1\t2026-09-28T08:00:02.0000000Z\tPong.Rejected",
+        ]);
+    }
+
+    [Fact]
+    public async Task List_prints_no_code_for_a_row_stored_before_core_87_whose_handler_threw()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+            CreateId(1),
+            PingSecretSentType,
+            attempts: 7,
+            TestStartedOn,
+            $"the handler saw {Secret}"));
+
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+            CreateId(2),
+            PingCreatedType,
+            attempts: 1,
+            TestStartedOn.AddSeconds(1),
+            "line one\nline two\tafter a tab: more"));
+
+        var list = await RunAsync(testModulesHost, "list");
+
+        var lines = ReadLines(list.Output);
+
+        list.ExitCode.ShouldBe(Done, list.Error);
+        list.Output.ShouldNotContain(Secret);
+        lines.ShouldBe(
+        [
+            Header,
+            $"Pongs\tinbox_messages\t{CreateId(1)}\t{PingSecretSentType}\t7\t2026-09-28T08:00:00.0000000Z\t",
+            $"Pongs\tinbox_messages\t{CreateId(2)}\t{PingCreatedType}\t1\t2026-09-28T08:00:01.0000000Z\t",
         ]);
     }
 
@@ -348,6 +385,71 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         discardedRow.LastError.ShouldBe(code);
         discardedRow.ContainsSecrets.ShouldBe(containsSecrets);
         rowsAfter.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("the handler saw s3cret")]
+    [InlineData("card refused: s3cret")]
+    [InlineData("line one\nline two: s3cret")]
+    public async Task Discard_of_a_secret_row_stored_before_core_87_prints_no_error_text_at_all(String lastError)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = CreateId(1);
+
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, new SeedRow(
+            messageId,
+            PingSecretSentType,
+            7,
+            TestStartedOn)
+        {
+            Payload = JsonSerializer.Serialize(new Dictionary<String, String> { ["secret"] = Secret }),
+            LastError = lastError,
+            FailedOn = TestStartedOn,
+        });
+
+        var discard = await RunAsync(testModulesHost, "discard", Pongs, InboxMessages, messageId.ToString());
+
+        var discardedRow = ReadDiscardedRow(discard.Output);
+
+        discard.ExitCode.ShouldBe(Done, discard.Error);
+        discard.Output.ShouldNotContain(Secret);
+        discardedRow.Payload.ShouldBeEmpty();
+        discardedRow.LastError.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("outbox_messages")]
+    [InlineData(InboxMessages)]
+    [InlineData("internal_commands")]
+    public async Task Discard_prints_every_column_of_the_table_the_row_was_in(String queue)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = CreateId(1);
+        await InsertAsync(testModulesHost, "pings", queue, SeedRow.Failed(
+            messageId,
+            PingCreatedType,
+            attempts: 3,
+            TestStartedOn,
+            RejectedError));
+
+        var columns = await testModulesHost.Database.QueryAsync<String>(
+            ColumnNamesSql,
+            new { Schema = "pings", Queue = queue });
+
+        var discard = await RunAsync(testModulesHost, "discard", "pings", queue, messageId.ToString());
+
+        var lines = ReadLines(discard.Output);
+        var printedLine = lines.ShouldHaveSingleItem();
+        var printedKeys = JsonDocument
+            .Parse(printedLine)
+            .RootElement
+            .EnumerateObject()
+            .Select(property => property.Name)
+            .ToList();
+
+        discard.ExitCode.ShouldBe(Done, discard.Error);
+        columns.ShouldNotBeEmpty();
+        printedKeys.ShouldBe(columns, ignoreOrder: true);
     }
 
     [Theory]

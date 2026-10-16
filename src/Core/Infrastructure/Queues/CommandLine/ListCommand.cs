@@ -16,10 +16,16 @@ internal sealed class ListCommand : IQueuesCommand
         TextWriter outputTextWriter,
         CancellationToken cancellationToken)
     {
-        await outputTextWriter.WriteLineAsync(Header);
+        var lines = new List<String>();
         foreach (var module in GetModulesByName(serviceProvider))
         {
-            await WriteFailedMessagesAsync(module, serviceProvider, outputTextWriter, cancellationToken);
+            await ReadFailedMessagesAsync(module, serviceProvider, lines, cancellationToken);
+        }
+
+        await outputTextWriter.WriteLineAsync(Header);
+        foreach (var line in lines)
+        {
+            await outputTextWriter.WriteLineAsync(line);
         }
 
         await outputTextWriter.FlushAsync(cancellationToken);
@@ -31,13 +37,13 @@ internal sealed class ListCommand : IQueuesCommand
             .GetRequiredService<ModuleRegistry>().Modules
             .OrderBy(module => module.Name, StringComparer.Ordinal);
 
-    private static async Task WriteFailedMessagesAsync(
+    private static async Task ReadFailedMessagesAsync(
         ModuleDescriptor module,
         IServiceProvider serviceProvider,
-        TextWriter outputTextWriter,
+        List<String> lines,
         CancellationToken cancellationToken)
     {
-        await using var connection = await ModuleSignIn.OpenAsync(
+        await using var connection = await ModuleConnection.OpenAsync(
             module,
             serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
             cancellationToken);
@@ -47,17 +53,13 @@ internal sealed class ListCommand : IQueuesCommand
             var failedMessages = await connection.QueryAsync<FailedMessageRow>(
                 new CommandDefinition(BuildSql(module.Schema, queue), cancellationToken: cancellationToken));
 
-            foreach (var failedMessage in failedMessages)
-            {
-                await outputTextWriter.WriteLineAsync(failedMessage.BuildLine(module.Name, queue));
-            }
+            lines.AddRange(failedMessages.Select(failedMessage => failedMessage.BuildLine(module.Name, queue)));
         }
     }
 
     private static String BuildSql(String schema, String queue) =>
         $"""
-        SELECT id AS "Id", type AS "Type", attempts AS "Attempts", failed_on AS "FailedOn",
-               coalesce(split_part(last_error, ': ', 1), '') AS "Code"
+        SELECT id AS "Id", type AS "Type", attempts AS "Attempts", failed_on AS "FailedOn", last_error AS "LastError"
         FROM "{schema}".{queue}
         WHERE failed_on IS NOT NULL
         ORDER BY failed_on, id

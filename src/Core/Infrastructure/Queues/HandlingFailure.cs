@@ -1,9 +1,14 @@
+using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;
 
-internal readonly record struct HandlingFailure(String Code, String Detail, Boolean IsPermanent, Exception? Exception)
+internal readonly partial record struct HandlingFailure(
+    String Code,
+    String Detail,
+    Boolean IsPermanent,
+    Exception? Exception)
 {
     private const String CodeSeparator = ": ";
 
@@ -17,10 +22,14 @@ internal readonly record struct HandlingFailure(String Code, String Detail, Bool
 
     public String CodeAndExceptionType => Exception is null ? Code : $"{Code} ({Exception.GetType().Name})";
 
-    public static String GetCode(String lastError) =>
-        lastError
+    public static Optional<String> FindCode(String lastError)
+    {
+        var textBeforeSeparator = lastError
             .Split(CodeSeparator, count: 2)
             .First();
+
+        return CodePattern.IsMatch(textBeforeSeparator) ? textBeforeSeparator : Optional<String>.None();
+    }
 
     public static HandlingFailure From(Error error) =>
         new(error.Code, error.Message, IsPermanent: !IsTransient(error), Exception: null);
@@ -41,4 +50,7 @@ internal readonly record struct HandlingFailure(String Code, String Detail, Bool
     private static Boolean IsTransient(Error error) =>
         (error.Kind == ErrorKind.Unexpected && error.Code != UnitOfWorkErrors.EventLoopCode)
         || error.Code == UnitOfWorkErrors.ConcurrencyConflict.Code;
+
+    [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+\z")]
+    private static partial Regex CodePattern { get; }
 }

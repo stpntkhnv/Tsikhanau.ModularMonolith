@@ -18,12 +18,14 @@ public sealed class QueueMetrics
 
     private readonly ConcurrentDictionary<(String Module, String Queue), QueueSample> _lastSamples = new();
     private readonly ModuleRegistry _moduleRegistry;
+    private readonly TimeProvider _timeProvider;
     private readonly Counter<Int64> _messageCounter;
     private readonly Histogram<Double> _handlingDurationHistogram;
 
-    internal QueueMetrics(IMeterFactory meterFactory, ModuleRegistry moduleRegistry)
+    internal QueueMetrics(IMeterFactory meterFactory, ModuleRegistry moduleRegistry, TimeProvider timeProvider)
     {
         _moduleRegistry = moduleRegistry;
+        _timeProvider = timeProvider;
         var meter = meterFactory.Create(AppDiagnostics.SourceName);
         _messageCounter = meter.CreateCounter<Int64>(
             "tsikhanau.queue.messages",
@@ -53,7 +55,7 @@ public sealed class QueueMetrics
             "tsikhanau.queue.oldest_due.age",
             ObserveOldestDueAges,
             SecondUnit,
-            "Time since the oldest due pending message became due, at the last sample");
+            "Time since the oldest due pending message of the last sample became due");
     }
 
     internal QueueInstruments CreateInstruments(Type moduleKey, String queue) =>
@@ -73,6 +75,17 @@ public sealed class QueueMetrics
     private IEnumerable<Measurement<Int64>> ObserveFailedCounts() =>
         _lastSamples.Values.Select(sample => new Measurement<Int64>(sample.FailedCount, sample.Tags));
 
-    private IEnumerable<Measurement<Double>> ObserveOldestDueAges() =>
-        _lastSamples.Values.Select(sample => new Measurement<Double>(sample.OldestDueAge.TotalSeconds, sample.Tags));
+    private IEnumerable<Measurement<Double>> ObserveOldestDueAges()
+    {
+        var observedOn = _timeProvider.GetUtcNow();
+        foreach (var sample in _lastSamples.Values)
+        {
+            yield return new Measurement<Double>(CalculateAgeSeconds(sample, observedOn), sample.Tags);
+        }
+    }
+
+    private static Double CalculateAgeSeconds(QueueSample sample, DateTimeOffset observedOn) =>
+        sample.OldestDueOn.HasValue
+            ? Math.Max(0, (observedOn - sample.OldestDueOn.Value).TotalSeconds)
+            : 0;
 }

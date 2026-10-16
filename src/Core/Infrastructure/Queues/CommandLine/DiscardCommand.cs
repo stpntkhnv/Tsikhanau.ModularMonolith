@@ -64,7 +64,9 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
             (_, DBNull) => null,
             (PayloadColumn, _) when isSecret => ErasedPayload,
             (PayloadColumn, String payload) => JsonElement.Parse(payload),
-            (LastErrorColumn, String lastError) when isSecret => HandlingFailure.GetCode(lastError),
+            (LastErrorColumn, String lastError) when isSecret => HandlingFailure
+                .FindCode(lastError)
+                .GetValueOrDefault(),
             (_, DateTime timestamp) => timestamp.ToString("O", CultureInfo.InvariantCulture),
             (_, var value) => value,
         };

@@ -15,6 +15,12 @@ public sealed class QuietIdleTests(PostgresFixture postgresFixture)
 {
     private const Int32 IdlePollCount = 3;
 
+    private const Int32 ModuleQueueCount = TestModuleCount * QueuesPerModule;
+
+    private const Int32 TestModuleCount = 2;
+
+    private const Int32 QueuesPerModule = 3;
+
     private const String PendingInstrument = "tsikhanau.queue.pending";
 
     private const String FailedInstrument = "tsikhanau.queue.failed";
@@ -92,7 +98,7 @@ public sealed class QuietIdleTests(PostgresFixture postgresFixture)
     private static async Task WaitUntilSampledAtStartAsync(MetricRecorder metricRecorder)
     {
         var stopwatch = Stopwatch.StartNew();
-        while (metricRecorder.Observe(PendingInstrument).Count < 6)
+        while (metricRecorder.Observe(PendingInstrument).Count < ModuleQueueCount)
         {
             stopwatch.Elapsed.ShouldBeLessThan(IdleDeadline);
             await Task.Delay(TimeSpan.FromMilliseconds(20), CancellationToken);

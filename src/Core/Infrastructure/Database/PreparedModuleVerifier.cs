@@ -14,7 +14,11 @@ internal static class PreparedModuleVerifier
         Int32 moduleCount,
         CancellationToken cancellationToken)
     {
-        await using var connection = await ModuleSignIn.OpenAsync(module, moduleNpgsqlDataSource, cancellationToken);
+        await using var connection = await ModuleConnection.OpenAsync(
+            module,
+            moduleNpgsqlDataSource,
+            cancellationToken);
+
         await DatabaseServerVerifier.VerifyAsync(connection, maxConnections, moduleCount, cancellationToken);
         await EnsureNoPendingMigrationsAsync(module, dbContext, cancellationToken);
         EnsureNoModelChanges(module, dbContext);

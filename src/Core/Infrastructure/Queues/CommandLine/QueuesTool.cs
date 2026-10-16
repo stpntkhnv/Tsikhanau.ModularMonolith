@@ -28,11 +28,11 @@ internal sealed class QueuesTool(
                 .Parse(arguments, serviceProvider.GetRequiredService<ModuleRegistry>())
                 .MatchAsync(
                     command => RunAsync(command, cancellationToken),
-                    error => Task.FromResult(ReportUsage(error)));
+                    ReportUsageAsync);
         }
         catch (Exception exception) when (IsDatabaseOrOutputFailure(exception))
         {
-            return Report(exception.Message, FailedExitCode);
+            return await ReportAsync(exception.Message, FailedExitCode);
         }
     }
 
@@ -42,18 +42,20 @@ internal sealed class QueuesTool(
     private Task<Int32> RunAsync(IQueuesCommand command, CancellationToken cancellationToken) =>
         command
             .RunAsync(serviceProvider, outputTextWriter, cancellationToken)
-            .MatchAsync(_ => DoneExitCode, error => Report(error.Message, ConflictExitCode));
+            .MatchAsync(
+                _ => Task.FromResult(DoneExitCode),
+                error => ReportAsync(error.Message, ConflictExitCode));
 
-    private Int32 ReportUsage(Error error)
+    private async Task<Int32> ReportUsageAsync(Error error)
     {
-        errorTextWriter.WriteLine($"{Name}: {error.Message}");
-        errorTextWriter.WriteLine(QueuesCommandLine.Usage);
+        await errorTextWriter.WriteLineAsync($"{Name}: {error.Message}");
+        await errorTextWriter.WriteLineAsync(QueuesCommandLine.Usage);
         return UsageExitCode;
     }
 
-    private Int32 Report(String message, Int32 exitCode)
+    private async Task<Int32> ReportAsync(String message, Int32 exitCode)
     {
-        errorTextWriter.WriteLine($"{Name}: {message}");
+        await errorTextWriter.WriteLineAsync($"{Name}: {message}");
         return exitCode;
     }
 }

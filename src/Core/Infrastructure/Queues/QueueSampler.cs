@@ -97,7 +97,7 @@ internal sealed class QueueSampler(
             var row = await connection.QuerySingleAsync<QueueSampleRow>(
                 BuildCommand(module.Schema, queue, sampledOn, cancellationToken));
 
-            samples.Add(row.ToSample(module.Name, queue, sampledOn));
+            samples.Add(row.ToSample(module.Name, queue));
         }
 
         return samples;
