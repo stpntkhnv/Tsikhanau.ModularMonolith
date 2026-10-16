@@ -66,6 +66,28 @@ public sealed class FeatureTestHelperTests(TestAppFixture testAppFixture) : Test
     }
 
     [Fact]
+    public async Task Published_secret_event_is_flagged_in_its_inbox_copy_and_erased_once_handled()
+    {
+        var pingId = Guid.CreateVersion7();
+        var integrationEvent = new PingSecretSentIntegrationEvent(
+            TestAppFixture.TestStartedOn,
+            pingId,
+            "published-s3cret");
+
+        await App.PublishAsync(integrationEvent);
+        var flagBeforeQueues = await ReadInboxFlagAsync(integrationEvent.Id);
+        var deliveredMessage = await ReadSingleQueueRowAsync(PongsSchema, InboxMessage.Table);
+        await App.ProcessQueuesAsync();
+        var processedMessage = await ReadSingleQueueRowAsync(PongsSchema, InboxMessage.Table);
+
+        flagBeforeQueues.ShouldBeTrue();
+        deliveredMessage.Payload.ShouldContain("published-s3cret");
+        processedMessage.IsProcessed.ShouldBeTrue();
+        processedMessage.Payload.ShouldBe("{}");
+        PongTestHooks.ReceivedSecrets.ShouldContain("published-s3cret");
+    }
+
+    [Fact]
     public async Task Publishing_an_event_no_module_subscribes_to_is_refused()
     {
         var integrationEvent = new PingTouchedIntegrationEvent(App.Time.GetUtcNow(), Guid.CreateVersion7(), 1);
@@ -161,6 +183,11 @@ public sealed class FeatureTestHelperTests(TestAppFixture testAppFixture) : Test
 
         return pingId;
     }
+
+    private Task<Boolean> ReadInboxFlagAsync(Guid messageId) =>
+        App.Database.ExecuteScalarAsync<Boolean>(
+            $"SELECT contains_secrets FROM {PongsSchema}.{InboxMessage.Table} WHERE id = @messageId",
+            new { messageId });
 
     private async Task<QueueRow> ReadSingleQueueRowAsync(String schema, String table)
     {

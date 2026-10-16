@@ -29,7 +29,19 @@ internal static class QueueMessageMapping
             .HasColumnType("jsonb");
 
         builder
+            .Property(message => message.ContainsSecrets)
+            .HasDefaultValue(false);
+
+        builder
             .HasIndex(nameof(QueueMessage.NextAttemptOn), orderProperty, nameof(QueueMessage.Id))
             .HasFilter("processed_on IS NULL AND failed_on IS NULL");
+
+        builder
+            .HasIndex(nameof(QueueMessage.ProcessedOn))
+            .HasFilter("processed_on IS NOT NULL");
+
+        builder
+            .HasIndex(nameof(QueueMessage.FailedOn))
+            .HasFilter("failed_on IS NOT NULL");
     }
 }

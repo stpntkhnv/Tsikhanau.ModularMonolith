@@ -26,6 +26,7 @@ public sealed class ModuleOutbox<TModule>(
                 Id = integrationEvent.Id,
                 Type = integrationEventRegistry.GetName(eventType),
                 Payload = MessageSerializer.Serialize(integrationEvent),
+                ContainsSecrets = integrationEventRegistry.ContainsSecrets(eventType),
                 TraceParent = Activity.Current?.Id,
                 NextAttemptOn = timeProvider.GetUtcNow(),
                 OccurredOn = integrationEvent.OccurredOn,

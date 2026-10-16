@@ -120,6 +120,9 @@ internal sealed class DatabaseProxy : IAsyncDisposable
         catch (OperationCanceledException)
         {
         }
+        catch (InvalidOperationException) when (_stoppingSource.IsCancellationRequested)
+        {
+        }
     }
 
     private void Admit(TcpClient client)

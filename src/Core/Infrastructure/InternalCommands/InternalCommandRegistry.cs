@@ -29,14 +29,17 @@ public sealed class InternalCommandRegistry<TModule>
 
     public void EraseSecretsOf(QueueMessage message)
     {
-        if (ContainsSecrets(message.Type))
+        if (message.ContainsSecrets || ContainsSecrets(message.Type))
         {
             message.ErasePayload();
         }
     }
 
+    public Boolean ContainsSecrets(Type commandType) =>
+        commandType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
+
     private Boolean ContainsSecrets(String name) =>
         FindType(name)
-            .Map(type => type.IsDefined(typeof(ContainsSecretsAttribute), inherit: false))
+            .Map(ContainsSecrets)
             .GetValueOrDefault(false);
 }

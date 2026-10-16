@@ -32,12 +32,15 @@ public sealed class IntegrationEventRegistry
 
     public Boolean ContainsSecrets(String name) =>
         FindType(name)
-            .Map(type => type.IsDefined(typeof(ContainsSecretsAttribute), inherit: false))
+            .Map(ContainsSecrets)
             .GetValueOrDefault(false);
+
+    public Boolean ContainsSecrets(Type eventType) =>
+        eventType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
 
     public void EraseSecretsOf(QueueMessage message)
     {
-        if (ContainsSecrets(message.Type))
+        if (message.ContainsSecrets || ContainsSecrets(message.Type))
         {
             message.ErasePayload();
         }

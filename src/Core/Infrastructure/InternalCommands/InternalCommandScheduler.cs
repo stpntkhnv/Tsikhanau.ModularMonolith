@@ -15,14 +15,16 @@ public sealed class InternalCommandScheduler<TModule>(
 {
     public void Enqueue(InternalCommand command)
     {
+        var commandType = command.GetType();
         var enqueuedOn = timeProvider.GetUtcNow();
         moduleContext.DbContext
             .Set<InternalCommandMessage>()
             .Add(new InternalCommandMessage
             {
                 Id = command.Id,
-                Type = internalCommandRegistry.GetName(command.GetType()),
+                Type = internalCommandRegistry.GetName(commandType),
                 Payload = MessageSerializer.Serialize(command),
+                ContainsSecrets = internalCommandRegistry.ContainsSecrets(commandType),
                 TraceParent = Activity.Current?.Id,
                 NextAttemptOn = enqueuedOn,
                 EnqueuedOn = enqueuedOn,

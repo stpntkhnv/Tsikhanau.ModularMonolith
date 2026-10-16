@@ -16,16 +16,15 @@ internal static class IntegrationEventPublisher
     public static async Task PublishAsync(IServiceProvider serviceProvider, IntegrationEvent integrationEvent)
     {
         var eventType = integrationEvent.GetType();
-        var eventName = serviceProvider
-            .GetRequiredService<IntegrationEventRegistry>()
-            .GetName(eventType);
+        var integrationEventRegistry = serviceProvider.GetRequiredService<IntegrationEventRegistry>();
+        var eventName = integrationEventRegistry.GetName(eventType);
 
         var subscriber = GetFirstSubscriber(serviceProvider, eventName, eventType);
         await using var scope = serviceProvider.CreateAsyncScope();
         await scope.ServiceProvider
             .GetRequiredService<IEventBus>()
             .DeliverAsync(
-                CreateMessage(integrationEvent, eventName),
+                CreateMessage(integrationEvent, eventName, integrationEventRegistry.ContainsSecrets(eventType)),
                 ResolveDbContext(scope.ServiceProvider, subscriber),
                 CancellationToken);
     }
@@ -46,12 +45,16 @@ internal static class IntegrationEventPublisher
             : subscribers[0];
     }
 
-    private static OutboxMessage CreateMessage(IntegrationEvent integrationEvent, String eventName) =>
+    private static OutboxMessage CreateMessage(
+        IntegrationEvent integrationEvent,
+        String eventName,
+        Boolean containsSecrets) =>
         new()
         {
             Id = integrationEvent.Id,
             Type = eventName,
             Payload = MessageSerializer.Serialize(integrationEvent),
+            ContainsSecrets = containsSecrets,
             NextAttemptOn = integrationEvent.OccurredOn,
             OccurredOn = integrationEvent.OccurredOn,
         };

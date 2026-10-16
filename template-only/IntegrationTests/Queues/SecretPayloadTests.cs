@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
@@ -5,6 +6,7 @@ using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.IssueToken;
 using Tsikhanau.Monolith.TestModules.Pings.Features.MailToken;
+using Tsikhanau.Monolith.TestModules.Pings.Features.ScheduleTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
@@ -15,6 +17,21 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
     private const String PingTokenIssuedType = "pings.ping-token-issued";
     private const String PingCreatedType = "pings.ping-created";
     private const String ErasedPayload = "{}";
+    private const String MailTokenType = "mail-token";
+    private const String TouchPingType = "touch-ping";
+
+    private const String ReadFlagSql = "SELECT contains_secrets FROM {0}.{1} WHERE type = @Type";
+
+    private const String InsertInboxSql = """
+        INSERT INTO pongs.inbox_messages
+            (id, type, payload, attempts, next_attempt_on, occurred_on, received_on, contains_secrets)
+        VALUES (@Id, @Type, @Payload::jsonb, 0, @ReceivedOn, @ReceivedOn, @ReceivedOn, @ContainsSecrets)
+        """;
+
+    private const String InsertLegacyInboxSql = """
+        INSERT INTO pongs.inbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on, received_on)
+        VALUES (@Id, @Type, @Payload::jsonb, 0, @ReceivedOn, @ReceivedOn, @ReceivedOn)
+        """;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -128,6 +145,88 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Rows_of_a_secret_event_carry_the_secret_flag_and_ordinary_rows_do_not()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await SendSecretAsync(testModulesHost, "s3cret");
+        await testModulesHost.DeliverOutboxAsync();
+
+        var secretOutboxFlag = await ReadFlagAsync(testModulesHost, "pings", "outbox_messages", PingSecretSentType);
+        var secretInboxFlag = await ReadFlagAsync(testModulesHost, "pongs", "inbox_messages", PingSecretSentType);
+        var plainOutboxFlag = await ReadFlagAsync(testModulesHost, "pings", "outbox_messages", PingCreatedType);
+        var plainInboxFlag = await ReadFlagAsync(testModulesHost, "pongs", "inbox_messages", PingCreatedType);
+
+        secretOutboxFlag.ShouldBeTrue();
+        secretInboxFlag.ShouldBeTrue();
+        plainOutboxFlag.ShouldBeFalse();
+        plainInboxFlag.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Row_of_a_secret_command_carries_the_secret_flag_and_an_ordinary_command_does_not()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await ScheduleTokenMailAsync(testModulesHost, "t0ken");
+        var pingId = await testModulesHost.CreatePingAsync("plain command");
+        var scheduled = await testModulesHost.Pings.ExecuteCommandAsync(
+            new ScheduleTouchCommand(pingId),
+            CancellationToken);
+
+        var secretFlag = await ReadFlagAsync(testModulesHost, "pings", "internal_commands", MailTokenType);
+        var plainFlag = await ReadFlagAsync(testModulesHost, "pings", "internal_commands", TouchPingType);
+
+        scheduled.IsSuccess.ShouldBeTrue();
+        secretFlag.ShouldBeTrue();
+        plainFlag.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Secret_row_written_before_the_flag_existed_is_still_erased_once_handled()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = Guid.CreateVersion7();
+        await testModulesHost.Database.ExecuteAsync(
+            InsertLegacyInboxSql,
+            new
+            {
+                Id = messageId,
+                Type = PingSecretSentType,
+                Payload = BuildSecretPayload(messageId, "old-s3cret"),
+                ReceivedOn = testModulesHost.Time.GetUtcNow(),
+            });
+
+        await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        var inboxRow = await GetSingleRowAsync(testModulesHost.ReadInboxRowsAsync(), PingSecretSentType);
+        inboxRow.IsProcessed.ShouldBeTrue();
+        inboxRow.Payload.ShouldBe(ErasedPayload);
+        testModulesHost.PongHooks.ReceivedSecrets.ShouldContain("old-s3cret");
+    }
+
+    [Fact]
+    public async Task Row_flagged_secret_is_erased_once_handled_although_its_type_is_not_secret_here()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = Guid.CreateVersion7();
+        await testModulesHost.Database.ExecuteAsync(
+            InsertInboxSql,
+            new
+            {
+                Id = messageId,
+                Type = PingCreatedType,
+                Payload = BuildPingCreatedPayload(messageId, "flagged"),
+                ReceivedOn = testModulesHost.Time.GetUtcNow(),
+                ContainsSecrets = true,
+            });
+
+        await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        var inboxRow = await GetSingleRowAsync(testModulesHost.ReadInboxRowsAsync(), PingCreatedType);
+        inboxRow.IsProcessed.ShouldBeTrue();
+        inboxRow.Payload.ShouldBe(ErasedPayload);
+    }
+
+    [Fact]
     public async Task Ordinary_payload_is_kept_after_delivery_and_handling()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
@@ -160,6 +259,31 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
 
         result.IsSuccess.ShouldBeTrue();
     }
+
+    private static Task<Boolean> ReadFlagAsync(
+        TestModulesHost testModulesHost,
+        String schema,
+        String table,
+        String type) =>
+        testModulesHost.Database.ExecuteScalarAsync<Boolean>(
+            String.Format(ReadFlagSql, schema, table),
+            new { Type = type });
+
+    private static String BuildSecretPayload(Guid messageId, String secret) =>
+        BuildPayload(messageId, secret, "secret");
+
+    private static String BuildPingCreatedPayload(Guid messageId, String label) =>
+        BuildPayload(messageId, label, "label");
+
+    private static String BuildPayload(Guid messageId, String value, String property) =>
+        JsonSerializer.Serialize(
+            new Dictionary<String, String>
+            {
+                ["id"] = messageId.ToString(),
+                ["occurredOn"] = "2026-09-28T08:00:00+00:00",
+                ["pingId"] = messageId.ToString(),
+                [property] = value,
+            });
 
     private static async Task<QueueRow> GetSingleRowAsync(Task<IReadOnlyList<QueueRow>> rows, String type) =>
         (await rows).Single(row => row.Type == type);

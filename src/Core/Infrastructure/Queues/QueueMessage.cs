@@ -16,6 +16,8 @@ public abstract class QueueMessage
 
     public required DateTimeOffset NextAttemptOn { get; set; }
 
+    public Boolean ContainsSecrets { get; init; }
+
     public String? LastError { get; set; }
 
     public DateTimeOffset? ProcessedOn { get; set; }

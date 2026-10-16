@@ -20,6 +20,14 @@ public sealed class PersistenceTests(PostgresFixture postgresFixture)
           AND c.relname IN ('outbox_messages', 'inbox_messages', 'internal_commands')
         """;
 
+    private const String CleanupIndexDefinitionsSql = """
+        SELECT schemaname || '.' || tablename || ' ' || regexp_replace(indexdef, '^.* USING btree ', '')
+        FROM pg_indexes
+        WHERE schemaname IN ('pings', 'pongs')
+          AND tablename IN ('outbox_messages', 'inbox_messages', 'internal_commands')
+          AND (indexdef LIKE '%processed_on IS NOT NULL%' OR indexdef LIKE '%failed_on IS NOT NULL%')
+        """;
+
     private const String VacuumAfterFixedDeadRows =
         "autovacuum_vacuum_scale_factor=0,autovacuum_vacuum_threshold=10000";
 
@@ -55,6 +63,24 @@ public sealed class PersistenceTests(PostgresFixture postgresFixture)
                 $"pongs.inbox_messages {VacuumAfterFixedDeadRows}",
                 $"pongs.internal_commands {VacuumAfterFixedDeadRows}",
             ],
+            ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Queue_tables_index_their_processed_and_failed_rows_for_cleanup()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+
+        var indexDefinitions = await testModulesHost.Database.QueryAsync<String>(CleanupIndexDefinitionsSql);
+
+        indexDefinitions.ShouldBe(
+            new[] { "pings", "pongs" }
+                .SelectMany(schema => new[] { "outbox_messages", "inbox_messages", "internal_commands" }
+                    .SelectMany(table => new[]
+                    {
+                        $"{schema}.{table} (processed_on) WHERE (processed_on IS NOT NULL)",
+                        $"{schema}.{table} (failed_on) WHERE (failed_on IS NOT NULL)",
+                    })),
             ignoreOrder: true);
     }
 

@@ -33,6 +33,12 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
 
+                    b.Property<bool>("ContainsSecrets")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("contains_secrets");
+
                     b.Property<DateTimeOffset?>("FailedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("failed_on");
@@ -74,6 +80,14 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_inbox_messages");
 
+                    b.HasIndex("FailedOn")
+                        .HasDatabaseName("ix_inbox_messages_failed_on")
+                        .HasFilter("failed_on IS NOT NULL");
+
+                    b.HasIndex("ProcessedOn")
+                        .HasDatabaseName("ix_inbox_messages_processed_on")
+                        .HasFilter("processed_on IS NOT NULL");
+
                     b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
                         .HasDatabaseName("ix_inbox_messages_next_attempt_on_occurred_on_id")
                         .HasFilter("processed_on IS NULL AND failed_on IS NULL");
@@ -94,6 +108,12 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
+
+                    b.Property<bool>("ContainsSecrets")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("contains_secrets");
 
                     b.Property<DateTimeOffset>("EnqueuedOn")
                         .HasColumnType("timestamp with time zone")
@@ -132,6 +152,14 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_internal_commands");
 
+                    b.HasIndex("FailedOn")
+                        .HasDatabaseName("ix_internal_commands_failed_on")
+                        .HasFilter("failed_on IS NOT NULL");
+
+                    b.HasIndex("ProcessedOn")
+                        .HasDatabaseName("ix_internal_commands_processed_on")
+                        .HasFilter("processed_on IS NOT NULL");
+
                     b.HasIndex("NextAttemptOn", "EnqueuedOn", "Id")
                         .HasDatabaseName("ix_internal_commands_next_attempt_on_enqueued_on_id")
                         .HasFilter("processed_on IS NULL AND failed_on IS NULL");
@@ -152,6 +180,12 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
+
+                    b.Property<bool>("ContainsSecrets")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("contains_secrets");
 
                     b.Property<DateTimeOffset?>("FailedOn")
                         .HasColumnType("timestamp with time zone")
@@ -189,6 +223,14 @@ namespace Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_outbox_messages");
+
+                    b.HasIndex("FailedOn")
+                        .HasDatabaseName("ix_outbox_messages_failed_on")
+                        .HasFilter("failed_on IS NOT NULL");
+
+                    b.HasIndex("ProcessedOn")
+                        .HasDatabaseName("ix_outbox_messages_processed_on")
+                        .HasFilter("processed_on IS NOT NULL");
 
                     b.HasIndex("NextAttemptOn", "OccurredOn", "Id")
                         .HasDatabaseName("ix_outbox_messages_next_attempt_on_occurred_on_id")

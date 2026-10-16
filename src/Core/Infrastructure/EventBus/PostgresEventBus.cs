@@ -30,8 +30,8 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
     private static String BuildInboxInsertSql(String schema) =>
         $$"""
         INSERT INTO "{{schema}}".{{InboxMessage.Table}}
-            (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on)
-        VALUES ({0}, {1}, {2}::jsonb, {3}, 0, {4}, {5}, {4})
+            (id, type, payload, trace_parent, attempts, next_attempt_on, occurred_on, received_on, contains_secrets)
+        VALUES ({0}, {1}, {2}::jsonb, {3}, 0, {4}, {5}, {4}, {6})
         ON CONFLICT (id) DO NOTHING
         """;
 
@@ -46,6 +46,7 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
             CreateNullableTextParameter(traceParent),
             receivedOn,
             message.OccurredOn,
+            message.ContainsSecrets,
         ];
 
     private static NpgsqlParameter CreateNullableTextParameter(String? value) =>
