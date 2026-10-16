@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
@@ -18,8 +19,9 @@ public sealed class OutboxPump<TModule>(
     SubscriptionRegistry subscriptionRegistry,
     QueueSignals queueSignals,
     TimeProvider timeProvider,
+    IHostApplicationLifetime hostApplicationLifetime,
     ILogger<OutboxPump<TModule>> logger)
-    : MessagePump<TModule, OutboxMessage>(serviceScopeFactory, options, timeProvider, logger)
+    : MessagePump<TModule, OutboxMessage>(serviceScopeFactory, options, timeProvider, hostApplicationLifetime, logger)
     where TModule : IModuleFacade
 {
     protected override String Table => OutboxMessage.Table;

@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.TestModules.Pings;
@@ -61,10 +64,42 @@ public sealed class ModuleQueueProcessorTests
         logger.Entries.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Host_stop_that_cancels_the_pump_ends_the_loop_quietly_before_the_processor_stops()
+    {
+        var applicationLifetime = new ApplicationLifetime(NullLogger<ApplicationLifetime>.Instance);
+        var queuePump = new StubQueuePump(
+            _ => Task.Delay(Timeout.InfiniteTimeSpan, applicationLifetime.ApplicationStopping));
+
+        var logger = new CapturingLogger();
+        using var moduleQueueProcessor = CreateProcessor(queuePump, applicationLifetime, logger);
+
+        await moduleQueueProcessor.StartAsync(CancellationToken);
+        await queuePump.Started.WaitAsync(Deadline, CancellationToken);
+        applicationLifetime.StopApplication();
+        await moduleQueueProcessor.ExecuteTask
+            .ShouldNotBeNull()
+            .WaitAsync(Deadline, CancellationToken);
+
+        logger.Entries.ShouldBeEmpty();
+    }
+
     private static ModuleQueueProcessor<IPingsModule> CreateProcessor(
         IQueuePump<IPingsModule> queuePump,
         CapturingLogger logger) =>
-        new(queuePump, new QueueSignals(), TimeProvider.System, Options.Create(Settings), logger);
+        CreateProcessor(queuePump, new ApplicationLifetime(NullLogger<ApplicationLifetime>.Instance), logger);
+
+    private static ModuleQueueProcessor<IPingsModule> CreateProcessor(
+        IQueuePump<IPingsModule> queuePump,
+        IHostApplicationLifetime hostApplicationLifetime,
+        CapturingLogger logger) =>
+        new(
+            queuePump,
+            new QueueSignals(),
+            TimeProvider.System,
+            hostApplicationLifetime,
+            Options.Create(Settings),
+            logger);
 
     private sealed record LogEntry(LogLevel Level, String Message);
 

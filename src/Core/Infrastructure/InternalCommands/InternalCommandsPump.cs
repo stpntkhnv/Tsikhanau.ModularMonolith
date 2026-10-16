@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Commands;
@@ -15,8 +16,14 @@ public sealed class InternalCommandsPump<TModule>(
     IOptions<QueueSettings> options,
     InternalCommandRegistry<TModule> internalCommandRegistry,
     TimeProvider timeProvider,
+    IHostApplicationLifetime hostApplicationLifetime,
     ILogger<InternalCommandsPump<TModule>> logger)
-    : MessagePump<TModule, InternalCommandMessage>(serviceScopeFactory, options, timeProvider, logger)
+    : MessagePump<TModule, InternalCommandMessage>(
+        serviceScopeFactory,
+        options,
+        timeProvider,
+        hostApplicationLifetime,
+        logger)
     where TModule : IModuleFacade
 {
     protected override String Table => InternalCommandMessage.Table;

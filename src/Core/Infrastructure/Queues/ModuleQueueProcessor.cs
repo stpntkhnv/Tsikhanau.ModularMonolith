@@ -10,6 +10,7 @@ public sealed class ModuleQueueProcessor<TModule>(
     IQueuePump<TModule> queuePump,
     QueueSignals queueSignals,
     TimeProvider timeProvider,
+    IHostApplicationLifetime hostApplicationLifetime,
     IOptions<QueueSettings> options,
     ILogger<ModuleQueueProcessor<TModule>> logger)
     : BackgroundService
@@ -40,7 +41,7 @@ public sealed class ModuleQueueProcessor<TModule>(
             {
                 await queuePump.RunOnceAsync(stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (IsStopping(stoppingToken))
             {
                 return;
             }
@@ -52,6 +53,9 @@ public sealed class ModuleQueueProcessor<TModule>(
             await WaitForWorkAsync(reader, stoppingToken);
         }
     }
+
+    private Boolean IsStopping(CancellationToken stoppingToken) =>
+        stoppingToken.IsCancellationRequested || hostApplicationLifetime.ApplicationStopping.IsCancellationRequested;
 
     private async Task WaitForWorkAsync(ChannelReader<Boolean> reader, CancellationToken stoppingToken)
     {

@@ -72,6 +72,9 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     public PongTestHooks PongHooks => Services.GetRequiredService<PongTestHooks>();
 
+    public CancellationToken ApplicationStopping =>
+        Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+
     public JsonSerializerOptions HttpJsonSerializerOptions =>
         Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
 
@@ -219,6 +222,8 @@ internal sealed class TestModulesHost : IAsyncDisposable
             return allLoadedCompletionSource.Task;
         };
     }
+
+    public Task StopAsync() => _app.StopAsync(CancellationToken);
 
     public async ValueTask DisposeAsync()
     {

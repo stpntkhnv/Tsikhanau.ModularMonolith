@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -19,6 +20,7 @@ public abstract class MessagePump<TModule, TMessage>(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<QueueSettings> options,
     TimeProvider timeProvider,
+    IHostApplicationLifetime hostApplicationLifetime,
     ILogger logger)
     where TModule : IModuleFacade
     where TMessage : QueueMessage
@@ -134,10 +136,10 @@ public abstract class MessagePump<TModule, TMessage>(
                 await RecordFailureAsync(message, failure.Value);
             }
         }
-        catch (Exception) when (cancellationToken.IsCancellationRequested)
+        catch (Exception) when (IsStopping(cancellationToken))
         {
             await GiveBackOnExitAsync(message);
-            throw;
+            throw new OperationCanceledException(cancellationToken);
         }
     }
 
@@ -152,7 +154,7 @@ public abstract class MessagePump<TModule, TMessage>(
                 ? await HandleOutsideTransactionAndMarkAsync(message, deadline.Token)
                 : await HandleInTransactionAsync(message, deadline.Token);
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (!IsStopping(cancellationToken))
         {
             return deadline.HasPassed
                 ? HandlingFailure.TimedOut(HandlerTimeout, exception)
@@ -365,6 +367,10 @@ public abstract class MessagePump<TModule, TMessage>(
     }
 
     private Boolean IsSecret(TMessage message) => message.ContainsSecrets || IsSecretType(message.Type);
+
+    private Boolean IsStopping(CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+        || hostApplicationLifetime.ApplicationStopping.IsCancellationRequested;
 
     private void LogFailure(HandlingFailure failure, RetryDecision decision, Boolean isSecret)
     {
