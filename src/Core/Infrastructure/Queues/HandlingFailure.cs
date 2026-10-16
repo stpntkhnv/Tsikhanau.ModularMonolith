@@ -5,15 +5,22 @@ namespace Tsikhanau.Monolith.Infrastructure.Queues;
 
 internal readonly record struct HandlingFailure(String Code, String Detail, Boolean IsPermanent, Exception? Exception)
 {
+    private const String CodeSeparator = ": ";
+
     public static readonly HandlingFailure ChangedStateOutsideTransaction = new(
         "Handler.ChangedStateOutsideTransaction",
         "The handler changed module state outside a transaction",
         IsPermanent: true,
         Exception: null);
 
-    public String Reason => $"{Code}: {Detail}";
+    public String Reason => $"{Code}{CodeSeparator}{Detail}";
 
     public String CodeAndExceptionType => Exception is null ? Code : $"{Code} ({Exception.GetType().Name})";
+
+    public static String GetCode(String lastError) =>
+        lastError
+            .Split(CodeSeparator, count: 2)
+            .First();
 
     public static HandlingFailure From(Error error) =>
         new(error.Code, error.Message, IsPermanent: !IsTransient(error), Exception: null);

@@ -9,16 +9,25 @@ namespace Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
 {
+    private const String TypeColumn = "type";
+
     private const String PayloadColumn = "payload";
+
+    private const String ContainsSecretsColumn = "contains_secrets";
+
+    private const String LastErrorColumn = "last_error";
+
+    private static readonly JsonElement ErasedPayload = JsonElement.Parse(QueueMessage.ErasedPayload);
 
     public async Task<Result<Unit>> RunAsync(
         IServiceProvider serviceProvider,
         TextWriter outputTextWriter,
         CancellationToken cancellationToken)
     {
+        var secretRowRule = message.ResolveSecretRowRule(serviceProvider);
         await using var connection = await message.OpenConnectionAsync(serviceProvider, cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        return await DeleteAsync(connection, transaction, cancellationToken)
+        return await DeleteAsync(connection, transaction, secretRowRule, cancellationToken)
             .MatchAsync(
                 deletedRow => WriteAndCommitAsync(deletedRow, outputTextWriter, transaction, cancellationToken),
                 () => DescribeConflictAsync(connection, transaction, cancellationToken));
@@ -36,23 +45,34 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
         return Result.Success();
     }
 
-    private static Dictionary<String, Object?> ReadRow(DbDataReader reader) =>
-        Enumerable
-            .Range(0, reader.FieldCount)
-            .ToDictionary(reader.GetName, ordinal => ReadValue(reader, ordinal));
+    private static String SerializeRow(DbDataReader reader, ISecretRowRule secretRowRule)
+    {
+        var isSecret = secretRowRule.IsSecret(
+            reader.GetFieldValue<String>(reader.GetOrdinal(TypeColumn)),
+            reader.GetFieldValue<Boolean>(reader.GetOrdinal(ContainsSecretsColumn)));
 
-    private static Object? ReadValue(DbDataReader reader, Int32 ordinal) =>
-        reader.GetValue(ordinal) switch
+        var row = Enumerable
+            .Range(0, reader.FieldCount)
+            .ToDictionary(reader.GetName, ordinal => ReadValue(reader, ordinal, isSecret));
+
+        return JsonSerializer.Serialize(row);
+    }
+
+    private static Object? ReadValue(DbDataReader reader, Int32 ordinal, Boolean isSecret) =>
+        (reader.GetName(ordinal), reader.GetValue(ordinal)) switch
         {
-            DBNull => null,
-            String payload when reader.GetName(ordinal) == PayloadColumn => JsonElement.Parse(payload),
-            DateTime timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
-            var value => value,
+            (_, DBNull) => null,
+            (PayloadColumn, _) when isSecret => ErasedPayload,
+            (PayloadColumn, String payload) => JsonElement.Parse(payload),
+            (LastErrorColumn, String lastError) when isSecret => HandlingFailure.GetCode(lastError),
+            (_, DateTime timestamp) => timestamp.ToString("O", CultureInfo.InvariantCulture),
+            (_, var value) => value,
         };
 
     private async Task<Optional<String>> DeleteAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
+        ISecretRowRule secretRowRule,
         CancellationToken cancellationToken)
     {
         await using var reader = await connection.ExecuteReaderAsync(
@@ -63,7 +83,7 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
                 cancellationToken: cancellationToken));
 
         return await reader.ReadAsync(cancellationToken)
-            ? JsonSerializer.Serialize(ReadRow(reader))
+            ? SerializeRow(reader, secretRowRule)
             : Optional<String>.None();
     }
 

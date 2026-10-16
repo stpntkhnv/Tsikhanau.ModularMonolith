@@ -56,9 +56,9 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
     private const String InsertInboxRowSql = """
         INSERT INTO {0}.inbox_messages
             (id, type, payload, attempts, next_attempt_on, last_error, processed_on, failed_on,
-             occurred_on, received_on)
+             occurred_on, received_on, contains_secrets)
         VALUES (@Id, @Type, @Payload::jsonb, @Attempts, @EndedOn, @LastError, @ProcessedOn, @FailedOn,
-                @EndedOn, @EndedOn)
+                @EndedOn, @EndedOn, @ContainsSecrets)
         """;
 
     private const String InsertInternalCommandSql = """
@@ -312,6 +312,42 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         discardedRow.ContainsSecrets.ShouldBeTrue();
         discard.Output.ShouldNotContain(Secret);
         rowsAfter.ShouldNotContain(row => row.Id == failedRow.Id);
+    }
+
+    [Theory]
+    [InlineData(PingSecretSentType, false, "Handler.Exception")]
+    [InlineData(SecretOfALaterReleaseIntegrationEvent.Name, true, "Messaging.UnknownType")]
+    public async Task Discard_of_a_secret_row_that_kept_its_secret_prints_neither_its_payload_nor_its_error_detail(
+        String type,
+        Boolean containsSecrets,
+        String code)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = CreateId(1);
+        var secretPayload = JsonSerializer.Serialize(
+            new Dictionary<String, String> { ["id"] = messageId.ToString(), ["secret"] = Secret });
+
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, new SeedRow(messageId, type, 7, TestStartedOn)
+        {
+            Payload = secretPayload,
+            LastError = $"{code}: the handler saw {Secret}",
+            FailedOn = TestStartedOn,
+            ContainsSecrets = containsSecrets,
+        });
+
+        var discard = await RunAsync(testModulesHost, "discard", Pongs, InboxMessages, messageId.ToString());
+
+        var rowsAfter = await testModulesHost.ReadInboxRowsAsync();
+        var discardedRow = ReadDiscardedRow(discard.Output);
+
+        discard.ExitCode.ShouldBe(Done, discard.Error);
+        discard.Output.ShouldNotContain(Secret);
+        discardedRow.Id.ShouldBe(messageId);
+        discardedRow.Type.ShouldBe(type);
+        discardedRow.Payload.ShouldBeEmpty();
+        discardedRow.LastError.ShouldBe(code);
+        discardedRow.ContainsSecrets.ShouldBe(containsSecrets);
+        rowsAfter.ShouldBeEmpty();
     }
 
     [Theory]
@@ -668,6 +704,8 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         public DateTimeOffset? ProcessedOn { get; init; }
 
         public DateTimeOffset? FailedOn { get; init; }
+
+        public Boolean ContainsSecrets { get; init; }
 
         public static SeedRow Failed(
             Guid id,

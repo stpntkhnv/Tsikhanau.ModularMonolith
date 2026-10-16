@@ -22,6 +22,7 @@ public abstract class MessagePump<TModule, TMessage>(
     TimeProvider timeProvider,
     IHostApplicationLifetime hostApplicationLifetime,
     ILogger logger)
+    : ISecretRowRule
     where TModule : IModuleFacade
     where TMessage : QueueMessage
 {
@@ -38,6 +39,10 @@ public abstract class MessagePump<TModule, TMessage>(
     private TimeSpan HandlerTimeout => options.Value.HandlerTimeout;
 
     private TimeSpan Lease => HandlerTimeout * 2;
+
+    Type ISecretRowRule.ModuleKey => typeof(TModule);
+
+    String ISecretRowRule.Table => Table;
 
     public async Task<Int32> RunOnceAsync(CancellationToken cancellationToken)
     {
@@ -115,7 +120,9 @@ public abstract class MessagePump<TModule, TMessage>(
         CancellationToken cancellationToken) =>
         throw new NotSupportedException($"{GetType().Name} handles every message in a transaction");
 
-    protected Boolean IsSecret(TMessage message) => message.ContainsSecrets || IsSecretType(message.Type);
+    Boolean ISecretRowRule.IsSecret(String type, Boolean containsSecrets) => IsSecret(type, containsSecrets);
+
+    protected Boolean IsSecret(TMessage message) => IsSecret(message.Type, message.ContainsSecrets);
 
     protected void EraseSecretsOf(TMessage message)
     {
@@ -222,6 +229,8 @@ public abstract class MessagePump<TModule, TMessage>(
         OnCommitted(message);
         return Optional<HandlingFailure>.None();
     }
+
+    private Boolean IsSecret(String type, Boolean containsSecrets) => containsSecrets || IsSecretType(type);
 
     private String BuildClaimSql(String schema) =>
         $$"""

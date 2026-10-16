@@ -30,11 +30,14 @@ internal sealed class QueuesTool(
                     command => RunAsync(command, cancellationToken),
                     error => Task.FromResult(ReportUsage(error)));
         }
-        catch (Exception exception) when (exception is NpgsqlException or IOException)
+        catch (Exception exception) when (IsDatabaseOrOutputFailure(exception))
         {
             return Report(exception.Message, FailedExitCode);
         }
     }
+
+    private static Boolean IsDatabaseOrOutputFailure(Exception exception) =>
+        exception is NpgsqlException or IOException or InvalidOperationException { InnerException: NpgsqlException };
 
     private Task<Int32> RunAsync(IQueuesCommand command, CancellationToken cancellationToken) =>
         command

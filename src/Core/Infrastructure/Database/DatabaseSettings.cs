@@ -15,6 +15,9 @@ public sealed record DatabaseSettings
 
     internal const String UnknownPrepareMode = $"{PrepareModeSetting} must be OnStartup, Only or Never";
 
+    internal const String RunOnlyFirst =
+        $"run the image once with {PrepareModeSetting}=Only and the admin connection string, then start it again";
+
     internal const Int32 MinConnectionsPerModule = 2;
 
     private const Int32 MinLoginKeyBytes = 32;

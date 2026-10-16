@@ -34,6 +34,10 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
 
     private const String UnhandledException = "Unhandled exception";
 
+    private const String NotPrepared = "the database is not prepared for this app and its App:Database:LoginKey";
+
+    private const String RunOnlyFirst = "run the image once with App:Database:PrepareMode=Only";
+
     private static readonly DateTimeOffset FailedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -85,7 +89,9 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
         var hostStarted = File.Exists(environment["TestHost__StartRecordPath"]);
 
         exit.Code.ShouldBe(1, exit.Text);
-        exit.Error.ShouldContain($"queues: 28P01: password authentication failed for user \"{databaseName}__pings\"");
+        exit.Error.ShouldContain($"queues: Module Pings cannot sign in as {databaseName}__pings");
+        exit.Error.ShouldContain(NotPrepared);
+        exit.Error.ShouldContain(RunOnlyFirst);
         exit.Error.ShouldNotContain(UnhandledException);
         roles.ShouldBeEmpty();
         hostStarted.ShouldBeFalse();

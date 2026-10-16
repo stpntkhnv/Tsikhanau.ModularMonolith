@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Railway;
 
@@ -36,9 +37,10 @@ internal sealed class ListCommand : IQueuesCommand
         TextWriter outputTextWriter,
         CancellationToken cancellationToken)
     {
-        await using var connection = await serviceProvider
-            .GetRequiredKeyedService<NpgsqlDataSource>(module.Key)
-            .OpenConnectionAsync(cancellationToken);
+        await using var connection = await ModuleSignIn.OpenAsync(
+            module,
+            serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
+            cancellationToken);
 
         foreach (var queue in QueueTables.Names)
         {

@@ -245,11 +245,14 @@ public static class ModuleServiceCollectionExtensions
         where TModule : class, IModuleFacade =>
         services
             .AddScoped<IOutbox<TModule>, ModuleOutbox<TModule>>()
-            .AddSingleton<OutboxPump<TModule>>();
+            .AddSingleton<OutboxPump<TModule>>()
+            .AddSecretRowRule<OutboxPump<TModule>>();
 
     private static IServiceCollection AddInbox<TModule>(this IServiceCollection services)
         where TModule : class, IModuleFacade =>
-        services.AddSingleton<InboxPump<TModule>>();
+        services
+            .AddSingleton<InboxPump<TModule>>()
+            .AddSecretRowRule<InboxPump<TModule>>();
 
     private static IServiceCollection AddInternalCommands<TModule>(
         this IServiceCollection services,
@@ -258,7 +261,12 @@ public static class ModuleServiceCollectionExtensions
         services
             .AddScoped<IInternalCommandScheduler<TModule>, InternalCommandScheduler<TModule>>()
             .AddSingleton(new InternalCommandRegistry<TModule>(moduleTypes.Implementing<InternalCommand>()))
-            .AddSingleton<InternalCommandsPump<TModule>>();
+            .AddSingleton<InternalCommandsPump<TModule>>()
+            .AddSecretRowRule<InternalCommandsPump<TModule>>();
+
+    private static IServiceCollection AddSecretRowRule<TPump>(this IServiceCollection services)
+        where TPump : class, ISecretRowRule =>
+        services.AddSingleton<ISecretRowRule>(serviceProvider => serviceProvider.GetRequiredService<TPump>());
 
     private static IServiceCollection AddQueueProcessing<TModule>(this IServiceCollection services)
         where TModule : class, IModuleFacade =>
