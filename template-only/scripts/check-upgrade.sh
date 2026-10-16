@@ -21,6 +21,8 @@ noted_files=(
   src/Bootstrapper/$name.Bootstrapper/appsettings.json
   src/Aspire/$name.AppHost/AppHost.cs
   src/Aspire/$name.AppHost/LoginKeyDefault.cs
+  App.Packages.props
+  src/Aspire/$name.AppHost/$name.AppHost.csproj
   src/Tests/IntegrationTests/Host/HostProcessTests.cs
 )
 host=src/Bootstrapper/$name.Bootstrapper
