@@ -98,6 +98,8 @@ public abstract class MessagePump<TModule, TMessage>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken);
 
+    protected abstract Boolean IsSecretType(String type);
+
     protected virtual void OnCommitted(TMessage message) { }
 
     protected virtual Boolean RunsOutsideTransaction(TMessage message) => false;
@@ -107,6 +109,14 @@ public abstract class MessagePump<TModule, TMessage>(
         TMessage message,
         CancellationToken cancellationToken) =>
         throw new NotSupportedException($"{GetType().Name} handles every message in a transaction");
+
+    protected void EraseSecretsOf(TMessage message)
+    {
+        if (IsSecret(message))
+        {
+            message.EraseSecrets();
+        }
+    }
 
     private async Task ProcessAsync(TMessage message, CancellationToken cancellationToken)
     {
@@ -262,13 +272,24 @@ public abstract class MessagePump<TModule, TMessage>(
     private Task RecordFailureAsync(TMessage message, HandlingFailure failure)
     {
         var decision = RetryPolicy.Decide(message.Attempts, failure, timeProvider.GetUtcNow());
-        LogFailure(failure, decision);
+        var isSecret = IsSecret(message);
+        var lastError = isSecret ? failure.Code : failure.Reason;
+        var erasesPayload = isSecret && decision.HasGivenUp;
+        LogFailure(failure, decision, isSecret);
         return UpdateClaimedRowsAsync(
             UntouchedSince(message),
-            setters => setters
-                .SetProperty(candidate => candidate.LastError, failure.Reason)
-                .SetProperty(candidate => candidate.NextAttemptOn, decision.NextAttemptOn)
-                .SetProperty(candidate => candidate.FailedOn, decision.FailedOn));
+            setters =>
+            {
+                setters
+                    .SetProperty(candidate => candidate.LastError, lastError)
+                    .SetProperty(candidate => candidate.NextAttemptOn, decision.NextAttemptOn)
+                    .SetProperty(candidate => candidate.FailedOn, decision.FailedOn);
+
+                if (erasesPayload)
+                {
+                    setters.SetProperty(candidate => candidate.Payload, QueueMessage.ErasedPayload);
+                }
+            });
     }
 
     private Task MarkProcessedAsync(TMessage message, DateTimeOffset processedOn) =>
@@ -276,7 +297,8 @@ public abstract class MessagePump<TModule, TMessage>(
             UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.ProcessedOn, processedOn)
-                .SetProperty(candidate => candidate.Payload, message.Payload));
+                .SetProperty(candidate => candidate.Payload, message.Payload)
+                .SetProperty(candidate => candidate.LastError, message.LastError));
 
     private Task GiveBackOnExitAsync(TMessage message) =>
         WarnIfGiveBackFailsAsync(() => GiveBackAsync(message), count: 1);
@@ -342,21 +364,25 @@ public abstract class MessagePump<TModule, TMessage>(
             && candidate.FailedOn == null;
     }
 
-    private void LogFailure(HandlingFailure failure, RetryDecision decision)
+    private Boolean IsSecret(TMessage message) => message.ContainsSecrets || IsSecretType(message.Type);
+
+    private void LogFailure(HandlingFailure failure, RetryDecision decision, Boolean isSecret)
     {
+        var reason = isSecret ? failure.CodeAndExceptionType : failure.Reason;
+        var exception = isSecret ? null : failure.Exception;
         if (!decision.HasGivenUp)
         {
-            PumpLog.Retrying(logger, failure.Reason, failure.Exception);
+            PumpLog.Retrying(logger, reason, exception);
             return;
         }
 
         if (failure.IsPermanent)
         {
-            PumpLog.Failed(logger, failure.Reason, failure.Exception);
+            PumpLog.Failed(logger, reason, exception);
             return;
         }
 
-        PumpLog.GaveUp(logger, decision.Attempts, failure.Reason, failure.Exception);
+        PumpLog.GaveUp(logger, decision.Attempts, reason, exception);
     }
 
     private Activity? StartActivity(TMessage message)

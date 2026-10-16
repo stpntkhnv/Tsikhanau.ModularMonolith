@@ -1,6 +1,5 @@
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Contracts.Secrets;
-using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
@@ -27,19 +26,11 @@ public sealed class InternalCommandRegistry<TModule>
 
     public Optional<Type> FindType(String name) => _commandTypes.GetValueOrDefault(name);
 
-    public void EraseSecretsOf(QueueMessage message)
-    {
-        if (message.ContainsSecrets || ContainsSecrets(message.Type))
-        {
-            message.ErasePayload();
-        }
-    }
-
-    public Boolean ContainsSecrets(Type commandType) =>
-        commandType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
-
-    private Boolean ContainsSecrets(String name) =>
+    public Boolean ContainsSecrets(String name) =>
         FindType(name)
             .Map(ContainsSecrets)
             .GetValueOrDefault(false);
+
+    public Boolean ContainsSecrets(Type commandType) =>
+        commandType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
 }

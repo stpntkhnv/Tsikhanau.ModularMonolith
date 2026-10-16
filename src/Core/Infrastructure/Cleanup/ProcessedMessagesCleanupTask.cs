@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
@@ -7,11 +8,18 @@ using Tsikhanau.Monolith.Infrastructure.Outbox;
 
 namespace Tsikhanau.Monolith.Infrastructure.Cleanup;
 
-public sealed class ProcessedMessagesCleanupTask<TModule>(ModuleContext<TModule> moduleContext)
+public sealed class ProcessedMessagesCleanupTask<TModule>(
+    ModuleContext<TModule> moduleContext,
+    IOptions<CleanupSettings> options,
+    TimeProvider timeProvider)
     : ICleanupTask<TModule>
     where TModule : IModuleFacade
 {
     private const Int32 BatchSize = 1000;
+
+    private const String ProcessedOn = "processed_on";
+
+    private const String FailedOn = "failed_on";
 
     private static readonly String[] Tables =
     [
@@ -22,10 +30,12 @@ public sealed class ProcessedMessagesCleanupTask<TModule>(ModuleContext<TModule>
 
     public async Task<Int32> DeleteExpiredAsync(DateTimeOffset deleteBefore, CancellationToken cancellationToken)
     {
+        var deleteFailedBefore = timeProvider.GetUtcNow() - options.Value.KeepFailedFor;
         var deletedCount = 0;
         foreach (var table in Tables)
         {
-            deletedCount += await DeleteFromAsync(table, deleteBefore, cancellationToken);
+            deletedCount += await DeleteFromAsync(table, ProcessedOn, deleteBefore, cancellationToken);
+            deletedCount += await DeleteFromAsync(table, FailedOn, deleteFailedBefore, cancellationToken);
         }
 
         return deletedCount;
@@ -33,6 +43,7 @@ public sealed class ProcessedMessagesCleanupTask<TModule>(ModuleContext<TModule>
 
     private async Task<Int32> DeleteFromAsync(
         String table,
+        String endedOnColumn,
         DateTimeOffset deleteBefore,
         CancellationToken cancellationToken)
     {
@@ -40,7 +51,7 @@ public sealed class ProcessedMessagesCleanupTask<TModule>(ModuleContext<TModule>
         Int32 batchDeletedCount;
         do
         {
-            batchDeletedCount = await DeleteBatchAsync(table, deleteBefore, cancellationToken);
+            batchDeletedCount = await DeleteBatchAsync(table, endedOnColumn, deleteBefore, cancellationToken);
             tableDeletedCount += batchDeletedCount;
         }
         while (batchDeletedCount == BatchSize);
@@ -50,13 +61,15 @@ public sealed class ProcessedMessagesCleanupTask<TModule>(ModuleContext<TModule>
 
     private Task<Int32> DeleteBatchAsync(
         String table,
+        String endedOnColumn,
         DateTimeOffset deleteBefore,
         CancellationToken cancellationToken)
     {
         var schema = moduleContext.Descriptor.Schema;
         var statement = $$"""
             DELETE FROM "{{schema}}".{{table}}
-            WHERE id IN (SELECT id FROM "{{schema}}".{{table}} WHERE processed_on < {0} LIMIT {{BatchSize}})
+            WHERE id IN (SELECT id FROM "{{schema}}".{{table}} WHERE {{endedOnColumn}} < {0} LIMIT {{BatchSize}})
+                AND {{endedOnColumn}} < {0}
             """;
 
         return moduleContext.DbContext.Database.ExecuteSqlRawAsync(statement, [deleteBefore], cancellationToken);

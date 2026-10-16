@@ -24,5 +24,9 @@ public abstract class QueueMessage
 
     public DateTimeOffset? FailedOn { get; set; }
 
-    public void ErasePayload() => Payload = ErasedPayload;
+    public void EraseSecrets()
+    {
+        Payload = ErasedPayload;
+        LastError = null;
+    }
 }

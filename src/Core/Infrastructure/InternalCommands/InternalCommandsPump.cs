@@ -34,8 +34,10 @@ public sealed class InternalCommandsPump<TModule>(
             .ToResult(() => MessagingErrors.UnknownType(message.Type))
             .Bind(type => MessageSerializer.Deserialize<InternalCommand>(message.Payload, type))
             .Tap(_ => message.ProcessedOn = processedOn)
-            .Tap(_ => internalCommandRegistry.EraseSecretsOf(message))
+            .Tap(_ => EraseSecretsOf(message))
             .BindAsync(command => SendAsync(command, serviceProvider, cancellationToken));
+
+    protected override Boolean IsSecretType(String type) => internalCommandRegistry.ContainsSecrets(type);
 
     private static Task<Result<Unit>> SendAsync(
         InternalCommand command,

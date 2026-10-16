@@ -14,4 +14,7 @@ public sealed record CleanupSettings
 
     [Range(typeof(TimeSpan), "01:00:00", "365.00:00:00")]
     public required TimeSpan KeepFor { get; init; }
+
+    [Range(typeof(TimeSpan), "1.00:00:00", "365.00:00:00")]
+    public TimeSpan KeepFailedFor { get; init; } = TimeSpan.FromDays(30);
 }

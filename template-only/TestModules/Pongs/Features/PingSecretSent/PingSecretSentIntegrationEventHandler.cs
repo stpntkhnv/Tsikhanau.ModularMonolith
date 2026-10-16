@@ -11,8 +11,6 @@ internal sealed class PingSecretSentIntegrationEventHandler(
     TimeProvider timeProvider)
     : IIntegrationEventHandler<PingSecretSentIntegrationEvent>, IRunOutsideTransaction
 {
-    public static readonly Error Refused = Error.Failure("Pong.SecretRefused", "Pong refused this secret");
-
     public async Task<Result<Unit>> Handle(
         PingSecretSentIntegrationEvent integrationEvent,
         CancellationToken cancellationToken)
@@ -29,6 +27,18 @@ internal sealed class PingSecretSentIntegrationEventHandler(
                     timeProvider.GetUtcNow()));
         }
 
-        return pongTestHooks.FailFor.Contains(integrationEvent.Secret) ? Refused : Unit.Value;
+        return Answer(integrationEvent.Secret);
+    }
+
+    private Result<Unit> Answer(String secret)
+    {
+        if (pongTestHooks.FailUnexpectedlyFor.Contains(secret))
+        {
+            return Error.Unexpected("Pong.SecretBroken", $"Pong broke on the secret {secret}");
+        }
+
+        return pongTestHooks.FailFor.Contains(secret)
+            ? Error.Failure("Pong.SecretRefused", $"Pong refused the secret {secret}")
+            : Unit.Value;
     }
 }

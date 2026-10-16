@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
@@ -59,8 +58,8 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         var lastError = await testModulesHost.Database.ExecuteScalarAsync<String>(LastErrorSql, new { row.Id });
         row.HasFailed.ShouldBeTrue();
         row.Attempts.ShouldBe(1);
-        row.Payload.ShouldContain("meddle");
-        lastError.ShouldBe(HandlingFailure.ChangedStateOutsideTransaction.Reason);
+        row.Payload.ShouldBe("{}");
+        lastError.ShouldBe("Handler.ChangedStateOutsideTransaction");
     }
 
     [Fact]
@@ -85,7 +84,7 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         row.Attempts.ShouldBe(1);
         row.IsProcessed.ShouldBeFalse();
         row.HasFailed.ShouldBeFalse();
-        lastError.ShouldStartWith("Timed out");
+        lastError.ShouldBe("Handler.Timeout");
         row.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
     }
 

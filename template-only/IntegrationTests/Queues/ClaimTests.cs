@@ -153,7 +153,7 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
 
         row.HasFailed.ShouldBeTrue();
         row.IsProcessed.ShouldBeFalse();
-        lastError.ShouldBe($"Gave up after {MaxAttempts} attempts, the last did not finish");
+        lastError.ShouldBe($"Handler.Abandoned: Gave up after {MaxAttempts} attempts, the last did not finish");
         pongCount.ShouldBe(0);
         testModulesHost.PongHooks.ReceivedPingIds.ShouldBeEmpty();
     }
@@ -181,7 +181,7 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
         row.Attempts.ShouldBe(1);
         row.HasFailed.ShouldBeFalse();
         row.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
-        lastError.ShouldStartWith("Timed out");
+        lastError.ShouldBe("Handler.Timeout: Timed out after 00:01:00");
         pongCount.ShouldBe(0);
     }
 

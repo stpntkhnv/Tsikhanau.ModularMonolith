@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Contracts.Secrets;
-using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.EventBus;
@@ -37,12 +36,4 @@ public sealed class IntegrationEventRegistry
 
     public Boolean ContainsSecrets(Type eventType) =>
         eventType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
-
-    public void EraseSecretsOf(QueueMessage message)
-    {
-        if (message.ContainsSecrets || ContainsSecrets(message.Type))
-        {
-            message.ErasePayload();
-        }
-    }
 }

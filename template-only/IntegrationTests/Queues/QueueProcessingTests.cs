@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 
@@ -6,6 +7,8 @@ namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
 public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
 {
+    private const String LastErrorSql = "SELECT last_error FROM pongs.inbox_messages WHERE id = @Id";
+
     private static readonly TimeSpan BarrierDeadline = TimeSpan.FromSeconds(30);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -64,7 +67,9 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
 
         var inboxRow = inboxRows.ShouldHaveSingleItem();
 
-        exception.Message.ShouldContain("Pongs inbox_messages pings.ping-created after 1 attempts: Pong handler");
+        exception.Message.ShouldContain(
+            "Pongs inbox_messages pings.ping-created after 1 attempts: Handler.Exception: Pong handler failed");
+
         inboxRow.IsProcessed.ShouldBeFalse();
         inboxRow.HasFailed.ShouldBeFalse();
         inboxRow.Attempts.ShouldBe(1);
@@ -84,6 +89,35 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
         inboxRows
             .ShouldHaveSingleItem().HasFailed
             .ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Ordinary_message_keeps_its_payload_and_the_code_and_text_of_its_failure()
+    {
+        var capturingLoggerProvider = new CapturingLoggerProvider();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
+
+        testModulesHost.PongHooks.ThrowFor = ["flaky"];
+        testModulesHost.PongHooks.FailFor = ["broken"];
+        await testModulesHost.CreatePingAsync("flaky");
+        await testModulesHost.CreatePingAsync("broken");
+
+        await testModulesHost.ProcessQueuesAllowingFailuresAsync();
+
+        var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+        var retriedRow = inboxRows.Single(row => row.Payload.Contains("flaky", StringComparison.Ordinal));
+        var failedRow = inboxRows.Single(row => row.Payload.Contains("broken", StringComparison.Ordinal));
+        var retriedLastError = await ReadInboxLastErrorAsync(testModulesHost, retriedRow.Id);
+        var failedLastError = await ReadInboxLastErrorAsync(testModulesHost, failedRow.Id);
+
+        retriedRow.HasFailed.ShouldBeFalse();
+        retriedLastError.ShouldBe("Handler.Exception: Pong handler failed for flaky");
+        failedRow.HasFailed.ShouldBeTrue();
+        failedLastError.ShouldBe("Pong.Rejected: Pong refused this ping");
+        capturingLoggerProvider.Entries.ShouldContain(
+            entry => entry.Exception.Contains("Pong handler failed for flaky", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -132,6 +166,9 @@ public sealed class QueueProcessingTests(PostgresFixture postgresFixture)
             await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken);
         }
     }
+
+    private static Task<String> ReadInboxLastErrorAsync(TestModulesHost testModulesHost, Guid messageId) =>
+        testModulesHost.Database.ExecuteScalarAsync<String>(LastErrorSql, new { Id = messageId });
 
     private static Task<Int32> HoldFirstTwoHandlersUntilBothRunAsync(TestModulesHost testModulesHost)
     {
