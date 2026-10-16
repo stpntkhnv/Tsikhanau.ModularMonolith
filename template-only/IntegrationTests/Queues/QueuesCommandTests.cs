@@ -208,6 +208,59 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         ]);
     }
 
+    [Theory]
+    [InlineData("validation: label is required", "validation")]
+    [InlineData("scaffold.app-layout: the app layout is missing", "scaffold.app-layout")]
+    [InlineData(RejectedError, "Pong.Rejected")]
+    public async Task List_prints_the_code_of_an_ordinary_row_in_every_shape_of_a_code(String lastError, String code)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+            CreateId(1),
+            PingCreatedType,
+            attempts: 1,
+            TestStartedOn,
+            lastError));
+
+        var list = await RunAsync(testModulesHost, "list");
+
+        var lines = ReadLines(list.Output);
+
+        list.ExitCode.ShouldBe(Done, list.Error);
+        lines.ShouldBe(
+        [
+            Header,
+            $"Pongs\tinbox_messages\t{CreateId(1)}\t{PingCreatedType}\t1\t2026-09-28T08:00:00.0000000Z\t{code}",
+        ]);
+    }
+
+    [Theory]
+    [InlineData(Secret, "")]
+    [InlineData("validation", "")]
+    [InlineData("scaffold.app-layout", "scaffold.app-layout")]
+    public async Task List_prints_the_code_of_a_secret_row_only_when_it_is_dotted(String lastError, String code)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+            CreateId(1),
+            PingSecretSentType,
+            attempts: 7,
+            TestStartedOn,
+            lastError));
+
+        var list = await RunAsync(testModulesHost, "list");
+
+        var lines = ReadLines(list.Output);
+
+        list.ExitCode.ShouldBe(Done, list.Error);
+        list.Output.ShouldNotContain(Secret);
+        lines.ShouldBe(
+        [
+            Header,
+            $"Pongs\tinbox_messages\t{CreateId(1)}\t{PingSecretSentType}\t7\t2026-09-28T08:00:00.0000000Z\t{code}",
+        ]);
+    }
+
     [Fact]
     public async Task List_prints_only_the_header_when_no_message_has_failed()
     {
@@ -388,6 +441,32 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
     }
 
     [Theory]
+    [InlineData("validation", null)]
+    [InlineData("scaffold.app-layout", "scaffold.app-layout")]
+    public async Task Discard_of_a_secret_row_prints_its_error_only_when_it_is_a_dotted_code(
+        String lastError,
+        String? printedError)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = CreateId(1);
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+            messageId,
+            PingSecretSentType,
+            attempts: 7,
+            TestStartedOn,
+            lastError));
+
+        var discard = await RunAsync(testModulesHost, "discard", Pongs, InboxMessages, messageId.ToString());
+
+        var discardedRow = ReadDiscardedRow(discard.Output);
+
+        discard.ExitCode.ShouldBe(Done, discard.Error);
+        discardedRow.Payload.ShouldBeEmpty();
+        discardedRow.LastError.ShouldBe(printedError);
+    }
+
+    [Theory]
+    [InlineData(Secret)]
     [InlineData("the handler saw s3cret")]
     [InlineData("card refused: s3cret")]
     [InlineData("line one\nline two: s3cret")]

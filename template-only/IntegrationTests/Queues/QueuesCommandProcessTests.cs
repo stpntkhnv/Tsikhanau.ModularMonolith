@@ -38,6 +38,13 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
 
     private const String RunOnlyFirst = "run the image once with App:Database:PrepareMode=Only";
 
+    private const String OutputPathVariable = "TESTHOST_OUTPUT_PATH";
+
+    private const String WritesBetweenTwoLines =
+        "ulimit -c 0 && { echo before && \"$0\" \"$@\" && echo after; } > \"$TESTHOST_OUTPUT_PATH\"";
+
+    private const String UnixOnly = "the test redirects the output of the test host with a Unix shell";
+
     private static readonly DateTimeOffset FailedOn = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -115,6 +122,55 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
         exit.Error.ShouldStartWith("queues: ");
         exit.Error.ShouldContain(refusal);
         exit.Error.ShouldNotContain(UnhandledException);
+    }
+
+    [Fact]
+    public async Task Discard_into_a_closed_pipe_fails_and_keeps_the_row()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), UnixOnly);
+        var connectionString = await CreatePreparedDatabaseAsync();
+        await InsertFailedRowAsync(connectionString);
+        var environment = CreateEnvironment(Never, BuildWithoutCredentials(connectionString), Environments.Production);
+
+        using var testHost = TestHostProcess.StartWithClosedOutput(
+            environment,
+            ["queues", "discard", "Pongs", "inbox_messages", MessageId]);
+
+        var exit = await testHost.WaitForExitAsync();
+
+        var inboxRows = await new DatabaseProbe(connectionString).ReadQueueRowsAsync("pongs", "inbox_messages");
+
+        exit.Code.ShouldBe(1, exit.Text);
+        exit.Error.ShouldContain("queues: Broken pipe");
+        inboxRows
+            .ShouldHaveSingleItem()
+            .HasFailed
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task List_into_a_file_that_a_script_writes_around_it_keeps_every_line_in_order()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), UnixOnly);
+        var connectionString = await CreatePreparedDatabaseAsync();
+        await InsertFailedRowAsync(connectionString);
+        var environment = CreateEnvironment(Never, BuildWithoutCredentials(connectionString), Environments.Production);
+        var outputPath = Path.Combine(Path.GetTempPath(), $"queues-list-{Guid.CreateVersion7():N}");
+        environment[OutputPathVariable] = outputPath;
+        try
+        {
+            using var testHost = TestHostProcess.StartInShell(WritesBetweenTwoLines, environment, ["queues", "list"]);
+            var exit = await testHost.WaitForExitAsync();
+
+            var lines = await File.ReadAllLinesAsync(outputPath, TestContext.Current.CancellationToken);
+
+            exit.Code.ShouldBe(0, exit.Text);
+            lines.ShouldBe(["before", Header, FailedRow, "after"]);
+        }
+        finally
+        {
+            File.Delete(outputPath);
+        }
     }
 
     private static async Task<TestHostExit> RunAsync(Dictionary<String, String> environment, params String[] arguments)

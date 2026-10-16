@@ -24,31 +24,35 @@ internal sealed class TestHostProcess : IDisposable
     private readonly Task<String> _outputReading;
     private readonly Task<String> _errorReading;
 
-    private TestHostProcess(Process process)
+    private TestHostProcess(Process process, Task<String> outputReading)
     {
         _process = process;
-        _outputReading = process.StandardOutput.ReadToEndAsync(CancellationToken);
+        _outputReading = outputReading;
         _errorReading = process.StandardError.ReadToEndAsync(CancellationToken);
     }
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
+    private static String TestHostPath => Path.Combine(AppContext.BaseDirectory, TestHostAssembly);
+
     public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment) => Start(environment, []);
 
-    public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment, String[] arguments)
-    {
-        var startInfo = CreateStartInfo(Path.Combine(AppContext.BaseDirectory, TestHostAssembly), arguments);
-        startInfo.WorkingDirectory = AppContext.BaseDirectory;
-        startInfo.RedirectStandardOutput = true;
-        startInfo.RedirectStandardError = true;
-        foreach (var (name, value) in environment)
-        {
-            startInfo.Environment[name] = value;
-        }
+    public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment, String[] arguments) =>
+        StartReadingOutput(CreateStartInfo(arguments), environment);
 
-        var process = new Process { StartInfo = startInfo };
-        process.Start();
-        return new TestHostProcess(process);
+    public static TestHostProcess StartInShell(
+        String script,
+        IReadOnlyDictionary<String, String> environment,
+        String[] arguments) =>
+        StartReadingOutput(CreateShellStartInfo(script, arguments), environment);
+
+    public static TestHostProcess StartWithClosedOutput(
+        IReadOnlyDictionary<String, String> environment,
+        String[] arguments)
+    {
+        var process = StartProcess(CreateStartInfo(arguments), environment);
+        process.StandardOutput.Dispose();
+        return new TestHostProcess(process, Task.FromResult(String.Empty));
     }
 
     public async Task<TestHostExit> WaitForExitAsync()
@@ -113,10 +117,36 @@ internal sealed class TestHostProcess : IDisposable
         return new TestHostExit(_process.ExitCode, output, error);
     }
 
-    private static ProcessStartInfo CreateStartInfo(String testHostPath, String[] arguments) =>
+    private static TestHostProcess StartReadingOutput(
+        ProcessStartInfo startInfo,
+        IReadOnlyDictionary<String, String> environment)
+    {
+        var process = StartProcess(startInfo, environment);
+        return new TestHostProcess(process, process.StandardOutput.ReadToEndAsync(CancellationToken));
+    }
+
+    private static Process StartProcess(ProcessStartInfo startInfo, IReadOnlyDictionary<String, String> environment)
+    {
+        startInfo.WorkingDirectory = AppContext.BaseDirectory;
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+        foreach (var (name, value) in environment)
+        {
+            startInfo.Environment[name] = value;
+        }
+
+        var process = new Process { StartInfo = startInfo };
+        process.Start();
+        return process;
+    }
+
+    private static ProcessStartInfo CreateStartInfo(String[] arguments) =>
         OperatingSystem.IsWindows()
-            ? new ProcessStartInfo(DotnetHost, [testHostPath, .. arguments])
-            : new ProcessStartInfo("/bin/sh", ["-c", WithoutCoreDumps, DotnetHost, testHostPath, .. arguments]);
+            ? new ProcessStartInfo(DotnetHost, [TestHostPath, .. arguments])
+            : CreateShellStartInfo(WithoutCoreDumps, arguments);
+
+    private static ProcessStartInfo CreateShellStartInfo(String script, String[] arguments) =>
+        new("/bin/sh", ["-c", script, DotnetHost, TestHostPath, .. arguments]);
 
     private static String GetDotnetOfTheRunningRuntime() =>
         Path.GetFullPath(

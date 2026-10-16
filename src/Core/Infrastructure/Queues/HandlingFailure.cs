@@ -22,13 +22,14 @@ internal readonly partial record struct HandlingFailure(
 
     public String CodeAndExceptionType => Exception is null ? Code : $"{Code} ({Exception.GetType().Name})";
 
-    public static Optional<String> FindCode(String lastError)
+    public static Optional<String> FindCode(String lastError, Boolean isSecret)
     {
         var textBeforeSeparator = lastError
             .Split(CodeSeparator, count: 2)
             .First();
 
-        return CodePattern.IsMatch(textBeforeSeparator) ? textBeforeSeparator : Optional<String>.None();
+        var codePattern = isSecret ? DottedCodePattern : CodePattern;
+        return codePattern.IsMatch(textBeforeSeparator) ? textBeforeSeparator : Optional<String>.None();
     }
 
     public static HandlingFailure From(Error error) =>
@@ -51,6 +52,9 @@ internal readonly partial record struct HandlingFailure(
         (error.Kind == ErrorKind.Unexpected && error.Code != UnitOfWorkErrors.EventLoopCode)
         || error.Code == UnitOfWorkErrors.ConcurrencyConflict.Code;
 
-    [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+\z")]
+    [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)*\z")]
     private static partial Regex CodePattern { get; }
+
+    [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)+\z")]
+    private static partial Regex DottedCodePattern { get; }
 }

@@ -15,7 +15,8 @@ internal static class QueuesCommandHost
         {
             await using var app = Build(addServices);
             ValidateSettings(app.Services);
-            var queuesTool = new QueuesTool(app.Services, Console.Out, Console.Error);
+            await using var outputTextWriter = StandardOutput.CreateWriter();
+            var queuesTool = new QueuesTool(app.Services, outputTextWriter, Console.Error);
             return await queuesTool.RunAsync(arguments, CancellationToken.None);
         }
         catch (Exception exception)

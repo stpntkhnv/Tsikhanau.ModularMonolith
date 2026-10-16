@@ -5,8 +5,8 @@ namespace Tsikhanau.Monolith.Infrastructure.Queues;
 
 internal sealed record QueueSampleRow(Int64 PendingCount, Int64 FailedCount, DateTime? OldestDueOn)
 {
-    public QueueSample ToSample(String module, String queue) =>
-        new(module, queue, PendingCount, FailedCount, FindOldestDueOn());
+    public QueueSample ToSample(String module, String queue, DateTimeOffset sampledOn) =>
+        new(module, queue, sampledOn, PendingCount, FailedCount, FindOldestDueOn());
 
     private Optional<DateTimeOffset> FindOldestDueOn() =>
         OldestDueOn is { } oldestDueOn

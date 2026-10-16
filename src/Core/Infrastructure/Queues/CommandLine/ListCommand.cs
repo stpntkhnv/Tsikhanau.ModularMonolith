@@ -50,16 +50,19 @@ internal sealed class ListCommand : IQueuesCommand
 
         foreach (var queue in QueueTables.Names)
         {
+            var secretRowRule = serviceProvider.ResolveSecretRowRule(module, queue);
             var failedMessages = await connection.QueryAsync<FailedMessageRow>(
                 new CommandDefinition(BuildSql(module.Schema, queue), cancellationToken: cancellationToken));
 
-            lines.AddRange(failedMessages.Select(failedMessage => failedMessage.BuildLine(module.Name, queue)));
+            lines.AddRange(
+                failedMessages.Select(failedMessage => failedMessage.BuildLine(module.Name, queue, secretRowRule)));
         }
     }
 
     private static String BuildSql(String schema, String queue) =>
         $"""
-        SELECT id AS "Id", type AS "Type", attempts AS "Attempts", failed_on AS "FailedOn", last_error AS "LastError"
+        SELECT id AS "Id", type AS "Type", attempts AS "Attempts", failed_on AS "FailedOn", last_error AS "LastError",
+            contains_secrets AS "ContainsSecrets"
         FROM "{schema}".{queue}
         WHERE failed_on IS NOT NULL
         ORDER BY failed_on, id

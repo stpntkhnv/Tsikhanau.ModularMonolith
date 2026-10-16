@@ -61,8 +61,18 @@ public sealed class QueueMetrics
     internal QueueInstruments CreateInstruments(Type moduleKey, String queue) =>
         new(_messageCounter, _handlingDurationHistogram, FindModuleName(moduleKey), queue);
 
+    private IEnumerable<QueueSample> CountedSamples => _lastSamples.Values.Where(sample => sample.HasCounts);
+
     internal void Store(IEnumerable<QueueSample> samples) =>
         samples.ForEach(sample => _lastSamples[(sample.Module, sample.Queue)] = sample);
+
+    internal void StoreFailedSample(String module, String queue, DateTimeOffset sampledOn) =>
+        _lastSamples.AddOrUpdate(
+            (module, queue),
+            static (moduleQueue, sampledOn) =>
+                QueueSample.CreateWithoutCounts(moduleQueue.Module, moduleQueue.Queue, sampledOn),
+            static (_, lastSample, _) => lastSample.AssumeDueSinceSampled(),
+            sampledOn);
 
     private String FindModuleName(Type moduleKey) =>
         _moduleRegistry.Modules
@@ -70,10 +80,10 @@ public sealed class QueueMetrics
             .Name;
 
     private IEnumerable<Measurement<Int64>> ObservePendingCounts() =>
-        _lastSamples.Values.Select(sample => new Measurement<Int64>(sample.PendingCount, sample.Tags));
+        CountedSamples.Select(sample => new Measurement<Int64>(sample.PendingCount, sample.Tags));
 
     private IEnumerable<Measurement<Int64>> ObserveFailedCounts() =>
-        _lastSamples.Values.Select(sample => new Measurement<Int64>(sample.FailedCount, sample.Tags));
+        CountedSamples.Select(sample => new Measurement<Int64>(sample.FailedCount, sample.Tags));
 
     private IEnumerable<Measurement<Double>> ObserveOldestDueAges()
     {

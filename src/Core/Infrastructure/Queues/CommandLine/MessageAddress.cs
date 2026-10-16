@@ -17,10 +17,5 @@ internal sealed record MessageAddress(ModuleDescriptor Module, String Queue, Gui
             serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(Module.Key),
             cancellationToken);
 
-    public ISecretRowRule ResolveSecretRowRule(IServiceProvider serviceProvider) =>
-        serviceProvider
-            .GetServices<ISecretRowRule>()
-            .Single(secretRowRule => secretRowRule.ModuleKey == Module.Key && secretRowRule.Table == Queue);
-
     public override String ToString() => $"{Module.Name} {Queue} {MessageId}";
 }

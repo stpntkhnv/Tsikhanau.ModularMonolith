@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.Shared.Time;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;
@@ -64,12 +65,13 @@ internal sealed class QueueSampler(
 
     private async Task SampleWithinTimeoutAsync(ModuleDescriptor module, CancellationToken cancellationToken)
     {
+        var sampledOn = timeProvider.GetUtcNow();
         using var timeoutSource = new CancellationTokenSource(SampleTimeout, timeProvider);
         using var timeoutOrStopSource = CancellationTokenSource.CreateLinkedTokenSource(
             timeoutSource.Token,
             cancellationToken);
 
-        var reading = ReadAsync(module, timeoutOrStopSource.Token);
+        var reading = ReadAsync(module, sampledOn, timeoutOrStopSource.Token);
         try
         {
             queueMetrics.Store(await reading.WaitAsync(timeoutOrStopSource.Token));
@@ -78,15 +80,16 @@ internal sealed class QueueSampler(
         {
             _ = ObserveAbandonedAsync(reading);
             cancellationToken.ThrowIfCancellationRequested();
+            StoreFailedSample(module, sampledOn);
             LogFailure(module, exception, hasTimedOut: timeoutSource.IsCancellationRequested);
         }
     }
 
     private async Task<IReadOnlyList<QueueSample>> ReadAsync(
         ModuleDescriptor module,
+        DateTimeOffset sampledOn,
         CancellationToken cancellationToken)
     {
-        var sampledOn = timeProvider.GetUtcNow();
         await using var connection = await serviceProvider
             .GetRequiredKeyedService<NpgsqlDataSource>(module.Key)
             .OpenConnectionAsync(cancellationToken);
@@ -97,7 +100,7 @@ internal sealed class QueueSampler(
             var row = await connection.QuerySingleAsync<QueueSampleRow>(
                 BuildCommand(module.Schema, queue, sampledOn, cancellationToken));
 
-            samples.Add(row.ToSample(module.Name, queue));
+            samples.Add(row.ToSample(module.Name, queue, sampledOn));
         }
 
         return samples;
@@ -113,6 +116,9 @@ internal sealed class QueueSampler(
             new { SampledOn = sampledOn },
             commandTimeout: SampleTimeout.TotalSecondsRoundedUp,
             cancellationToken: cancellationToken);
+
+    private void StoreFailedSample(ModuleDescriptor module, DateTimeOffset sampledOn) =>
+        QueueTables.Names.ForEach(queue => queueMetrics.StoreFailedSample(module.Name, queue, sampledOn));
 
     private void LogFailure(ModuleDescriptor module, Exception exception, Boolean hasTimedOut)
     {

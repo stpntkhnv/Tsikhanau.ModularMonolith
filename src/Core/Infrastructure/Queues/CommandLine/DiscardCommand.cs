@@ -24,7 +24,7 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
         TextWriter outputTextWriter,
         CancellationToken cancellationToken)
     {
-        var secretRowRule = message.ResolveSecretRowRule(serviceProvider);
+        var secretRowRule = serviceProvider.ResolveSecretRowRule(message.Module, message.Queue);
         await using var connection = await message.OpenConnectionAsync(serviceProvider, cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         return await DeleteAsync(connection, transaction, secretRowRule, cancellationToken)
@@ -65,7 +65,7 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
             (PayloadColumn, _) when isSecret => ErasedPayload,
             (PayloadColumn, String payload) => JsonElement.Parse(payload),
             (LastErrorColumn, String lastError) when isSecret => HandlingFailure
-                .FindCode(lastError)
+                .FindCode(lastError, isSecret)
                 .GetValueOrDefault(),
             (_, DateTime timestamp) => timestamp.ToString("O", CultureInfo.InvariantCulture),
             (_, var value) => value,

@@ -590,9 +590,7 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
         try
         {
             var agesBefore = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
-            var sampling = testModulesHost.SampleQueuesAsync();
-            testModulesHost.Time.Advance(SampleTimeout);
-            await sampling.WaitAsync(SampleTimeout, CancellationToken);
+            await SampleWhilePongsCannotBeSampledAsync(testModulesHost, metricRecorder);
             testModulesHost.Time.Advance(TimeSpan.FromMinutes(2));
 
             var agesAfter = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
@@ -600,9 +598,79 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
             var failedCounts = ObserveGauge(metricRecorder, FailedInstrument);
 
             agesBefore.ShouldBe(ForEveryQueue((Pongs, Inbox, 10)), ignoreOrder: true);
-            agesAfter.ShouldBe(ForEveryQueue((Pongs, Inbox, 135)), ignoreOrder: true);
+            agesAfter.ShouldBe(
+                ForEveryQueue((Pongs, Inbox, 135), (Pongs, InternalCommands, 125), (Pongs, Outbox, 125)),
+                ignoreOrder: true);
+
             pendingCounts.ShouldBe(ForEveryQueue((Pongs, Inbox, 1)), ignoreOrder: true);
-            failedCounts.ShouldBe(ForEveryQueue((Pongs, Inbox, 1)), ignoreOrder: true);
+            failedCounts.ShouldBe(ForEveryQueue((Pings, Outbox, 1), (Pongs, Inbox, 1)), ignoreOrder: true);
+        }
+        finally
+        {
+            await DisposeAllAsync(heldConnections);
+        }
+    }
+
+    [Fact]
+    public async Task Age_grows_from_the_last_sample_while_a_module_that_had_no_due_message_cannot_be_sampled()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var metricRecorder = MetricRecorder.StartFor(testModulesHost.Services);
+        await InsertPendingRowAsync(testModulesHost, InsertPongsInboxRowSql, 1, LeaseEndsOn);
+        await InsertFailedRowAsync(testModulesHost, InsertPongsInboxRowSql);
+        await testModulesHost.SampleQueuesAsync();
+        var heldConnections = await HoldEveryConnectionAsync(testModulesHost, typeof(IPongsModule));
+        try
+        {
+            var agesBefore = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
+            testModulesHost.Time.Advance(SampleInterval);
+            await SampleWhilePongsCannotBeSampledAsync(testModulesHost, metricRecorder);
+            testModulesHost.Time.Advance(TimeSpan.FromMinutes(2));
+
+            var agesAfter = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
+            var pendingCounts = ObserveGauge(metricRecorder, PendingInstrument);
+            var failedCounts = ObserveGauge(metricRecorder, FailedInstrument);
+
+            agesBefore.ShouldBe(ForEveryQueue(), ignoreOrder: true);
+            agesAfter.ShouldBe(
+                ForEveryQueue((Pongs, Inbox, 185), (Pongs, InternalCommands, 185), (Pongs, Outbox, 185)),
+                ignoreOrder: true);
+
+            pendingCounts.ShouldBe(ForEveryQueue((Pongs, Inbox, 1)), ignoreOrder: true);
+            failedCounts.ShouldBe(ForEveryQueue((Pings, Outbox, 1), (Pongs, Inbox, 1)), ignoreOrder: true);
+        }
+        finally
+        {
+            await DisposeAllAsync(heldConnections);
+        }
+    }
+
+    [Fact]
+    public async Task Module_whose_first_sample_fails_reports_no_counts_and_an_age_that_grows_from_that_sample()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        using var metricRecorder = MetricRecorder.StartFor(testModulesHost.Services);
+        var heldConnections = await HoldEveryConnectionAsync(testModulesHost, typeof(IPongsModule));
+        try
+        {
+            await SampleWhilePongsCannotBeSampledAsync(testModulesHost, metricRecorder);
+            testModulesHost.Time.Advance(TimeSpan.FromMinutes(2));
+
+            var ages = ObserveGauge(metricRecorder, OldestDueAgeInstrument);
+            var pendingCounts = ObserveGauge(metricRecorder, PendingInstrument);
+            var failedCounts = ObserveGauge(metricRecorder, FailedInstrument);
+
+            ages.ShouldBe(
+                ForEveryQueue((Pongs, Inbox, 125), (Pongs, InternalCommands, 125), (Pongs, Outbox, 125)),
+                ignoreOrder: true);
+
+            pendingCounts.ShouldBe(
+                [(Pings, Inbox, 0), (Pings, InternalCommands, 0), (Pings, Outbox, 0)],
+                ignoreOrder: true);
+
+            failedCounts.ShouldBe(
+                [(Pings, Inbox, 0), (Pings, InternalCommands, 0), (Pings, Outbox, 1)],
+                ignoreOrder: true);
         }
         finally
         {
@@ -804,6 +872,17 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
         return testModulesHost.Database.ExecuteAsync(
             insertSql,
             new { Id = Guid.CreateVersion7(), Attempts = MaxAttempts, NextAttemptOn = failedOn, FailedOn = failedOn });
+    }
+
+    private static async Task SampleWhilePongsCannotBeSampledAsync(
+        TestModulesHost testModulesHost,
+        MetricRecorder metricRecorder)
+    {
+        await InsertFailedRowAsync(testModulesHost, InsertPingsOutboxRowSql);
+        var sampling = testModulesHost.SampleQueuesAsync();
+        await WaitUntilAsync(() => Task.FromResult(IsObserved(metricRecorder, FailedInstrument, Pings, Outbox, 1)));
+        testModulesHost.Time.Advance(SampleTimeout);
+        await sampling.WaitAsync(SampleTimeout, CancellationToken);
     }
 
     private static async Task<List<NpgsqlConnection>> HoldEveryConnectionAsync(
