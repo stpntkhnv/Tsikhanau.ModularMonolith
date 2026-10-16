@@ -8,7 +8,7 @@ using Tsikhanau.Monolith.Infrastructure.Outbox;
 
 namespace Tsikhanau.Monolith.Infrastructure.Cleanup;
 
-public sealed class ProcessedMessagesCleanupTask<TModule>(
+public sealed class QueueMessagesCleanupTask<TModule>(
     ModuleContext<TModule> moduleContext,
     IOptions<CleanupSettings> options,
     TimeProvider timeProvider)

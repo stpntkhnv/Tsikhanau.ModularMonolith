@@ -41,7 +41,7 @@ public sealed class ModuleQueueProcessor<TModule>(
             {
                 await queuePump.RunOnceAsync(stoppingToken);
             }
-            catch (OperationCanceledException) when (IsStopping(stoppingToken))
+            catch (OperationCanceledException) when (hostApplicationLifetime.IsStopping(stoppingToken))
             {
                 return;
             }
@@ -53,9 +53,6 @@ public sealed class ModuleQueueProcessor<TModule>(
             await WaitForWorkAsync(reader, stoppingToken);
         }
     }
-
-    private Boolean IsStopping(CancellationToken stoppingToken) =>
-        stoppingToken.IsCancellationRequested || hostApplicationLifetime.ApplicationStopping.IsCancellationRequested;
 
     private async Task WaitForWorkAsync(ChannelReader<Boolean> reader, CancellationToken stoppingToken)
     {

@@ -270,7 +270,7 @@ public static class ModuleServiceCollectionExtensions
     private static IServiceCollection AddCleanup<TModule>(this IServiceCollection services)
         where TModule : class, IModuleFacade =>
         services
-            .AddScoped<ICleanupTask<TModule>, ProcessedMessagesCleanupTask<TModule>>()
+            .AddScoped<ICleanupTask<TModule>, QueueMessagesCleanupTask<TModule>>()
             .AddSingleton<ModuleCleanup<TModule>>()
             .AddSingleton<IModuleCleanup>(
                 serviceProvider => serviceProvider.GetRequiredService<ModuleCleanup<TModule>>())

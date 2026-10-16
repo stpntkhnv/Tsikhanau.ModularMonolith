@@ -47,6 +47,16 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
         VALUES (@Id, @Type, @Payload::jsonb, @Attempts, @OccurredOn, @OccurredOn, true)
         """;
 
+    private const String InsertLegacyOutboxSql = """
+        INSERT INTO pings.outbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on)
+        VALUES (@Id, @Type, @Payload::jsonb, @Attempts, @OccurredOn, @OccurredOn)
+        """;
+
+    private const String InsertLegacyCommandSql = """
+        INSERT INTO pings.internal_commands (id, type, payload, attempts, next_attempt_on, enqueued_on)
+        VALUES (@Id, @Type, @Payload::jsonb, @Attempts, @EnqueuedOn, @EnqueuedOn)
+        """;
+
     private const String InsertLegacyInboxSql = """
         INSERT INTO pongs.inbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on, received_on)
         VALUES (@Id, @Type, @Payload::jsonb, 0, @ReceivedOn, @ReceivedOn, @ReceivedOn)
@@ -341,6 +351,33 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
         testModulesHost.PongHooks.ReceivedSecrets.ShouldContain("old-s3cret");
     }
 
+    [Theory]
+    [InlineData(OutboxTable, PingSecretSentType, 0, null)]
+    [InlineData(InternalCommandsTable, MailTokenType, 0, null)]
+    [InlineData(OutboxTable, PingSecretSentType, MaxAttempts, HandlerAbandoned)]
+    [InlineData(InternalCommandsTable, MailTokenType, MaxAttempts, HandlerAbandoned)]
+    public async Task Secret_row_written_before_the_flag_existed_is_erased_in_the_outbox_and_the_command_queue(
+        String table,
+        String type,
+        Int32 attempts,
+        String? expectedLastError)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = await InsertLegacySecretRowAsync(testModulesHost, table, type, attempts);
+
+        await RunQueueAsync(testModulesHost, table);
+
+        var rows = table == OutboxTable
+            ? await testModulesHost.ReadOutboxRowsAsync()
+            : await testModulesHost.ReadInternalCommandRowsAsync();
+
+        var row = rows.Single(candidate => candidate.Id == messageId);
+        var lastError = await ReadLastErrorAsync(testModulesHost, table, messageId);
+        (row.IsProcessed || row.HasFailed).ShouldBeTrue();
+        row.Payload.ShouldBe(ErasedPayload);
+        lastError.ShouldBe(expectedLastError);
+    }
+
     [Fact]
     public async Task Row_flagged_secret_is_erased_once_handled_although_its_type_is_not_secret_here()
     {
@@ -443,6 +480,47 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
 
         return messageId;
     }
+
+    private static async Task<Guid> InsertLegacySecretRowAsync(
+        TestModulesHost testModulesHost,
+        String table,
+        String type,
+        Int32 attempts)
+    {
+        var messageId = Guid.CreateVersion7();
+        var pingId = await testModulesHost.CreatePingAsync("legacy secret");
+        var parameters = new
+        {
+            Id = messageId,
+            Type = type,
+            Payload = table == OutboxTable
+                ? BuildSecretPayload(messageId, Secret)
+                : BuildMailTokenPayload(messageId, pingId),
+            Attempts = attempts,
+            OccurredOn = testModulesHost.Time.GetUtcNow(),
+            EnqueuedOn = testModulesHost.Time.GetUtcNow(),
+        };
+
+        await testModulesHost.Database.ExecuteAsync(
+            table == OutboxTable ? InsertLegacyOutboxSql : InsertLegacyCommandSql,
+            parameters);
+
+        return messageId;
+    }
+
+    private static Task RunQueueAsync(TestModulesHost testModulesHost, String table) =>
+        table == OutboxTable
+            ? testModulesHost.DeliverOutboxAsync()
+            : testModulesHost.RunInternalCommandsAsync();
+
+    private static String BuildMailTokenPayload(Guid messageId, Guid pingId) =>
+        JsonSerializer.Serialize(
+            new Dictionary<String, String>
+            {
+                ["id"] = messageId.ToString(),
+                ["pingId"] = pingId.ToString(),
+                ["token"] = Secret,
+            });
 
     private static Task<String?> ReadLastErrorAsync(TestModulesHost testModulesHost, String table, Guid messageId) =>
         testModulesHost.Database.ExecuteScalarAsync<String?>(

@@ -34,7 +34,7 @@ internal static class ModuleKeyTypes
         typeof(ModuleQueueProcessor<>),
         typeof(ModuleQueuePump<>),
         typeof(OutboxPump<>),
-        typeof(ProcessedMessagesCleanupTask<>),
+        typeof(QueueMessagesCleanupTask<>),
         typeof(SqlConnectionFactory<>),
         typeof(UnitOfWork<>),
     };

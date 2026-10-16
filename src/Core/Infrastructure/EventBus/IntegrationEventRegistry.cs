@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
-using Tsikhanau.Monolith.Contracts.Secrets;
+using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.EventBus;
@@ -9,6 +9,7 @@ namespace Tsikhanau.Monolith.Infrastructure.EventBus;
 public sealed class IntegrationEventRegistry
 {
     private readonly ConcurrentDictionary<Type, String> _names = new();
+    private readonly ConcurrentDictionary<Type, Boolean> _secretTypes = new();
     private readonly ConcurrentDictionary<String, Type> _types = new(StringComparer.Ordinal);
 
     public String GetName(Type eventType) =>
@@ -35,5 +36,5 @@ public sealed class IntegrationEventRegistry
             .GetValueOrDefault(false);
 
     public Boolean ContainsSecrets(Type eventType) =>
-        eventType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
+        _secretTypes.GetOrAdd(eventType, static type => type.ContainsSecrets);
 }

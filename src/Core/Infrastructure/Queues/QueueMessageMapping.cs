@@ -30,7 +30,8 @@ internal static class QueueMessageMapping
 
         builder
             .Property(message => message.ContainsSecrets)
-            .HasDefaultValue(false);
+            .HasDefaultValue(false)
+            .ValueGeneratedNever();
 
         builder
             .HasIndex(nameof(QueueMessage.NextAttemptOn), orderProperty, nameof(QueueMessage.Id))

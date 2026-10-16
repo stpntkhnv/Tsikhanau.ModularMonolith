@@ -97,6 +97,11 @@ internal sealed class MessageBuffer<TModule, TMessage>(
 
     protected override async Task ClaimAsync(CancellationToken cancellationToken)
     {
+        if (messagePump.IsStopping(cancellationToken))
+        {
+            return;
+        }
+
         _claimsOneAtATime = timeProvider.GetUtcNow() < _claimsOneAtATimeUntil;
         var claimedMessages = await messagePump.ClaimBatchAsync(ClaimBatchSize, cancellationToken);
         _claimedOn = timeProvider.GetUtcNow();
@@ -105,6 +110,12 @@ internal sealed class MessageBuffer<TModule, TMessage>(
 
     protected override async Task<Boolean> TryProcessNextAsync(CancellationToken cancellationToken)
     {
+        if (messagePump.IsStopping(cancellationToken))
+        {
+            await messagePump.GiveBackOnExitAsync(TakeAll());
+            return false;
+        }
+
         var nextMessage = _messages.Peek();
         var startedOn = timeProvider.GetUtcNow();
         if (!CanStart(nextMessage, startedOn))

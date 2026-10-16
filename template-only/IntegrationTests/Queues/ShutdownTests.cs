@@ -1,9 +1,12 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
+using Tsikhanau.Monolith.TestModules.Pongs;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
@@ -16,6 +19,11 @@ public sealed class ShutdownTests(PostgresFixture postgresFixture)
     private const String Secret = "s3cret";
 
     private const String RetryLog = "Message will be retried";
+
+    private const String InsertInboxSql = """
+        INSERT INTO pongs.inbox_messages (id, type, payload, attempts, next_attempt_on, occurred_on, received_on)
+        VALUES (@Id, @Type, @Payload::jsonb, 0, @ReceivedOn, @ReceivedOn, @ReceivedOn)
+        """;
 
     private const String LastErrorSql = "SELECT last_error FROM pongs.inbox_messages WHERE id = @Id";
 
@@ -184,6 +192,54 @@ public sealed class ShutdownTests(PostgresFixture postgresFixture)
         capturingLoggerProvider.Entries.ShouldNotContain(entry => entry.Contains(Secret));
     }
 
+    [Fact]
+    public async Task Messages_claimed_before_the_host_stop_are_given_back_without_starting()
+    {
+        var stopBarrier = new StopBarrier();
+        await using var testModulesHost = await StartAsync(new CapturingLoggerProvider(), stopBarrier);
+        var handlerStartedSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var startedCount = 0;
+        testModulesHost.PongHooks.BeforeHandle = () =>
+        {
+            if (Interlocked.Increment(ref startedCount) > 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            handlerStartedSource.TrySetResult();
+            return WaitUntilCancelledAsync(testModulesHost.ApplicationStopping);
+        };
+
+        await InsertPingCreatedRowAsync(testModulesHost, "first");
+        await InsertPingCreatedRowAsync(testModulesHost, "second");
+        testModulesHost.Services
+            .GetRequiredService<QueueSignals>()
+            .Signal(typeof(IPongsModule));
+
+        await handlerStartedSource.Task.WaitAsync(BarrierDeadline, CancellationToken);
+        var stopping = testModulesHost.StopAsync();
+        try
+        {
+            await WaitUntilAsync(async () => (await ReadRowsAsync(testModulesHost)).All(row => !IsClaimed(row)));
+        }
+        finally
+        {
+            stopBarrier.Release();
+        }
+
+        await stopping;
+
+        var rows = await ReadRowsAsync(testModulesHost);
+        var processedCount = rows.Count(row => row.IsProcessed);
+        processedCount.ShouldBe(1);
+        var givenBack = rows.Single(row => !row.IsProcessed);
+        givenBack.Attempts.ShouldBe(0);
+        givenBack.HasFailed.ShouldBeFalse();
+        var started = Volatile.Read(ref startedCount);
+        started.ShouldBe(1);
+        testModulesHost.PongHooks.ReceivedPingIds.Count.ShouldBe(1);
+    }
+
     private Task<TestModulesHost> StartAsync(
         CapturingLoggerProvider capturingLoggerProvider,
         StopBarrier stopBarrier) =>
@@ -202,13 +258,20 @@ public sealed class ShutdownTests(PostgresFixture postgresFixture)
     private static async Task StopWhileTheHandlerRunsAsync(
         TestModulesHost testModulesHost,
         StopBarrier stopBarrier,
-        Task handlerStartedSource,
+        Task handlerStarted,
         String type)
     {
-        await handlerStartedSource.WaitAsync(BarrierDeadline, CancellationToken);
+        await handlerStarted.WaitAsync(BarrierDeadline, CancellationToken);
         var stopping = testModulesHost.StopAsync();
-        await WaitWhileClaimedAsync(testModulesHost, type);
-        stopBarrier.Release();
+        try
+        {
+            await WaitWhileClaimedAsync(testModulesHost, type);
+        }
+        finally
+        {
+            stopBarrier.Release();
+        }
+
         await stopping;
     }
 
@@ -220,6 +283,42 @@ public sealed class ShutdownTests(PostgresFixture postgresFixture)
             stopwatch.Elapsed.ShouldBeLessThan(BarrierDeadline);
             await Task.Delay(TimeSpan.FromMilliseconds(10), CancellationToken);
         }
+    }
+
+    private static async Task WaitUntilAsync(Func<Task<Boolean>> isDoneAsync)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (!await isDoneAsync())
+        {
+            stopwatch.Elapsed.ShouldBeLessThan(BarrierDeadline);
+            await Task.Delay(TimeSpan.FromMilliseconds(10), CancellationToken);
+        }
+    }
+
+    private static Task<IReadOnlyList<QueueRow>> ReadRowsAsync(TestModulesHost testModulesHost) =>
+        testModulesHost.ReadInboxRowsAsync();
+
+    private static Task InsertPingCreatedRowAsync(TestModulesHost testModulesHost, String label)
+    {
+        var messageId = Guid.CreateVersion7();
+        var payload = JsonSerializer.Serialize(
+            new Dictionary<String, String>
+            {
+                ["id"] = messageId.ToString(),
+                ["occurredOn"] = "2026-09-28T08:00:00+00:00",
+                ["pingId"] = messageId.ToString(),
+                ["label"] = label,
+            });
+
+        return testModulesHost.Database.ExecuteAsync(
+            InsertInboxSql,
+            new
+            {
+                Id = messageId,
+                Type = PingCreatedType,
+                Payload = payload,
+                ReceivedOn = testModulesHost.Time.GetUtcNow(),
+            });
     }
 
     private static Boolean IsClaimed(QueueRow row) => !row.IsProcessed && row.NextAttemptOn == LeaseEndsOn;

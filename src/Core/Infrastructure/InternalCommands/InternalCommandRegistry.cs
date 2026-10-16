@@ -1,5 +1,5 @@
 using Tsikhanau.Monolith.Application.Modules;
-using Tsikhanau.Monolith.Contracts.Secrets;
+using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
@@ -11,10 +11,15 @@ public sealed class InternalCommandRegistry<TModule>
 
     private readonly Dictionary<String, Type> _commandTypes;
 
+    private readonly HashSet<Type> _secretTypes;
+
     public InternalCommandRegistry(IEnumerable<Type> commandTypes)
     {
         _names = commandTypes.ToDictionary(type => type, type => type.FindInternalCommandName().Value);
         _commandTypes = _names.ToDictionary(entry => entry.Value, entry => entry.Key);
+        _secretTypes = _names.Keys
+            .Where(type => type.ContainsSecrets)
+            .ToHashSet();
     }
 
     private static String ModuleName => typeof(TModule).Name;
@@ -31,6 +36,5 @@ public sealed class InternalCommandRegistry<TModule>
             .Map(ContainsSecrets)
             .GetValueOrDefault(false);
 
-    public Boolean ContainsSecrets(Type commandType) =>
-        commandType.IsDefined(typeof(ContainsSecretsAttribute), inherit: false);
+    public Boolean ContainsSecrets(Type commandType) => _secretTypes.Contains(commandType);
 }

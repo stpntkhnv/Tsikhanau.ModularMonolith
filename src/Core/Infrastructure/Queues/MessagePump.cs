@@ -45,6 +45,9 @@ public abstract class MessagePump<TModule, TMessage>(
         return await MessageBuffer.ProcessInRoundsAsync([messageBuffer], cancellationToken);
     }
 
+    internal Boolean IsStopping(CancellationToken cancellationToken) =>
+        hostApplicationLifetime.IsStopping(cancellationToken);
+
     internal MessageBuffer CreateBuffer() => new MessageBuffer<TModule, TMessage>(this, options.Value, timeProvider);
 
     internal async Task<IReadOnlyList<TMessage>> ClaimBatchAsync(
@@ -111,6 +114,8 @@ public abstract class MessagePump<TModule, TMessage>(
         TMessage message,
         CancellationToken cancellationToken) =>
         throw new NotSupportedException($"{GetType().Name} handles every message in a transaction");
+
+    protected Boolean IsSecret(TMessage message) => message.ContainsSecrets || IsSecretType(message.Type);
 
     protected void EraseSecretsOf(TMessage message)
     {
@@ -365,12 +370,6 @@ public abstract class MessagePump<TModule, TMessage>(
             && candidate.ProcessedOn == null
             && candidate.FailedOn == null;
     }
-
-    private Boolean IsSecret(TMessage message) => message.ContainsSecrets || IsSecretType(message.Type);
-
-    private Boolean IsStopping(CancellationToken cancellationToken) =>
-        cancellationToken.IsCancellationRequested
-        || hostApplicationLifetime.ApplicationStopping.IsCancellationRequested;
 
     private void LogFailure(HandlingFailure failure, RetryDecision decision, Boolean isSecret)
     {

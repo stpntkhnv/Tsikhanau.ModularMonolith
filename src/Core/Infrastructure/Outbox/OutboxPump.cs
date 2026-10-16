@@ -47,7 +47,7 @@ public sealed class OutboxPump<TModule>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken)
     {
-        await eventBus.DeliverAsync(message, dbContext, cancellationToken);
+        await eventBus.DeliverAsync(message, IsSecret(message), dbContext, cancellationToken);
         EraseSecretsOf(message);
         message.ProcessedOn = processedOn;
         await dbContext.SaveChangesAsync(cancellationToken);

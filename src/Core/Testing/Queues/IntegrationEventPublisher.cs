@@ -21,10 +21,12 @@ internal static class IntegrationEventPublisher
 
         var subscriber = GetFirstSubscriber(serviceProvider, eventName, eventType);
         await using var scope = serviceProvider.CreateAsyncScope();
+        var message = CreateMessage(integrationEvent, eventName, integrationEventRegistry.ContainsSecrets(eventType));
         await scope.ServiceProvider
             .GetRequiredService<IEventBus>()
             .DeliverAsync(
-                CreateMessage(integrationEvent, eventName, integrationEventRegistry.ContainsSecrets(eventType)),
+                message,
+                message.ContainsSecrets,
                 ResolveDbContext(scope.ServiceProvider, subscriber),
                 CancellationToken);
     }

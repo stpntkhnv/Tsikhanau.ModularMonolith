@@ -12,6 +12,7 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
 {
     public async Task DeliverAsync(
         OutboxMessage message,
+        Boolean containsSecrets,
         ModuleDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -22,7 +23,7 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
         {
             await dbContext.Database.ExecuteSqlRawAsync(
                 BuildInboxInsertSql(subscriber.Schema),
-                CreateInboxInsertParameters(message, traceParent, receivedOn),
+                CreateInboxInsertParameters(message, containsSecrets, traceParent, receivedOn),
                 cancellationToken);
         }
     }
@@ -37,6 +38,7 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
 
     private static Object[] CreateInboxInsertParameters(
         OutboxMessage message,
+        Boolean containsSecrets,
         String? traceParent,
         DateTimeOffset receivedOn) =>
         [
@@ -46,7 +48,7 @@ public sealed class PostgresEventBus(SubscriptionRegistry subscriptionRegistry, 
             CreateNullableTextParameter(traceParent),
             receivedOn,
             message.OccurredOn,
-            message.ContainsSecrets,
+            containsSecrets,
         ];
 
     private static NpgsqlParameter CreateNullableTextParameter(String? value) =>
