@@ -9,7 +9,7 @@ internal sealed class TestHostProcess : IDisposable
 
     private const String Healthy = "Healthy";
 
-    private const String WithoutCoreDumps = "ulimit -c 0 && exec \"$0\" \"$1\"";
+    private const String WithoutCoreDumps = "ulimit -c 0 && exec \"$0\" \"$@\"";
 
     private static readonly String DotnetHost =
         Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? GetDotnetOfTheRunningRuntime();
@@ -33,9 +33,11 @@ internal sealed class TestHostProcess : IDisposable
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
-    public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment)
+    public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment) => Start(environment, []);
+
+    public static TestHostProcess Start(IReadOnlyDictionary<String, String> environment, String[] arguments)
     {
-        var startInfo = CreateStartInfo(Path.Combine(AppContext.BaseDirectory, TestHostAssembly));
+        var startInfo = CreateStartInfo(Path.Combine(AppContext.BaseDirectory, TestHostAssembly), arguments);
         startInfo.WorkingDirectory = AppContext.BaseDirectory;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
@@ -111,10 +113,10 @@ internal sealed class TestHostProcess : IDisposable
         return new TestHostExit(_process.ExitCode, output, error);
     }
 
-    private static ProcessStartInfo CreateStartInfo(String testHostPath) =>
+    private static ProcessStartInfo CreateStartInfo(String testHostPath, String[] arguments) =>
         OperatingSystem.IsWindows()
-            ? new ProcessStartInfo(DotnetHost, [testHostPath])
-            : new ProcessStartInfo("/bin/sh", ["-c", WithoutCoreDumps, DotnetHost, testHostPath]);
+            ? new ProcessStartInfo(DotnetHost, [testHostPath, .. arguments])
+            : new ProcessStartInfo("/bin/sh", ["-c", WithoutCoreDumps, DotnetHost, testHostPath, .. arguments]);
 
     private static String GetDotnetOfTheRunningRuntime() =>
         Path.GetFullPath(

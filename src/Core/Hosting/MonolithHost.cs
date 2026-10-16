@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 namespace Tsikhanau.Monolith.Hosting;
 
@@ -12,7 +13,12 @@ public static class MonolithHost
 {
     private const Int32 Success = 0;
 
-    public static async Task<Int32> RunAsync(String[] args, Action<WebApplicationBuilder> addServices)
+    public static Task<Int32> RunAsync(String[] args, Action<WebApplicationBuilder> addServices) =>
+        args is [QueuesTool.Name, .. var commandArguments]
+            ? QueuesCommandHost.RunAsync(commandArguments, addServices)
+            : RunHostAsync(args, addServices);
+
+    private static async Task<Int32> RunHostAsync(String[] args, Action<WebApplicationBuilder> addServices)
     {
         await using var app = Build(args, addServices);
         try
