@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.Metrics;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 using Tsikhanau.Monolith.Application.Commands;
@@ -12,6 +14,7 @@ using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Contracts.Modules;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
@@ -273,7 +276,21 @@ public static class ModuleServiceCollectionExtensions
         services
             .AddSingleton<IQueuePump<TModule>, ModuleQueuePump<TModule>>()
             .AddSingleton<IQueuePump>(serviceProvider => serviceProvider.GetRequiredService<IQueuePump<TModule>>())
-            .AddHostedService<ModuleQueueProcessor<TModule>>();
+            .AddHostedService<ModuleQueueProcessor<TModule>>()
+            .AddQueueSampling();
+
+    private static IServiceCollection AddQueueSampling(this IServiceCollection services)
+    {
+        services.TryAddSingleton(CreateQueueMetrics);
+        services.TryAddSingleton<QueueSampler>();
+        return services.AddHostedService(ResolveQueueSampler);
+    }
+
+    private static QueueMetrics CreateQueueMetrics(IServiceProvider serviceProvider) =>
+        new(serviceProvider.GetRequiredService<IMeterFactory>(), serviceProvider.GetRequiredService<ModuleRegistry>());
+
+    private static QueueSampler ResolveQueueSampler(IServiceProvider serviceProvider) =>
+        serviceProvider.GetRequiredService<QueueSampler>();
 
     private static IServiceCollection AddCleanup<TModule>(this IServiceCollection services)
         where TModule : class, IModuleFacade =>

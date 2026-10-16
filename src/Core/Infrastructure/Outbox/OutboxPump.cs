@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues;
@@ -14,6 +15,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Outbox;
 public sealed class OutboxPump<TModule>(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<QueueSettings> options,
+    QueueMetrics queueMetrics,
     IEventBus eventBus,
     IntegrationEventRegistry integrationEventRegistry,
     SubscriptionRegistry subscriptionRegistry,
@@ -21,7 +23,13 @@ public sealed class OutboxPump<TModule>(
     TimeProvider timeProvider,
     IHostApplicationLifetime hostApplicationLifetime,
     ILogger<OutboxPump<TModule>> logger)
-    : MessagePump<TModule, OutboxMessage>(serviceScopeFactory, options, timeProvider, hostApplicationLifetime, logger)
+    : MessagePump<TModule, OutboxMessage>(
+        serviceScopeFactory,
+        options,
+        queueMetrics,
+        timeProvider,
+        hostApplicationLifetime,
+        logger)
     where TModule : IModuleFacade
 {
     protected override String Table => OutboxMessage.Table;

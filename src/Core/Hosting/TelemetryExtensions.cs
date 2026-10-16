@@ -8,6 +8,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 
 namespace Tsikhanau.Monolith.Hosting;
 
@@ -27,7 +28,8 @@ internal static class TelemetryExtensions
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
-                .AddMeter(NpgsqlTelemetry))
+                .AddMeter(NpgsqlTelemetry)
+                .AddMeter(AppDiagnostics.SourceName))
             .WithTracing(tracing => tracing
                 .AddSource(builder.Environment.ApplicationName)
                 .AddSource(activitySources)

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Tsikhanau.Monolith.Api.Modules;
@@ -7,6 +8,7 @@ using Tsikhanau.Monolith.Infrastructure.Database;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Perf.Measuring;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pongs;
 
@@ -29,7 +31,10 @@ internal static class PerfHost
             .AddModule<PingsModule>()
             .AddModule<PongsModule>();
 
-        return builder.Build();
+        builder.Services.AddSingleton<CoreMeterListener>();
+        var host = builder.Build();
+        _ = host.Services.GetRequiredService<CoreMeterListener>();
+        return host;
     }
 
     public static async Task<IHost> StartAsync(

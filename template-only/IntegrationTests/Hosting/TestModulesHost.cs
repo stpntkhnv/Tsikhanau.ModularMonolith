@@ -189,6 +189,11 @@ internal sealed class TestModulesHost : IAsyncDisposable
 
     public Task<Int32> RunCleanupAsync() => CleanupDriver.RunAllAsync(Services);
 
+    public Task SampleQueuesAsync() =>
+        Services
+            .GetRequiredService<QueueSampler>()
+            .SampleAsync(CancellationToken);
+
     public void ClearModulePools() =>
         Services
             .GetRequiredService<ModuleRegistry>().Modules

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Perf.Database;
@@ -92,14 +93,20 @@ internal sealed class QueueBackgroundScenario : IScenario
         Int32 messages,
         CancellationToken cancellationToken)
     {
+        var coreMeterListeners = hosts
+            .Select(host => host.Services.GetRequiredService<CoreMeterListener>())
+            .ToList();
+
         var countsBefore = await QueueCounts.ReadAsync(database, cancellationToken);
         await database.ResetStatementsAsync(cancellationToken);
+        var measurementCountBefore = CoreMeterListener.CountMeasurements(coreMeterListeners);
         GC.Collect();
         var start = ResourceSnapshot.Take();
         await StartAsync(hosts, cancellationToken);
         var outboxDrainedAfter = await WaitForAllPongsAsync(database, countsBefore, messages, start, cancellationToken);
         var usage = ResourceUsage.Since(start);
         Console.WriteLine(BuildResultLine(hosts.Count, messages, outboxDrainedAfter, usage));
+        Console.WriteLine(CoreMeterListener.BuildLine(coreMeterListeners, measurementCountBefore));
         await StatementReport.WriteAsync(database, messages, cancellationToken);
     }
 

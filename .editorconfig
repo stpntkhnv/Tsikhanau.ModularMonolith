@@ -32,7 +32,7 @@ dotnet_diagnostic.TS0005.severity = none
 [src/Core/Infrastructure/Platform/PlatformServiceCollectionExtensions.cs]
 dotnet_diagnostic.RS0030.severity = none
 
-[src/Core/Infrastructure/{Queues/ModuleQueueProcessor.cs,Cleanup/ModuleCleanupProcessor.cs}]
+[src/Core/Infrastructure/{Queues/ModuleQueueProcessor.cs,Queues/QueueSampler.cs,Cleanup/ModuleCleanupProcessor.cs}]
 dotnet_diagnostic.CA1031.severity = none
 
 [src/Core/Hosting/QueuesCommandHost.cs]

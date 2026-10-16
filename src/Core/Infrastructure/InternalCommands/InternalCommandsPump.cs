@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues;
@@ -14,6 +15,7 @@ namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
 public sealed class InternalCommandsPump<TModule>(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<QueueSettings> options,
+    QueueMetrics queueMetrics,
     InternalCommandRegistry<TModule> internalCommandRegistry,
     TimeProvider timeProvider,
     IHostApplicationLifetime hostApplicationLifetime,
@@ -21,6 +23,7 @@ public sealed class InternalCommandsPump<TModule>(
     : MessagePump<TModule, InternalCommandMessage>(
         serviceScopeFactory,
         options,
+        queueMetrics,
         timeProvider,
         hostApplicationLifetime,
         logger)

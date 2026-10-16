@@ -16,6 +16,8 @@ internal sealed record QueueTable(String Schema, String Table)
     public static IReadOnlyList<QueueTable> All { get; } =
         [.. GetTables(PingsDbContext.SchemaName), .. GetTables(PongsDbContext.SchemaName)];
 
+    public static IReadOnlyList<QueueTable> OfPings { get; } = [.. GetTables(PingsDbContext.SchemaName)];
+
     public String Name => $"{Schema}.{Table}";
 
     private String QualifiedName => $"\"{Schema}\".{Table}";
@@ -26,6 +28,22 @@ internal sealed record QueueTable(String Schema, String Table)
         $"""
         INSERT INTO {QualifiedName} (id, type, payload, attempts, next_attempt_on, processed_on, {BuildTimeColumns()})
         SELECT gen_random_uuid(), 'seeded', '{"{}"}', 1, {SeededOn}, {SeededOn}, {BuildTimeValues()}
+        FROM generate_series(1, {rows}), (SELECT now() - interval '1 day' AS {SeededOn}) AS seed
+        """;
+
+    public String BuildSeedFailedSql(Int32 rows) =>
+        $"""
+        INSERT INTO {QualifiedName}
+            (id, type, payload, attempts, next_attempt_on, failed_on, last_error, {BuildTimeColumns()})
+        SELECT gen_random_uuid(), 'seeded', '{"{}"}', 7, {SeededOn}, {SeededOn}, 'Seeded.Failure: seeded',
+               {BuildTimeValues()}
+        FROM generate_series(1, {rows}), (SELECT now() - interval '1 day' AS {SeededOn}) AS seed
+        """;
+
+    public String BuildSeedPendingSql(Int32 rows) =>
+        $"""
+        INSERT INTO {QualifiedName} (id, type, payload, attempts, next_attempt_on, {BuildTimeColumns()})
+        SELECT gen_random_uuid(), 'seeded', '{"{}"}', 0, {SeededOn}, {BuildTimeValues()}
         FROM generate_series(1, {rows}), (SELECT now() - interval '1 day' AS {SeededOn}) AS seed
         """;
 
@@ -57,7 +75,13 @@ internal sealed record QueueTable(String Schema, String Table)
     private static IEnumerable<QueueTable> GetTables(String schema) =>
         [new(schema, OutboxMessage.Table), new(schema, InboxMessage.Table), new(schema, InternalCommandMessage.Table)];
 
-    private String BuildTimeColumns() => HasReceivedOn ? "occurred_on, received_on" : "occurred_on";
+    private String BuildTimeColumns() =>
+        Table switch
+        {
+            InboxMessage.Table => "occurred_on, received_on",
+            InternalCommandMessage.Table => "enqueued_on",
+            _ => "occurred_on",
+        };
 
     private String BuildTimeValues() => HasReceivedOn ? $"{SeededOn}, {SeededOn}" : SeededOn;
 }

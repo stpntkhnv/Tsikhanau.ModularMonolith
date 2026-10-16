@@ -79,6 +79,13 @@ internal sealed class PerfDatabase : IAsyncDisposable
             new CommandDefinition(sql, commandTimeout: WithoutTimeout, cancellationToken: cancellationToken));
     }
 
+    public async Task<IReadOnlyList<T>> QueryAsync<T>(String sql, CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(ConnectionString, cancellationToken);
+        var rows = await connection.QueryAsync<T>(new CommandDefinition(sql, cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<T> QuerySingleAsync<T>(String sql, CancellationToken cancellationToken)
     {
         await using var connection = await OpenAsync(ConnectionString, cancellationToken);

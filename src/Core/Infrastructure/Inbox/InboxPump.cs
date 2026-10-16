@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Infrastructure.Dispatching.Invokers;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
@@ -15,12 +16,19 @@ namespace Tsikhanau.Monolith.Infrastructure.Inbox;
 public sealed class InboxPump<TModule>(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<QueueSettings> options,
+    QueueMetrics queueMetrics,
     IntegrationEventRegistry integrationEventRegistry,
     SubscriptionRegistry subscriptionRegistry,
     TimeProvider timeProvider,
     IHostApplicationLifetime hostApplicationLifetime,
     ILogger<InboxPump<TModule>> logger)
-    : MessagePump<TModule, InboxMessage>(serviceScopeFactory, options, timeProvider, hostApplicationLifetime, logger)
+    : MessagePump<TModule, InboxMessage>(
+        serviceScopeFactory,
+        options,
+        queueMetrics,
+        timeProvider,
+        hostApplicationLifetime,
+        logger)
     where TModule : IModuleFacade
 {
     protected override String Table => InboxMessage.Table;

@@ -19,6 +19,7 @@ namespace Tsikhanau.Monolith.Infrastructure.Queues;
 public abstract class MessagePump<TModule, TMessage>(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<QueueSettings> options,
+    QueueMetrics queueMetrics,
     TimeProvider timeProvider,
     IHostApplicationLifetime hostApplicationLifetime,
     ILogger logger)
@@ -26,9 +27,13 @@ public abstract class MessagePump<TModule, TMessage>(
     where TModule : IModuleFacade
     where TMessage : QueueMessage
 {
+    private const Int32 LockedRowCount = 1;
+
     private static readonly TimeSpan PastEndedLeases = TimeSpan.FromMicroseconds(1);
 
     private static readonly TimeSpan ShortCommandTimeout = TimeSpan.FromSeconds(5);
+
+    private QueueInstruments? _queueInstruments;
 
     protected abstract String Table { get; }
 
@@ -39,6 +44,9 @@ public abstract class MessagePump<TModule, TMessage>(
     private TimeSpan HandlerTimeout => options.Value.HandlerTimeout;
 
     private TimeSpan Lease => HandlerTimeout * 2;
+
+    private QueueInstruments QueueInstruments =>
+        _queueInstruments ??= queueMetrics.CreateInstruments(typeof(TModule), Table);
 
     Type ISecretRowRule.ModuleKey => typeof(TModule);
 
@@ -79,7 +87,7 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         using var activity = StartActivity(message);
         using var logScope = PumpLog.BeginMessageScope(logger, ModuleName, Table, message.Id, message.Type);
-        await ProcessAsync(message, cancellationToken);
+        await ProcessAsync(message, activity, cancellationToken);
     }
 
     internal async Task GiveBackUnstartedAsync(IReadOnlyCollection<TMessage> messages, String reason)
@@ -94,12 +102,16 @@ public abstract class MessagePump<TModule, TMessage>(
     internal Task GiveBackOnExitAsync(IReadOnlyCollection<TMessage> messages) =>
         WarnIfGiveBackFailsAsync(() => GiveBackAsync(messages), messages.Count);
 
-    internal Task GiveBackAsync(IReadOnlyCollection<TMessage> messages) =>
-        UpdateClaimedRowsAsync(
+    internal async Task GiveBackAsync(IReadOnlyCollection<TMessage> messages)
+    {
+        var givenBackCount = await UpdateClaimedRowsAsync(
             UntouchedSince(messages),
             setters => setters
                 .SetProperty(candidate => candidate.Attempts, candidate => candidate.Attempts - 1)
                 .SetProperty(candidate => candidate.NextAttemptOn, CalculateGivenBackDueOn()));
+
+        QueueInstruments.CountGivenBack(givenBackCount);
+    }
 
     protected abstract Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,
@@ -132,11 +144,11 @@ public abstract class MessagePump<TModule, TMessage>(
         }
     }
 
-    private async Task ProcessAsync(TMessage message, CancellationToken cancellationToken)
+    private async Task ProcessAsync(TMessage message, Activity? activity, CancellationToken cancellationToken)
     {
         if (RetryPolicy.HasRunOut(message.Attempts))
         {
-            await RecordFailureAsync(message, HandlingFailure.Abandoned(message.Attempts));
+            await RecordFailureAsync(message, HandlingFailure.Abandoned(message.Attempts), activity);
             return;
         }
 
@@ -145,7 +157,7 @@ public abstract class MessagePump<TModule, TMessage>(
             var failure = await HandleWithinDeadlineAsync(message, cancellationToken);
             if (failure.HasValue)
             {
-                await RecordFailureAsync(message, failure.Value);
+                await RecordFailureAsync(message, failure.Value, activity);
             }
         }
         catch (Exception) when (IsStopping(cancellationToken))
@@ -189,6 +201,7 @@ public abstract class MessagePump<TModule, TMessage>(
             return Optional<HandlingFailure>.None();
         }
 
+        using var handlingMeasurement = QueueInstruments.MeasureHandling(timeProvider);
         var processedOn = timeProvider.GetUtcNow();
         var outcome = await HandleAsync(
             scope.ServiceProvider,
@@ -203,6 +216,7 @@ public abstract class MessagePump<TModule, TMessage>(
         }
 
         await transaction.CommitAsync(cancellationToken);
+        QueueInstruments.CountProcessed(LockedRowCount);
         OnCommitted(lockedMessage.Value);
         return Optional<HandlingFailure>.None();
     }
@@ -213,6 +227,7 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         await using (var scope = serviceScopeFactory.CreateAsyncScope())
         {
+            using var handlingMeasurement = QueueInstruments.MeasureHandling(timeProvider);
             var outcome = await HandleOutsideTransactionAsync(scope.ServiceProvider, message, cancellationToken);
             if (scope.ServiceProvider.GetRequiredService<IUnitOfWork<TModule>>().HasChanges)
             {
@@ -285,14 +300,15 @@ public abstract class MessagePump<TModule, TMessage>(
         return $"SET LOCAL transaction_timeout = {milliseconds}";
     }
 
-    private Task RecordFailureAsync(TMessage message, HandlingFailure failure)
+    private async Task RecordFailureAsync(TMessage message, HandlingFailure failure, Activity? activity)
     {
+        activity?.SetStatus(ActivityStatusCode.Error, failure.Code);
         var decision = RetryPolicy.Decide(message.Attempts, failure, timeProvider.GetUtcNow());
         var isSecret = IsSecret(message);
         var lastError = isSecret ? failure.Code : failure.Reason;
         var erasesPayload = isSecret && decision.HasGivenUp;
         LogFailure(failure, decision, isSecret);
-        return UpdateClaimedRowsAsync(
+        var recordedCount = await UpdateClaimedRowsAsync(
             UntouchedSince(message),
             setters =>
             {
@@ -306,15 +322,32 @@ public abstract class MessagePump<TModule, TMessage>(
                     setters.SetProperty(candidate => candidate.Payload, QueueMessage.ErasedPayload);
                 }
             });
+
+        CountRecordedFailure(decision, recordedCount);
     }
 
-    private Task MarkProcessedAsync(TMessage message, DateTimeOffset processedOn) =>
-        UpdateClaimedRowsAsync(
+    private void CountRecordedFailure(RetryDecision decision, Int32 recordedCount)
+    {
+        if (decision.HasGivenUp)
+        {
+            QueueInstruments.CountFailed(recordedCount);
+            return;
+        }
+
+        QueueInstruments.CountRetried(recordedCount);
+    }
+
+    private async Task MarkProcessedAsync(TMessage message, DateTimeOffset processedOn)
+    {
+        var processedCount = await UpdateClaimedRowsAsync(
             UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.ProcessedOn, processedOn)
                 .SetProperty(candidate => candidate.Payload, message.Payload)
                 .SetProperty(candidate => candidate.LastError, message.LastError));
+
+        QueueInstruments.CountProcessed(processedCount);
+    }
 
     private Task GiveBackOnExitAsync(TMessage message) =>
         WarnIfGiveBackFailsAsync(() => GiveBackAsync(message), count: 1);
@@ -335,23 +368,27 @@ public abstract class MessagePump<TModule, TMessage>(
         }
     }
 
-    private Task GiveBackAsync(TMessage message) =>
-        UpdateClaimedRowsAsync(
+    private async Task GiveBackAsync(TMessage message)
+    {
+        var givenBackCount = await UpdateClaimedRowsAsync(
             UntouchedSince(message),
             setters => setters
                 .SetProperty(candidate => candidate.Attempts, message.Attempts - 1)
                 .SetProperty(candidate => candidate.NextAttemptOn, CalculateGivenBackDueOn()));
 
+        QueueInstruments.CountGivenBack(givenBackCount);
+    }
+
     private DateTimeOffset CalculateGivenBackDueOn() => timeProvider.GetUtcNow() + PastEndedLeases;
 
-    private async Task UpdateClaimedRowsAsync(
+    private async Task<Int32> UpdateClaimedRowsAsync(
         Expression<Func<TMessage, Boolean>> untouchedSinceClaimed,
         Action<UpdateSettersBuilder<TMessage>> setPropertyCalls)
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var moduleContext = scope.ServiceProvider.GetRequiredService<ModuleContext<TModule>>();
         moduleContext.DbContext.Database.SetCommandTimeout(ShortCommandTimeout);
-        await moduleContext.DbContext
+        return await moduleContext.DbContext
             .Set<TMessage>()
             .Where(untouchedSinceClaimed)
             .ExecuteUpdateAsync(setPropertyCalls, CancellationToken.None);

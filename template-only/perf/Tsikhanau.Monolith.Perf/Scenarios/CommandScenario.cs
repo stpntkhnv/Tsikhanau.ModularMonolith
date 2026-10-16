@@ -26,6 +26,9 @@ internal sealed class CommandScenario : IScenario
             cancellationToken);
 
         var pingsModule = host.Services.GetRequiredService<IPingsModule>();
+        IReadOnlyCollection<CoreMeterListener> coreMeterListeners =
+            [host.Services.GetRequiredService<CoreMeterListener>()];
+
         var pingCreator = new PingCreator();
         await LoadGenerator.RunAsync("warmup", WarmupConcurrency, warmupOperations, CreatePingAsync);
         await LoadGenerator.RunAsync("warmup-seq", 1, warmupOperations / 2, CreatePingAsync);
@@ -34,8 +37,10 @@ internal sealed class CommandScenario : IScenario
             foreach (var concurrency in concurrencies)
             {
                 await database.ResetStatementsAsync(cancellationToken);
+                var measurementCountBefore = CoreMeterListener.CountMeasurements(coreMeterListeners);
                 var result = await LoadGenerator.RunAsync("create", concurrency, operations, CreatePingAsync);
                 Console.WriteLine(result);
+                Console.WriteLine(CoreMeterListener.BuildLine(coreMeterListeners, measurementCountBefore));
                 if (repeat == 0 && concurrency == concurrencies[0])
                 {
                     await StatementReport.WriteAsync(database, operations, cancellationToken);
