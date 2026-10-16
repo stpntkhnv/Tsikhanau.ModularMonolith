@@ -24,6 +24,7 @@ noted_files=(
   App.Packages.props
   src/Aspire/$name.AppHost/$name.AppHost.csproj
   src/Tests/IntegrationTests/Host/HostProcessTests.cs
+  src/Tests/IntegrationTests/Host/TelemetrySourceTests.cs
 )
 host=src/Bootstrapper/$name.Bootstrapper
 closed_port_connection="Host=127.0.0.1;Port=1;Database=${name,,};Username=postgres;Password=postgres;SSL Mode=Disable"
