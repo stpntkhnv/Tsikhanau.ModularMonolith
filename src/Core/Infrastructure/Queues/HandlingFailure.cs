@@ -22,14 +22,13 @@ internal readonly partial record struct HandlingFailure(
 
     public String CodeAndExceptionType => Exception is null ? Code : $"{Code} ({Exception.GetType().Name})";
 
-    public static Optional<String> FindCode(String lastError, Boolean isSecret)
+    public static Optional<String> FindCode(String lastError)
     {
         var textBeforeSeparator = lastError
             .Split(CodeSeparator, count: 2)
             .First();
 
-        var codePattern = isSecret ? DottedCodePattern : CodePattern;
-        return codePattern.IsMatch(textBeforeSeparator) ? textBeforeSeparator : Optional<String>.None();
+        return CodePattern.IsMatch(textBeforeSeparator) ? textBeforeSeparator : Optional<String>.None();
     }
 
     public static HandlingFailure From(Error error) =>
@@ -54,7 +53,4 @@ internal readonly partial record struct HandlingFailure(
 
     [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)*\z")]
     private static partial Regex CodePattern { get; }
-
-    [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)+\z")]
-    private static partial Regex DottedCodePattern { get; }
 }

@@ -47,25 +47,29 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
 
     private static String SerializeRow(DbDataReader reader, ISecretRowRule secretRowRule)
     {
-        var isSecret = secretRowRule.IsSecret(
-            reader.GetFieldValue<String>(reader.GetOrdinal(TypeColumn)),
-            reader.GetFieldValue<Boolean>(reader.GetOrdinal(ContainsSecretsColumn)));
-
+        var type = reader.GetFieldValue<String>(reader.GetOrdinal(TypeColumn));
+        var containsSecrets = reader.GetFieldValue<Boolean>(reader.GetOrdinal(ContainsSecretsColumn));
+        var isSecret = secretRowRule.IsSecret(type, containsSecrets);
+        var mayQuoteSecret = secretRowRule.MayQuoteItsSecret(type, containsSecrets, HasErasedPayload(reader));
         var row = Enumerable
             .Range(0, reader.FieldCount)
-            .ToDictionary(reader.GetName, ordinal => ReadValue(reader, ordinal, isSecret));
+            .ToDictionary(reader.GetName, ordinal => ReadValue(reader, ordinal, isSecret, mayQuoteSecret));
 
         return JsonSerializer.Serialize(row);
     }
 
-    private static Object? ReadValue(DbDataReader reader, Int32 ordinal, Boolean isSecret) =>
+    private static Boolean HasErasedPayload(DbDataReader reader) =>
+        reader.GetFieldValue<String>(reader.GetOrdinal(PayloadColumn)) == QueueMessage.ErasedPayload;
+
+    private static Object? ReadValue(DbDataReader reader, Int32 ordinal, Boolean isSecret, Boolean mayQuoteSecret) =>
         (reader.GetName(ordinal), reader.GetValue(ordinal)) switch
         {
             (_, DBNull) => null,
             (PayloadColumn, _) when isSecret => ErasedPayload,
             (PayloadColumn, String payload) => JsonElement.Parse(payload),
+            (LastErrorColumn, _) when mayQuoteSecret => null,
             (LastErrorColumn, String lastError) when isSecret => HandlingFailure
-                .FindCode(lastError, isSecret)
+                .FindCode(lastError)
                 .GetValueOrDefault(),
             (_, DateTime timestamp) => timestamp.ToString("O", CultureInfo.InvariantCulture),
             (_, var value) => value,

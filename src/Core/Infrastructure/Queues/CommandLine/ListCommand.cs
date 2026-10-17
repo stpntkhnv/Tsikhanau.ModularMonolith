@@ -52,7 +52,10 @@ internal sealed class ListCommand : IQueuesCommand
         {
             var secretRowRule = serviceProvider.ResolveSecretRowRule(module, queue);
             var failedMessages = await connection.QueryAsync<FailedMessageRow>(
-                new CommandDefinition(BuildSql(module.Schema, queue), cancellationToken: cancellationToken));
+                new CommandDefinition(
+                    BuildSql(module.Schema, queue),
+                    new { QueueMessage.ErasedPayload },
+                    cancellationToken: cancellationToken));
 
             lines.AddRange(
                 failedMessages.Select(failedMessage => failedMessage.BuildLine(module.Name, queue, secretRowRule)));
@@ -62,7 +65,7 @@ internal sealed class ListCommand : IQueuesCommand
     private static String BuildSql(String schema, String queue) =>
         $"""
         SELECT id AS "Id", type AS "Type", attempts AS "Attempts", failed_on AS "FailedOn", last_error AS "LastError",
-            contains_secrets AS "ContainsSecrets"
+            contains_secrets AS "ContainsSecrets", payload = @ErasedPayload::jsonb AS "HasErasedPayload"
         FROM "{schema}".{queue}
         WHERE failed_on IS NOT NULL
         ORDER BY failed_on, id

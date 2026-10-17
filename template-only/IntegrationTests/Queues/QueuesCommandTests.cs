@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
@@ -34,6 +35,12 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
     private const String NotFailed = "has not failed";
 
     private const String Secret = "s3cret";
+
+    private const String DottedSecret = "s3cret.token";
+
+    private const String DottedSecretWithDetail = "s3cret.token: rejected";
+
+    private const String JwtShapedError = "eyJhbGciOiJIUzI1NiJ9.eyJzZWNyZXQiOiJzM2NyZXQifQ.SflKxwRJSMeKKF2QT4fwpM";
 
     private const String PingCreatedType = "pings.ping-created";
 
@@ -125,7 +132,7 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
             TestStartedOn.AddSeconds(2),
             RejectedError));
 
-        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.FailedWithErasedPayload(
             CreateId(4),
             PingSecretSentType,
             attempts: 7,
@@ -235,10 +242,14 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
     }
 
     [Theory]
-    [InlineData(Secret, "")]
-    [InlineData("validation", "")]
-    [InlineData("scaffold.app-layout", "scaffold.app-layout")]
-    public async Task List_prints_the_code_of_a_secret_row_only_when_it_is_dotted(String lastError, String code)
+    [InlineData(Secret)]
+    [InlineData(DottedSecret)]
+    [InlineData(DottedSecretWithDetail)]
+    [InlineData(JwtShapedError)]
+    [InlineData("validation")]
+    [InlineData("scaffold.app-layout")]
+    public async Task List_prints_no_code_for_a_secret_row_that_kept_its_payload_whatever_its_error_text(
+        String lastError)
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
@@ -254,6 +265,32 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
 
         list.ExitCode.ShouldBe(Done, list.Error);
         list.Output.ShouldNotContain(Secret);
+        lines.ShouldBe(
+        [
+            Header,
+            $"Pongs\tinbox_messages\t{CreateId(1)}\t{PingSecretSentType}\t7\t2026-09-28T08:00:00.0000000Z\t",
+        ]);
+    }
+
+    [Theory]
+    [InlineData("validation")]
+    [InlineData("scaffold.app-layout")]
+    [InlineData("Handler.Exception")]
+    public async Task List_prints_the_code_of_a_secret_row_whose_payload_was_erased(String code)
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.FailedWithErasedPayload(
+            CreateId(1),
+            PingSecretSentType,
+            attempts: 7,
+            TestStartedOn,
+            code));
+
+        var list = await RunAsync(testModulesHost, "list");
+
+        var lines = ReadLines(list.Output);
+
+        list.ExitCode.ShouldBe(Done, list.Error);
         lines.ShouldBe(
         [
             Header,
@@ -399,6 +436,7 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         discard.ExitCode.ShouldBe(Done, discard.Error);
         discardedRow.Id.ShouldBe(failedRow.Id);
         discardedRow.Payload.ShouldBeEmpty();
+        discardedRow.LastError.ShouldBe("Pong.SecretRefused");
         discardedRow.ContainsSecrets.ShouldBeTrue();
         discard.Output.ShouldNotContain(Secret);
         rowsAfter.ShouldNotContain(row => row.Id == failedRow.Id);
@@ -407,7 +445,7 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
     [Theory]
     [InlineData(PingSecretSentType, false, "Handler.Exception")]
     [InlineData(SecretOfALaterReleaseIntegrationEvent.Name, true, "Messaging.UnknownType")]
-    public async Task Discard_of_a_secret_row_that_kept_its_secret_prints_neither_its_payload_nor_its_error_detail(
+    public async Task Discard_of_a_secret_row_that_kept_its_secret_prints_neither_its_payload_nor_its_error(
         String type,
         Boolean containsSecrets,
         String code)
@@ -435,26 +473,25 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         discardedRow.Id.ShouldBe(messageId);
         discardedRow.Type.ShouldBe(type);
         discardedRow.Payload.ShouldBeEmpty();
-        discardedRow.LastError.ShouldBe(code);
+        discardedRow.LastError.ShouldBeNull();
         discardedRow.ContainsSecrets.ShouldBe(containsSecrets);
         rowsAfter.ShouldBeEmpty();
     }
 
     [Theory]
-    [InlineData("validation", null)]
-    [InlineData("scaffold.app-layout", "scaffold.app-layout")]
-    public async Task Discard_of_a_secret_row_prints_its_error_only_when_it_is_a_dotted_code(
-        String lastError,
-        String? printedError)
+    [InlineData("validation")]
+    [InlineData("scaffold.app-layout")]
+    [InlineData("Handler.Exception")]
+    public async Task Discard_of_a_secret_row_whose_payload_was_erased_prints_its_code(String code)
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         var messageId = CreateId(1);
-        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.Failed(
+        await InsertAsync(testModulesHost, "pongs", InboxMessages, SeedRow.FailedWithErasedPayload(
             messageId,
             PingSecretSentType,
             attempts: 7,
             TestStartedOn,
-            lastError));
+            code));
 
         var discard = await RunAsync(testModulesHost, "discard", Pongs, InboxMessages, messageId.ToString());
 
@@ -462,11 +499,16 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
 
         discard.ExitCode.ShouldBe(Done, discard.Error);
         discardedRow.Payload.ShouldBeEmpty();
-        discardedRow.LastError.ShouldBe(printedError);
+        discardedRow.LastError.ShouldBe(code);
     }
 
     [Theory]
     [InlineData(Secret)]
+    [InlineData(DottedSecret)]
+    [InlineData(DottedSecretWithDetail)]
+    [InlineData(JwtShapedError)]
+    [InlineData("validation")]
+    [InlineData("scaffold.app-layout")]
     [InlineData("the handler saw s3cret")]
     [InlineData("card refused: s3cret")]
     [InlineData("line one\nline two: s3cret")]
@@ -587,6 +629,30 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
         run.Error.ShouldContain(reason);
         run.Error.ShouldContain(Usage);
         rowsAfter.ShouldBe([failedRow]);
+    }
+
+    [Fact]
+    public async Task Unknown_module_in_an_app_without_modules_is_a_usage_error_that_says_no_modules_are_registered()
+    {
+        await using var serviceProvider = new ServiceCollection()
+            .AddSingleton(new ModuleRegistry())
+            .BuildServiceProvider();
+
+        using var outputTextWriter = new StringWriter(CultureInfo.InvariantCulture);
+        using var errorTextWriter = new StringWriter(CultureInfo.InvariantCulture);
+        var queuesTool = new QueuesTool(serviceProvider, outputTextWriter, errorTextWriter);
+
+        var exitCode = await queuesTool.RunAsync(
+            ["retry", "Nobody", InboxMessages, $"{CreateId(1)}"],
+            CancellationToken);
+
+        var output = outputTextWriter.ToString();
+        var error = errorTextWriter.ToString();
+
+        exitCode.ShouldBe(UsageError);
+        output.ShouldBeEmpty();
+        error.ShouldContain("unknown module 'Nobody'; no modules are registered");
+        error.ShouldContain(Usage);
     }
 
     [Fact]
@@ -900,6 +966,14 @@ public sealed class QueuesCommandTests(PostgresFixture postgresFixture)
                 LastError = lastError,
                 FailedOn = failedOn,
             };
+
+        public static SeedRow FailedWithErasedPayload(
+            Guid id,
+            String type,
+            Int32 attempts,
+            DateTimeOffset failedOn,
+            String code) =>
+            Failed(id, type, attempts, failedOn, code) with { Payload = "{}" };
 
         public static SeedRow Pending(Guid id, DateTimeOffset dueOn) =>
             new(id, "pings.ping-created", 0, dueOn) { Payload = BuildPayload(id) };

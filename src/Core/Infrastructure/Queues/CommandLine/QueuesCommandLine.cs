@@ -44,11 +44,15 @@ internal static class QueuesCommandLine
     private static Result<ModuleDescriptor> FindModule(ModuleRegistry moduleRegistry, String moduleName) =>
         Optional<ModuleDescriptor>
             .FromNullable(moduleRegistry.Modules.FirstOrDefault(module => IsNamed(module, moduleName)))
-            .ToResult(() => BuildUsageError(
-                $"unknown module '{moduleName}'; the modules are {JoinModuleNames(moduleRegistry)}"));
+            .ToResult(() => BuildUsageError($"unknown module '{moduleName}'; {DescribeModules(moduleRegistry)}"));
 
     private static Boolean IsNamed(ModuleDescriptor module, String moduleName) =>
         String.Equals(module.Name, moduleName, StringComparison.OrdinalIgnoreCase);
+
+    private static String DescribeModules(ModuleRegistry moduleRegistry) =>
+        moduleRegistry.Modules.Count == 0
+            ? "no modules are registered"
+            : $"the modules are {JoinModuleNames(moduleRegistry)}";
 
     private static String JoinModuleNames(ModuleRegistry moduleRegistry)
     {

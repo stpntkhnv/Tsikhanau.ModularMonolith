@@ -12,4 +12,10 @@ internal static class SecretRowRuleExtensions
                 .GetServices<ISecretRowRule>()
                 .Single(secretRowRule => secretRowRule.ModuleKey == module.Key && secretRowRule.Table == queue);
     }
+
+    extension(ISecretRowRule secretRowRule)
+    {
+        public Boolean MayQuoteItsSecret(String type, Boolean containsSecrets, Boolean hasErasedPayload) =>
+            !hasErasedPayload && secretRowRule.IsSecret(type, containsSecrets);
+    }
 }
