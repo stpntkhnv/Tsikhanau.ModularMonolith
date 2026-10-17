@@ -1,21 +1,17 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Hosting;
-using Npgsql;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 
-namespace Tsikhanau.Monolith.IntegrationTests.Host;
+namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
 public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
 {
     private const String UnixOnly = "the test sends Unix signals to the test host";
 
-    private const String UrlsKey = "ASPNETCORE_URLS";
+    private const String UrlsKey = TestHostEnvironment.UrlsKey;
 
     private const String PollIntervalKey = "App__Queues__PollInterval";
 
@@ -43,9 +39,9 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
 
     private const String StopBarrierReleased = "probe: stop barrier released on";
 
-    private const String PassHandledOne = "probe: Pongs pass handled 1";
+    private const String PassHandledOne = "probe: Pongs pass handled 1\n";
 
-    private const String PassHandledNone = "probe: Pongs pass handled 0";
+    private const String PassHandledNone = "probe: Pongs pass handled 0\n";
 
     private const String AbandonedAtShutdown = "IPongsModule handler abandoned at shutdown";
 
@@ -181,7 +177,7 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         exit.Code.ShouldBe(0, exit.Text);
         exit.SinceSignal.ShouldBeLessThan(ShutdownTimeout);
         exit.Output.ShouldContain(PongHandlerEnds);
-        exit.Output.ShouldContain(StopBarrierReleased);
+        exit.Output.ShouldContain($"{StopBarrierReleased} given_back");
         ShouldBeGivenBack(stoppedRow, LongHandlerTimeout);
         pongCount.ShouldBe(0);
         await RecoverAsync(connectionString, stoppedRow, () => CountPongsAsync(connectionString));
@@ -311,43 +307,19 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         (row.NextAttemptOn - row.ReceivedOn).ShouldBeInRange(2 * handlerTimeout, 2 * handlerTimeout + ClaimDelayLimit);
     }
 
-    private async Task<String> CreateDatabaseAsync()
-    {
-        var databaseName = $"shutdown_{Guid.CreateVersion7():N}";
-        await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync($"CREATE DATABASE {databaseName}");
-        return new NpgsqlConnectionStringBuilder(postgresFixture.ConnectionString)
-        {
-            Database = databaseName,
-            SslMode = SslMode.Disable,
-        }.ConnectionString;
-    }
+    private Task<String> CreateDatabaseAsync() =>
+        TestHostEnvironment.CreateDatabaseAsync(postgresFixture.ConnectionString, "shutdown");
 
-    private static Dictionary<String, String> CreateEnvironment(String connectionString, TimeSpan handlerTimeout) =>
-        new()
-        {
-            ["ASPNETCORE_ENVIRONMENT"] = Environments.Production,
-            ["DOTNET_ENVIRONMENT"] = Environments.Production,
-            [UrlsKey] = $"http://127.0.0.1:{GetFreePort()}",
-            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = String.Empty,
-            ["ConnectionStrings__database"] = connectionString,
-            ["App__Database__LoginKey"] = TestSettings.LoginKey,
-            ["App__Database__PrepareMode"] = "OnStartup",
-            ["App__Queues__RunInBackground"] = "true",
-            ["App__Queues__HandlerTimeout"] = FormatDuration(handlerTimeout),
-            [PollIntervalKey] = FormatDuration(TimeSpan.FromMilliseconds(250)),
-            [CleanupInBackgroundKey] = "false",
-            ["App__Modules__Pings__Limit"] = "10",
-            ["App__Modules__Pongs__Limit"] = "10",
-        };
+    private static Dictionary<String, String> CreateEnvironment(String connectionString, TimeSpan handlerTimeout)
+    {
+        var environment = TestHostEnvironment.Create(connectionString);
+        environment["App__Queues__HandlerTimeout"] = FormatDuration(handlerTimeout);
+        environment[PollIntervalKey] = FormatDuration(TimeSpan.FromMilliseconds(250));
+        environment[CleanupInBackgroundKey] = "false";
+        return environment;
+    }
 
     private static String FormatDuration(TimeSpan duration) => duration.ToString("c", CultureInfo.InvariantCulture);
-
-    private static Int32 GetFreePort()
-    {
-        using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
-        tcpListener.Start();
-        return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
-    }
 
     private static async Task<InboxRow> ReadInboxRowAsync(String connectionString)
     {

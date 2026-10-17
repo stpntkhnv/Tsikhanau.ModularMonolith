@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Tsikhanau.Monolith.Infrastructure.Database;
@@ -62,7 +61,9 @@ public sealed class PrepareModeTests(PostgresFixture postgresFixture)
         using var takenPort = new TcpListener(IPAddress.Loopback, 0);
         takenPort.Start();
         var environment = CreateEnvironment(Only, connectionString);
-        environment["ASPNETCORE_URLS"] = BuildUrl(((IPEndPoint)takenPort.LocalEndpoint).Port);
+        environment[TestHostEnvironment.UrlsKey] = TestHostEnvironment.BuildUrl(
+            ((IPEndPoint)takenPort.LocalEndpoint).Port);
+
         var startRecordPath = environment["TestHost__StartRecordPath"];
 
         using var testHost = TestHostProcess.Start(environment);
@@ -91,7 +92,7 @@ public sealed class PrepareModeTests(PostgresFixture postgresFixture)
     {
         var connectionString = await CreatePreparedDatabaseAsync();
         var environment = CreateEnvironment(Never, BuildWithoutCredentials(connectionString));
-        var url = environment["ASPNETCORE_URLS"];
+        var url = environment[TestHostEnvironment.UrlsKey];
         var startRecordPath = environment["TestHost__StartRecordPath"];
 
         using var testHost = TestHostProcess.Start(environment);
@@ -248,22 +249,16 @@ public sealed class PrepareModeTests(PostgresFixture postgresFixture)
         exit.Text.ShouldContain(refusal);
     }
 
-    private static Dictionary<String, String> CreateEnvironment(String prepareMode, String connectionString) =>
-        new()
-        {
-            ["ASPNETCORE_ENVIRONMENT"] = Environments.Production,
-            ["DOTNET_ENVIRONMENT"] = Environments.Production,
-            ["ASPNETCORE_URLS"] = BuildUrl(GetFreePort()),
-            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = String.Empty,
-            ["ConnectionStrings__database"] = connectionString,
-            ["App__Database__LoginKey"] = TestSettings.LoginKey,
-            ["App__Database__PrepareMode"] = prepareMode,
-            ["App__Queues__RunInBackground"] = "true",
-            ["App__Cleanup__RunInBackground"] = "true",
-            ["App__Modules__Pings__Limit"] = "10",
-            ["App__Modules__Pongs__Limit"] = "10",
-            ["TestHost__StartRecordPath"] = Path.Combine(Path.GetTempPath(), $"started-{Guid.CreateVersion7():N}"),
-        };
+    private static Dictionary<String, String> CreateEnvironment(String prepareMode, String connectionString)
+    {
+        var environment = TestHostEnvironment.Create(connectionString);
+        environment["App__Database__PrepareMode"] = prepareMode;
+        environment["TestHost__StartRecordPath"] = BuildStartRecordPath();
+        return environment;
+    }
+
+    private static String BuildStartRecordPath() =>
+        Path.Combine(Path.GetTempPath(), $"started-{Guid.CreateVersion7():N}");
 
     private static async Task<TestHostExit> RunAsync(String prepareMode, String connectionString)
     {
@@ -286,18 +281,9 @@ public sealed class PrepareModeTests(PostgresFixture postgresFixture)
     private static String BuildWithClosedPort(String connectionString) =>
         new NpgsqlConnectionStringBuilder(connectionString)
         {
-            Port = GetFreePort(),
+            Port = TestHostEnvironment.GetFreePort(),
             SslMode = SslMode.Disable,
         }.ConnectionString;
-
-    private static String BuildUrl(Int32 port) => $"http://127.0.0.1:{port}";
-
-    private static Int32 GetFreePort()
-    {
-        using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
-        tcpListener.Start();
-        return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
-    }
 
     private static String ReadDatabaseName(String connectionString) =>
         new NpgsqlConnectionStringBuilder(connectionString).Database ?? String.Empty;
@@ -310,16 +296,8 @@ public sealed class PrepareModeTests(PostgresFixture postgresFixture)
         }
     }
 
-    private static async Task<String> CreateDatabaseAsync(String serverConnectionString)
-    {
-        var databaseName = $"prepare_mode_{Guid.CreateVersion7():N}";
-        await new DatabaseProbe(serverConnectionString).ExecuteAsync($"CREATE DATABASE {databaseName}");
-        return new NpgsqlConnectionStringBuilder(serverConnectionString)
-        {
-            Database = databaseName,
-            SslMode = SslMode.Disable,
-        }.ConnectionString;
-    }
+    private static Task<String> CreateDatabaseAsync(String serverConnectionString) =>
+        TestHostEnvironment.CreateDatabaseAsync(serverConnectionString, "prepare_mode");
 
     private static async Task CreateModuleLoginsAsync(String connectionString)
     {

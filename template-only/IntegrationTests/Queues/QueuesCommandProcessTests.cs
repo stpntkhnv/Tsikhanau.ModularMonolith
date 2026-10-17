@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
@@ -69,7 +68,9 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
         using var takenPort = new TcpListener(IPAddress.Loopback, 0);
         takenPort.Start();
         var environment = CreateEnvironment(OnStartup, connectionString, Environments.Development);
-        environment["ASPNETCORE_URLS"] = BuildUrl(((IPEndPoint)takenPort.LocalEndpoint).Port);
+        environment[TestHostEnvironment.UrlsKey] = TestHostEnvironment.BuildUrl(
+            ((IPEndPoint)takenPort.LocalEndpoint).Port);
+
 
         var exit = await RunAsync(environment, "queues", "list");
 
@@ -182,22 +183,16 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
     private static Dictionary<String, String> CreateEnvironment(
         String prepareMode,
         String connectionString,
-        String environmentName) =>
-        new()
-        {
-            ["ASPNETCORE_ENVIRONMENT"] = environmentName,
-            ["DOTNET_ENVIRONMENT"] = environmentName,
-            ["ASPNETCORE_URLS"] = BuildUrl(GetFreePort()),
-            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = String.Empty,
-            ["ConnectionStrings__database"] = connectionString,
-            ["App__Database__LoginKey"] = TestSettings.LoginKey,
-            ["App__Database__PrepareMode"] = prepareMode,
-            ["App__Queues__RunInBackground"] = "true",
-            ["App__Cleanup__RunInBackground"] = "true",
-            ["App__Modules__Pings__Limit"] = "10",
-            ["App__Modules__Pongs__Limit"] = "10",
-            ["TestHost__StartRecordPath"] = Path.Combine(Path.GetTempPath(), $"started-{Guid.CreateVersion7():N}"),
-        };
+        String environmentName)
+    {
+        var environment = TestHostEnvironment.Create(connectionString, environmentName);
+        environment["App__Database__PrepareMode"] = prepareMode;
+        environment["TestHost__StartRecordPath"] = BuildStartRecordPath();
+        return environment;
+    }
+
+    private static String BuildStartRecordPath() =>
+        Path.Combine(Path.GetTempPath(), $"started-{Guid.CreateVersion7():N}");
 
     private async Task<String> CreatePreparedDatabaseAsync()
     {
@@ -209,16 +204,8 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
         return connectionString;
     }
 
-    private async Task<String> CreateDatabaseAsync()
-    {
-        var databaseName = $"queues_command_{Guid.CreateVersion7():N}";
-        await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync($"CREATE DATABASE {databaseName}");
-        return new NpgsqlConnectionStringBuilder(postgresFixture.ConnectionString)
-        {
-            Database = databaseName,
-            SslMode = SslMode.Disable,
-        }.ConnectionString;
-    }
+    private Task<String> CreateDatabaseAsync() =>
+        TestHostEnvironment.CreateDatabaseAsync(postgresFixture.ConnectionString, "queues_command");
 
     private static Task InsertFailedRowAsync(String connectionString) =>
         new DatabaseProbe(connectionString).ExecuteAsync(
@@ -235,14 +222,5 @@ public sealed class QueuesCommandProcessTests(PostgresFixture postgresFixture)
             Database = connectionStringBuilder.Database,
             SslMode = SslMode.Disable,
         }.ConnectionString;
-    }
-
-    private static String BuildUrl(Int32 port) => $"http://127.0.0.1:{port}";
-
-    private static Int32 GetFreePort()
-    {
-        using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
-        tcpListener.Start();
-        return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
     }
 }

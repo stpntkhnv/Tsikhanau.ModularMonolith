@@ -14,6 +14,8 @@ public sealed class TwoVersionsTests(PostgresFixture postgresFixture)
 
     private const String ReadOutboxLastErrorSql = "SELECT last_error FROM pings.outbox_messages WHERE type = @Type";
 
+    private const String ReadInboxLastErrorSql = "SELECT last_error FROM pongs.inbox_messages WHERE type = @Type";
+
     private const String ReadPongLabelsSql = "SELECT label FROM pongs.pongs WHERE ping_id = @PingId";
 
     private static readonly TimeSpan PastTheFirstBackoff = TimeSpan.FromSeconds(2);
@@ -41,8 +43,18 @@ public sealed class TwoVersionsTests(PostgresFixture postgresFixture)
         var inboxRowsAfterClaim = await olderInstance.ReadInboxRowsAsync();
         Advance(PastTheFirstBackoff, olderInstance, newerInstance);
 
-        await newerInstance.ProcessQueuesAsync();
+        await newerInstance.DeliverOutboxAsync();
         var deliveredOutboxRows = await newerInstance.ReadOutboxRowsAsync();
+        await olderInstance.ProcessInboxAsync(CancellationToken);
+        var claimedInboxRows = await olderInstance.ReadInboxRowsAsync();
+        var claimedInboxLastError = await ReadInboxLastErrorAsync(
+            olderInstance,
+            PingOfALaterReleaseIntegrationEvent.Name);
+
+        var pongLabelsAfterInboxClaim = await ReadPongLabelsAsync(olderInstance, publishedEvent.PingId);
+        Advance(PastTheFirstBackoff, olderInstance, newerInstance);
+
+        await newerInstance.ProcessQueuesAsync();
         var handledInboxRows = await newerInstance.ReadInboxRowsAsync();
         var pongLabels = await ReadPongLabelsAsync(newerInstance, publishedEvent.PingId);
         Advance(PastEveryLeaseAndBackoff, olderInstance, newerInstance);
@@ -64,9 +76,16 @@ public sealed class TwoVersionsTests(PostgresFixture postgresFixture)
         var deliveredRow = deliveredOutboxRows.ShouldHaveSingleItem();
         deliveredRow.Attempts.ShouldBe(2);
         deliveredRow.IsProcessed.ShouldBeTrue();
+        var claimedInboxRow = claimedInboxRows.ShouldHaveSingleItem();
+        claimedInboxRow.Id.ShouldBe(publishedEvent.Id);
+        claimedInboxRow.Attempts.ShouldBe(1);
+        claimedInboxRow.IsProcessed.ShouldBeFalse();
+        claimedInboxRow.HasFailed.ShouldBeFalse();
+        claimedInboxLastError.ShouldStartWith($"{UnknownTypeCode}: ");
+        pongLabelsAfterInboxClaim.ShouldBeEmpty();
         var handledRow = handledInboxRows.ShouldHaveSingleItem();
         handledRow.Id.ShouldBe(publishedEvent.Id);
-        handledRow.Attempts.ShouldBe(1);
+        handledRow.Attempts.ShouldBe(2);
         handledRow.IsProcessed.ShouldBeTrue();
         pongLabels.ShouldBe([Label]);
         outboxRowsAfterAnotherPass.ShouldBe(deliveredOutboxRows);
@@ -132,6 +151,9 @@ public sealed class TwoVersionsTests(PostgresFixture postgresFixture)
 
     private static Task<String?> ReadOutboxLastErrorAsync(TestModulesHost testModulesHost, String type) =>
         testModulesHost.Database.ExecuteScalarAsync<String?>(ReadOutboxLastErrorSql, new { Type = type });
+
+    private static Task<String?> ReadInboxLastErrorAsync(TestModulesHost testModulesHost, String type) =>
+        testModulesHost.Database.ExecuteScalarAsync<String?>(ReadInboxLastErrorSql, new { Type = type });
 
     private static Task<IReadOnlyList<String>> ReadPongLabelsAsync(TestModulesHost testModulesHost, Guid pingId) =>
         testModulesHost.Database.QueryAsync<String>(ReadPongLabelsSql, new { PingId = pingId });

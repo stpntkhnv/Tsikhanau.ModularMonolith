@@ -136,6 +136,8 @@ internal sealed class TestHostProcess : IDisposable
             ["-c", SendsSignal, Terminate, _process.Id.ToString(CultureInfo.InvariantCulture)]);
 
         await signalProcess.WaitForExitAsync(CancellationToken);
+
+        signalProcess.ExitCode.ShouldBe(0, "kill -s TERM failed");
     }
 
     public async Task TerminateAsync(TimeSpan gracePeriod)

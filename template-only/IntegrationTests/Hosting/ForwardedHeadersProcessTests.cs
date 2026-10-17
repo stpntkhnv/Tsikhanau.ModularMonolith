@@ -1,9 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
-using Microsoft.Extensions.Hosting;
-using Npgsql;
-using Tsikhanau.Monolith.Testing.App;
-using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Hosting;
 
@@ -47,7 +42,7 @@ public sealed class ForwardedHeadersProcessTests(PostgresFixture postgresFixture
         environment["TestHost__EchoRequest"] = "true";
         environment["TestHost__KnownProxy"] = knownProxy;
         environment["TestHost__KnownNetwork"] = knownNetwork;
-        var url = environment["ASPNETCORE_URLS"];
+        var url = environment[TestHostEnvironment.UrlsKey];
 
         using var testHost = TestHostProcess.Start(environment);
         await testHost.WaitUntilHealthyAsync(url);
@@ -62,36 +57,12 @@ public sealed class ForwardedHeadersProcessTests(PostgresFixture postgresFixture
         echo.ShouldBe(expected);
     }
 
-    private static Int32 GetFreePort()
-    {
-        using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
-        tcpListener.Start();
-        return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
-    }
-
     private async Task<Dictionary<String, String>> CreateEnvironmentAsync()
     {
-        var databaseName = $"forwarded_headers_{Guid.CreateVersion7():N}";
-        await new DatabaseProbe(postgresFixture.ConnectionString).ExecuteAsync($"CREATE DATABASE {databaseName}");
-        var connectionString = new NpgsqlConnectionStringBuilder(postgresFixture.ConnectionString)
-        {
-            Database = databaseName,
-            SslMode = SslMode.Disable,
-        }.ConnectionString;
+        var connectionString = await TestHostEnvironment.CreateDatabaseAsync(
+            postgresFixture.ConnectionString,
+            "forwarded_headers");
 
-        return new Dictionary<String, String>
-        {
-            ["ASPNETCORE_ENVIRONMENT"] = Environments.Production,
-            ["DOTNET_ENVIRONMENT"] = Environments.Production,
-            ["ASPNETCORE_URLS"] = $"http://{Loopback}:{GetFreePort()}",
-            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = String.Empty,
-            ["ConnectionStrings__database"] = connectionString,
-            ["App__Database__LoginKey"] = TestSettings.LoginKey,
-            ["App__Database__PrepareMode"] = "OnStartup",
-            ["App__Queues__RunInBackground"] = "true",
-            ["App__Cleanup__RunInBackground"] = "true",
-            ["App__Modules__Pings__Limit"] = "10",
-            ["App__Modules__Pongs__Limit"] = "10",
-        };
+        return TestHostEnvironment.Create(connectionString);
     }
 }

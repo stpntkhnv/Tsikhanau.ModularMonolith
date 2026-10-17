@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.IntegrationTests.Host;
+namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
 internal sealed record InboxRow(
     Int32 Attempts,
