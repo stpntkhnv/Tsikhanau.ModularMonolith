@@ -1,4 +1,4 @@
-measured on 74fafc6
+measured on 74fafc6; the two sampler runs at the end on eee73bd, one-minute load 0.61 and 0.34 before each
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- command n=3000 warmup=1000 conc=1,8,32
 Using launch settings from template-only/perf/Tsikhanau.Monolith.Perf/Properties/launchSettings.json...
@@ -326,60 +326,60 @@ Using launch settings from template-only/perf/Tsikhanau.Monolith.Perf/Properties
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- sampler processed=1000000 failed=10000 pending=10000 runs=100
 Using launch settings from template-only/perf/Tsikhanau.Monolith.Perf/Properties/launchSettings.json...
-# sampler processed=1000000 failed=10000 pending=10000 runs=100 | cpus 12 | servergc True | datas 0 | load 3.86
-  every pings queue table holds 1000000 processed, 10000 failed and 10000 due pending rows, seeded in 25 s; the pongs tables are empty
-sampler n=100 (2 modules, 3 queue tables each): p50 5.959 ms, p95 7.158 ms, p99 7.415 ms, mean 6.012 ms, load 3.11
+# sampler processed=1000000 failed=10000 pending=10000 runs=100 | cpus 12 | servergc True | datas 0 | load 0.72
+  every pings queue table holds 1000000 processed, 10000 failed and 10000 due pending rows, seeded in 13 s; the pongs tables are empty
+sampler n=100 (2 modules, 3 queue tables each): p50 5.464 ms, p95 6.538 ms, p99 7.003 ms, mean 5.669 ms, load 0.78
   statements per op (pg_stat_statements, 100 ops):
-     1.00 x  mean  1815.2 us  [perf_1c09a3faf7ae4b61__pings] SELECT (SELECT count(*) FROM "pings".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pin
-     1.00 x  mean  1725.0 us  [perf_1c09a3faf7ae4b61__pings] SELECT (SELECT count(*) FROM "pings".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pi
-     1.00 x  mean  1723.8 us  [perf_1c09a3faf7ae4b61__pings] SELECT (SELECT count(*) FROM "pings".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
-     1.00 x  mean    63.8 us  [perf_1c09a3faf7ae4b61__pongs] SELECT (SELECT count(*) FROM "pongs".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pon
-     1.00 x  mean    51.3 us  [perf_1c09a3faf7ae4b61__pongs] SELECT (SELECT count(*) FROM "pongs".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "po
-     1.00 x  mean    49.1 us  [perf_1c09a3faf7ae4b61__pongs] SELECT (SELECT count(*) FROM "pongs".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
-     1.00 x  mean     3.0 us  [perf_1c09a3faf7ae4b61__pongs] SELECT pg_advisory_unlock_all()
-     1.00 x  mean     2.7 us  [perf_1c09a3faf7ae4b61__pings] SELECT pg_advisory_unlock_all()
-     1.00 x  mean     2.5 us  [perf_1c09a3faf7ae4b61__pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.00 x  mean     2.4 us  [perf_1c09a3faf7ae4b61__pings] SET SESSION AUTHORIZATION DEFAULT
-     1.00 x  mean     1.4 us  [perf_1c09a3faf7ae4b61__pongs] RESET ALL
-     1.00 x  mean     1.0 us  [perf_1c09a3faf7ae4b61__pings] RESET ALL
-     1.00 x  mean     0.3 us  [perf_1c09a3faf7ae4b61__pongs] CLOSE ALL
-     1.00 x  mean     0.2 us  [perf_1c09a3faf7ae4b61__pings] CLOSE ALL
-     1.00 x  mean     0.2 us  [perf_1c09a3faf7ae4b61__pongs] DISCARD SEQUENCES
-     1.00 x  mean     0.2 us  [perf_1c09a3faf7ae4b61__pongs] UNLISTEN *
-     1.00 x  mean     0.2 us  [perf_1c09a3faf7ae4b61__pings] DISCARD SEQUENCES
-     1.00 x  mean     0.2 us  [perf_1c09a3faf7ae4b61__pings] UNLISTEN *
-     1.00 x  mean     0.1 us  [perf_1c09a3faf7ae4b61__pongs] DISCARD TEMP
-     1.00 x  mean     0.1 us  [perf_1c09a3faf7ae4b61__pings] DISCARD TEMP
+     1.00 x  mean  1723.9 us  [perf_80c8ad2064e64133__pings] SELECT (SELECT count(*) FROM "pings".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pin
+     1.00 x  mean  1611.6 us  [perf_80c8ad2064e64133__pings] SELECT (SELECT count(*) FROM "pings".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
+     1.00 x  mean  1610.3 us  [perf_80c8ad2064e64133__pings] SELECT (SELECT count(*) FROM "pings".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pi
+     1.00 x  mean    45.4 us  [perf_80c8ad2064e64133__pongs] SELECT (SELECT count(*) FROM "pongs".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pon
+     1.00 x  mean    41.3 us  [perf_80c8ad2064e64133__pongs] SELECT (SELECT count(*) FROM "pongs".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "po
+     1.00 x  mean    40.8 us  [perf_80c8ad2064e64133__pongs] SELECT (SELECT count(*) FROM "pongs".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
+     1.00 x  mean     2.3 us  [perf_80c8ad2064e64133__pongs] SELECT pg_advisory_unlock_all()
+     1.00 x  mean     2.2 us  [perf_80c8ad2064e64133__pongs] SET SESSION AUTHORIZATION DEFAULT
+     1.00 x  mean     2.0 us  [perf_80c8ad2064e64133__pings] SET SESSION AUTHORIZATION DEFAULT
+     1.00 x  mean     1.8 us  [perf_80c8ad2064e64133__pings] SELECT pg_advisory_unlock_all()
+     1.00 x  mean     0.9 us  [perf_80c8ad2064e64133__pongs] RESET ALL
+     1.00 x  mean     0.8 us  [perf_80c8ad2064e64133__pings] RESET ALL
+     1.00 x  mean     0.3 us  [perf_80c8ad2064e64133__pongs] CLOSE ALL
+     1.00 x  mean     0.2 us  [perf_80c8ad2064e64133__pings] CLOSE ALL
+     1.00 x  mean     0.2 us  [perf_80c8ad2064e64133__pings] DISCARD SEQUENCES
+     1.00 x  mean     0.2 us  [perf_80c8ad2064e64133__pongs] DISCARD SEQUENCES
+     1.00 x  mean     0.2 us  [perf_80c8ad2064e64133__pongs] UNLISTEN *
+     1.00 x  mean     0.1 us  [perf_80c8ad2064e64133__pings] UNLISTEN *
+     1.00 x  mean     0.1 us  [perf_80c8ad2064e64133__pongs] DISCARD TEMP
+     1.00 x  mean     0.1 us  [perf_80c8ad2064e64133__pings] DISCARD TEMP
   pings.outbox_messages scans in 105 samples: ix_outbox_messages_failed_on 105, ix_outbox_messages_next_attempt_on_occurred_on_id 210, ix_outbox_messages_processed_on 0, pk_outbox_messages 0, sequential 0
   pings.inbox_messages scans in 105 samples: ix_inbox_messages_failed_on 105, ix_inbox_messages_next_attempt_on_occurred_on_id 210, ix_inbox_messages_processed_on 0, pk_inbox_messages 0, sequential 0
   pings.internal_commands scans in 105 samples: ix_internal_commands_failed_on 105, ix_internal_commands_next_attempt_on_enqueued_on_id 210, ix_internal_commands_processed_on 0, pk_internal_commands 0, sequential 0
 
 $ dotnet run --project template-only/perf/Tsikhanau.Monolith.Perf -c Release -- sampler processed=1000000 failed=10000 pending=10000 runs=100
 Using launch settings from template-only/perf/Tsikhanau.Monolith.Perf/Properties/launchSettings.json...
-# sampler processed=1000000 failed=10000 pending=10000 runs=100 | cpus 12 | servergc True | datas 0 | load 3.11
-  every pings queue table holds 1000000 processed, 10000 failed and 10000 due pending rows, seeded in 23 s; the pongs tables are empty
-sampler n=100 (2 modules, 3 queue tables each): p50 6.080 ms, p95 7.942 ms, p99 8.405 ms, mean 6.259 ms, load 3.41
+# sampler processed=1000000 failed=10000 pending=10000 runs=100 | cpus 12 | servergc True | datas 0 | load 0.39
+  every pings queue table holds 1000000 processed, 10000 failed and 10000 due pending rows, seeded in 13 s; the pongs tables are empty
+sampler n=100 (2 modules, 3 queue tables each): p50 5.977 ms, p95 7.146 ms, p99 7.556 ms, mean 5.919 ms, load 0.53
   statements per op (pg_stat_statements, 100 ops):
-     1.00 x  mean  1896.0 us  [perf_98d2879ad8ef4ea0__pings] SELECT (SELECT count(*) FROM "pings".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pin
-     1.00 x  mean  1802.1 us  [perf_98d2879ad8ef4ea0__pings] SELECT (SELECT count(*) FROM "pings".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pi
-     1.00 x  mean  1795.9 us  [perf_98d2879ad8ef4ea0__pings] SELECT (SELECT count(*) FROM "pings".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
-     1.00 x  mean    49.2 us  [perf_98d2879ad8ef4ea0__pongs] SELECT (SELECT count(*) FROM "pongs".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pon
-     1.00 x  mean    44.8 us  [perf_98d2879ad8ef4ea0__pongs] SELECT (SELECT count(*) FROM "pongs".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
-     1.00 x  mean    43.9 us  [perf_98d2879ad8ef4ea0__pongs] SELECT (SELECT count(*) FROM "pongs".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "po
-     1.00 x  mean     2.5 us  [perf_98d2879ad8ef4ea0__pongs] SET SESSION AUTHORIZATION DEFAULT
-     1.00 x  mean     2.4 us  [perf_98d2879ad8ef4ea0__pongs] SELECT pg_advisory_unlock_all()
-     1.00 x  mean     2.3 us  [perf_98d2879ad8ef4ea0__pings] SET SESSION AUTHORIZATION DEFAULT
-     1.00 x  mean     1.9 us  [perf_98d2879ad8ef4ea0__pings] SELECT pg_advisory_unlock_all()
-     1.00 x  mean     1.2 us  [perf_98d2879ad8ef4ea0__pongs] RESET ALL
-     1.00 x  mean     1.1 us  [perf_98d2879ad8ef4ea0__pings] RESET ALL
-     1.00 x  mean     0.3 us  [perf_98d2879ad8ef4ea0__pongs] CLOSE ALL
-     1.00 x  mean     0.2 us  [perf_98d2879ad8ef4ea0__pings] CLOSE ALL
-     1.00 x  mean     0.2 us  [perf_98d2879ad8ef4ea0__pongs] DISCARD SEQUENCES
-     1.00 x  mean     0.2 us  [perf_98d2879ad8ef4ea0__pings] DISCARD SEQUENCES
-     1.00 x  mean     0.2 us  [perf_98d2879ad8ef4ea0__pongs] UNLISTEN *
-     1.00 x  mean     0.2 us  [perf_98d2879ad8ef4ea0__pings] UNLISTEN *
-     1.00 x  mean     0.1 us  [perf_98d2879ad8ef4ea0__pongs] DISCARD TEMP
-     1.00 x  mean     0.1 us  [perf_98d2879ad8ef4ea0__pings] DISCARD TEMP
+     1.00 x  mean  1805.4 us  [perf_816b036538f24bea__pings] SELECT (SELECT count(*) FROM "pings".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pin
+     1.00 x  mean  1711.5 us  [perf_816b036538f24bea__pings] SELECT (SELECT count(*) FROM "pings".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
+     1.00 x  mean  1687.4 us  [perf_816b036538f24bea__pings] SELECT (SELECT count(*) FROM "pings".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pi
+     1.00 x  mean    48.3 us  [perf_816b036538f24bea__pongs] SELECT (SELECT count(*) FROM "pongs".inbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "pon
+     1.00 x  mean    44.7 us  [perf_816b036538f24bea__pongs] SELECT (SELECT count(*) FROM "pongs".outbox_messages WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "po
+     1.00 x  mean    44.6 us  [perf_816b036538f24bea__pongs] SELECT (SELECT count(*) FROM "pongs".internal_commands WHERE processed_on IS NULL AND failed_on IS NULL) AS "PendingCount", (SELECT count(*) FROM "
+     1.00 x  mean     2.3 us  [perf_816b036538f24bea__pongs] SET SESSION AUTHORIZATION DEFAULT
+     1.00 x  mean     2.2 us  [perf_816b036538f24bea__pongs] SELECT pg_advisory_unlock_all()
+     1.00 x  mean     2.0 us  [perf_816b036538f24bea__pings] SET SESSION AUTHORIZATION DEFAULT
+     1.00 x  mean     1.8 us  [perf_816b036538f24bea__pings] SELECT pg_advisory_unlock_all()
+     1.00 x  mean     1.1 us  [perf_816b036538f24bea__pongs] RESET ALL
+     1.00 x  mean     0.9 us  [perf_816b036538f24bea__pings] RESET ALL
+     1.00 x  mean     0.3 us  [perf_816b036538f24bea__pongs] CLOSE ALL
+     1.00 x  mean     0.2 us  [perf_816b036538f24bea__pings] CLOSE ALL
+     1.00 x  mean     0.2 us  [perf_816b036538f24bea__pongs] DISCARD SEQUENCES
+     1.00 x  mean     0.2 us  [perf_816b036538f24bea__pongs] UNLISTEN *
+     1.00 x  mean     0.2 us  [perf_816b036538f24bea__pings] DISCARD SEQUENCES
+     1.00 x  mean     0.1 us  [perf_816b036538f24bea__pings] UNLISTEN *
+     1.00 x  mean     0.1 us  [perf_816b036538f24bea__pongs] DISCARD TEMP
+     1.00 x  mean     0.1 us  [perf_816b036538f24bea__pings] DISCARD TEMP
   pings.outbox_messages scans in 105 samples: ix_outbox_messages_failed_on 105, ix_outbox_messages_next_attempt_on_occurred_on_id 210, ix_outbox_messages_processed_on 0, pk_outbox_messages 0, sequential 0
   pings.inbox_messages scans in 105 samples: ix_inbox_messages_failed_on 105, ix_inbox_messages_next_attempt_on_occurred_on_id 210, ix_inbox_messages_processed_on 0, pk_inbox_messages 0, sequential 0
   pings.internal_commands scans in 105 samples: ix_internal_commands_failed_on 105, ix_internal_commands_next_attempt_on_enqueued_on_id 210, ix_internal_commands_processed_on 0, pk_internal_commands 0, sequential 0
