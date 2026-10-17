@@ -215,7 +215,7 @@ public abstract class MessagePump<TModule, TMessage>(
             return HandlingFailure.From(outcome.Error);
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        await transaction.CommitAsync(CancellationToken.None);
         QueueInstruments.CountProcessed(LockedRowCount);
         OnCommitted(lockedMessage.Value);
         return Optional<HandlingFailure>.None();

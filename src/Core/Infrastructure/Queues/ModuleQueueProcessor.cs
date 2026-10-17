@@ -16,12 +16,14 @@ public sealed class ModuleQueueProcessor<TModule>(
     : BackgroundService
     where TModule : IModuleFacade
 {
-    private Boolean IsStillProcessing => ExecuteTask is { IsCompleted: false };
+    private volatile Boolean _isRunningAPass;
+
+    private Boolean IsAbandoningAPass => ExecuteTask is { IsCompleted: false } && _isRunningAPass;
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         await base.StopAsync(cancellationToken);
-        if (IsStillProcessing)
+        if (IsAbandoningAPass)
         {
             PumpLog.AbandonedAtShutdown(logger, typeof(TModule).Name);
         }
@@ -39,6 +41,7 @@ public sealed class ModuleQueueProcessor<TModule>(
         {
             try
             {
+                _isRunningAPass = true;
                 await queuePump.RunOnceAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (hostApplicationLifetime.IsStopping(stoppingToken))
@@ -48,6 +51,10 @@ public sealed class ModuleQueueProcessor<TModule>(
             catch (Exception exception)
             {
                 PumpLog.LoopFailed(logger, typeof(TModule).Name, exception);
+            }
+            finally
+            {
+                _isRunningAPass = false;
             }
 
             await WaitForWorkAsync(reader, stoppingToken);

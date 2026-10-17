@@ -45,6 +45,12 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
 
     private const String AbandonedAtShutdown = "IPongsModule handler abandoned at shutdown";
 
+    private const String PingsAbandonedAtShutdown = "IPingsModule handler abandoned at shutdown";
+
+    private const String TransactionError = "An error occurred using a transaction";
+
+    private const String ErrorLine = "fail: ";
+
     private const String Secret = "s3cret";
 
     private const Int32 KilledExitCode = 137;
@@ -87,7 +93,7 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Sigterm_waits_for_a_handler_that_ignores_it_and_gives_its_rolled_back_message_back()
+    public async Task Sigterm_waits_for_a_handler_that_ignores_it_and_commits_its_finished_work()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), UnixOnly);
         var connectionString = await CreateDatabaseAsync();
@@ -95,19 +101,22 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         environment[BlockAfterPongWriteKey] = FormatDuration(TimeSpan.FromSeconds(20));
 
         using var testHost = TestHostProcess.Start(environment);
-        await BlockAPongHandlerAsync(testHost, environment[UrlsKey]);
+        var handlerBlockedEnd = await BlockAPongHandlerAsync(testHost, environment[UrlsKey]);
         await testHost.TerminateAsync();
         var exit = await testHost.WaitForExitAsync();
+        var outputAfterTheBlock = exit.Output[handlerBlockedEnd..];
         var stoppedRow = await ReadInboxRowAsync(connectionString);
         var pongCount = await CountPongsAsync(connectionString);
 
         exit.Code.ShouldBe(0, exit.Text);
         exit.SinceSignal.ShouldBeLessThan(ShutdownTimeout);
         exit.Output.ShouldContain(PongHandlerEnds);
+        outputAfterTheBlock.ShouldNotContain(TransactionError);
+        outputAfterTheBlock.ShouldNotContain(ErrorLine);
         exit.Output.ShouldNotContain(AbandonedAtShutdown);
-        ShouldBeGivenBack(stoppedRow, LongHandlerTimeout);
-        pongCount.ShouldBe(0);
-        await RecoverAsync(connectionString, stoppedRow, () => CountPongsAsync(connectionString));
+        ShouldBeProcessed(stoppedRow);
+        pongCount.ShouldBe(1);
+        await ShouldBeUnchangedByAnotherProcessAsync(connectionString, stoppedRow);
     }
 
     [Fact]
@@ -128,6 +137,7 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         exit.Code.ShouldBe(0, exit.Text);
         exit.SinceSignal.ShouldBeInRange(ShutdownTimeout, PastTheShutdownTimeout);
         exit.Output.ShouldContain(AbandonedAtShutdown);
+        exit.Output.ShouldNotContain(PingsAbandonedAtShutdown);
         exit.Output.ShouldNotContain(PongHandlerEnds);
         ShouldBeLeased(stoppedRow, ShortHandlerTimeout);
         pongCount.ShouldBe(0);
@@ -238,7 +248,7 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         exit.SinceSignal.ShouldBeLessThan(IdleExitLimit);
     }
 
-    private static async Task BlockAPongHandlerAsync(TestHostProcess testHost, String url)
+    private static async Task<Int32> BlockAPongHandlerAsync(TestHostProcess testHost, String url)
     {
         await testHost.WaitUntilHealthyAsync(url);
         using var httpClient = new HttpClient();
@@ -247,7 +257,7 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-        await testHost.WaitForOutputAsync(PongHandlerBlocks, HandlerStartTimeout);
+        return await testHost.WaitForOutputAsync(PongHandlerBlocks, HandlerStartTimeout);
     }
 
     private static Task RecoverAsync(
@@ -287,6 +297,28 @@ public sealed class ShutdownProcessTests(PostgresFixture postgresFixture)
         effectCount.ShouldBe(1);
         rowAfterAnotherPass.ShouldBe(recoveredRow);
         effectCountAfterAnotherPass.ShouldBe(1);
+    }
+
+    private static async Task ShouldBeUnchangedByAnotherProcessAsync(String connectionString, InboxRow stoppedRow)
+    {
+        var environment = CreateEnvironment(connectionString, LongHandlerTimeout);
+        environment[ReportPongsPassesKey] = "true";
+
+        using var testHost = TestHostProcess.Start(environment);
+        await testHost.WaitForOutputAsync(PassHandledNone, RecoveryTimeout);
+        var rowAfterAPass = await ReadInboxRowAsync(connectionString);
+        var pongCountAfterAPass = await CountPongsAsync(connectionString);
+
+        rowAfterAPass.ShouldBe(stoppedRow);
+        pongCountAfterAPass.ShouldBe(1);
+    }
+
+    private static void ShouldBeProcessed(InboxRow row)
+    {
+        row.Attempts.ShouldBe(1);
+        row.ProcessedOn.ShouldNotBeNull();
+        row.FailedOn.ShouldBeNull();
+        row.LastError.ShouldBeNull();
     }
 
     private static void ShouldBeGivenBack(InboxRow row, TimeSpan handlerTimeout)
