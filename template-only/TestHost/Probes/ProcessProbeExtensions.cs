@@ -31,6 +31,7 @@ internal static class ProcessProbeExtensions
         }
 
         builder.AddForwardedHeadersProbes();
+        builder.AddShutdownProbes();
 
         return builder;
     }
