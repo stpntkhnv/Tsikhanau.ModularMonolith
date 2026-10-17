@@ -12,7 +12,7 @@ Plants typical mistakes of an AI agent, one at a time, into a copy of the templa
   - `failed <full test name>`: the first test project that fails reports this test.
   - `output <text>`: the first test project that fails prints this text (a mutation that stops the app from starting fails every integration test).
   - `MISSED`: an accepted miss (m37 and m18b); all three test projects pass with the baseline's skipped counts.
-- `scratch-commits/000[1236]-*.patch`: the Notes and Tags modules, the Notes tests and their migrations.
+- `scratch-commits/000[12367]-*.patch`: the Notes and Tags modules, the Notes tests and their migrations (autovacuum and queue secrets and indexes).
 
 ## Run
 
@@ -36,4 +36,4 @@ Results go to `<folder>/results`: `summary.txt` or `dry-run.txt`, and per mutati
 
 ## Re-anchor
 
-When the template changes what a mutation edits, the dry run names the mutation and its `.mutate` log names the anchor (`pattern found 0 times, expected once, in <path>`). Change the anchor in `Mutations/`, keep the planted mistake the same, and write the mistake so that only its own check fires (the line stays within 120 characters, the endpoint holds no other branching). When the template changes what the scratch modules must look like, apply the patches to a branch with `git am -3`, fix the modules until the baseline is green, and save them again with `git format-patch` under the same four names. A full run then shows which catchers moved.
+When the template changes what a mutation edits, the dry run names the mutation and its `.mutate` log names the anchor (`pattern found 0 times, expected once, in <path>`). Change the anchor in `Mutations/`, keep the planted mistake the same, and write the mistake so that only its own check fires (the line stays within 120 characters, the endpoint holds no other branching). When the template changes what the scratch modules must look like, apply the patches to a branch with `git am -3`, fix the modules until the baseline is green, and save them again with `git format-patch` under the same five names. A full run then shows which catchers moved.

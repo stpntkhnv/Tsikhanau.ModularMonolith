@@ -131,15 +131,16 @@ make_patches() {
   git init -q "$helper"
   git -C "$helper" commit -q --allow-empty -m base
   mkdir -p "$helper/src/Fake"
-  for number in 1 2 3 4; do
+  for number in 1 2 3 4 5; do
     printf 'scratch %s\n' "$number" > "$helper/src/Fake/scratch-$number.txt"
     git -C "$helper" add src/Fake
     git -C "$helper" commit -q -m "scratch $number"
   done
-  git -C "$helper" format-patch -q -4 -o "$scratch/patches"
+  git -C "$helper" format-patch -q -5 -o "$scratch/patches"
   cp "$scratch"/patches/0001-*.patch "$scratch"/patches/0002-*.patch "$scratch"/patches/0003-*.patch \
     "$harness/scratch-commits/"
   cp "$scratch"/patches/0004-scratch-4.patch "$harness/scratch-commits/0006-scratch-4.patch"
+  cp "$scratch"/patches/0005-scratch-5.patch "$harness/scratch-commits/0007-scratch-5.patch"
 }
 
 git init -q "$fake_source"
@@ -177,8 +178,8 @@ expect_equal "the copy holds the modified tracked file, not HEAD" \
   "$(cat "$scratch/work-dry/repo/src/Fake/tracked.txt" 2> /dev/null)" "changed in the working tree"
 expect_equal "the copy holds the untracked file" \
   "$(cat "$scratch/work-dry/repo/src/Fake/untracked.txt" 2> /dev/null)" "not yet added"
-expect_equal "the copy has the four scratch commits on its working set commit" \
-  "$(git -C "$scratch/work-dry/repo" rev-list --count HEAD 2> /dev/null)" "5"
+expect_equal "the copy has the five scratch commits on its working set commit" \
+  "$(git -C "$scratch/work-dry/repo" rev-list --count HEAD 2> /dev/null)" "6"
 expect_equal "the copy is clean after the last revert" \
   "$(git -C "$scratch/work-dry/repo" status --porcelain 2>&1 || echo "no repository")" ""
 

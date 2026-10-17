@@ -118,9 +118,9 @@ read_expectations() {
 }
 
 apply_scratch_commits() {
-  local patches=("$repository/$harness_folder"/scratch-commits/000[1236]-*.patch)
-  if [[ ${#patches[@]} -ne 4 ]]; then
-    abort "expected the 4 scratch commits $harness_folder/scratch-commits/000[1236]-*.patch, found ${#patches[@]}"
+  local patches=("$repository/$harness_folder"/scratch-commits/000[12367]-*.patch)
+  if [[ ${#patches[@]} -ne 5 ]]; then
+    abort "expected the 5 scratch commits $harness_folder/scratch-commits/000[12367]-*.patch, found ${#patches[@]}"
   fi
   in_copy am -q "${patches[@]}"
 }
