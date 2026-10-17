@@ -6,6 +6,7 @@ while IFS= read -r variable; do
   unset "$variable"
 done < <(compgen -e | grep '^GIT_')
 export LC_ALL=C GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=maintenance.auto GIT_CONFIG_VALUE_0=false GIT_CONFIG_KEY_1=gc.auto GIT_CONFIG_VALUE_1=0
 
 short_name=tsikhanau-monolith
 post_action_not_run=104

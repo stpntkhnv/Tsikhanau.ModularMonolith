@@ -38,6 +38,8 @@ clear_git_routing() {
     unset -- "${variables[@]}"
   fi
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1
+  export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=maintenance.auto GIT_CONFIG_VALUE_0=false
+  export GIT_CONFIG_KEY_1=gc.auto GIT_CONFIG_VALUE_1=0
 }
 
 working_set() {

@@ -3,6 +3,7 @@ set -euo pipefail
 shopt -s inherit_errexit nullglob
 
 export LC_ALL=C GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=maintenance.auto GIT_CONFIG_VALUE_0=false GIT_CONFIG_KEY_1=gc.auto GIT_CONFIG_VALUE_1=0
 export GIT_AUTHOR_NAME=consumer GIT_AUTHOR_EMAIL=consumer@example.com
 export GIT_COMMITTER_NAME=consumer GIT_COMMITTER_EMAIL=consumer@example.com
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
