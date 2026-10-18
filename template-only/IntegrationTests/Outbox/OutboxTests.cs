@@ -65,6 +65,30 @@ public sealed class OutboxTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Failure_at_the_commit_after_the_inbox_insert_and_the_mark_rolls_back_both()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await testModulesHost.CreatePingAsync("refused mark");
+        var failedOn = testModulesHost.Time.GetUtcNow();
+        await using var processedMarkRefusal = await ProcessedMarkRefusal.InstallAsync(
+            testModulesHost.Database,
+            "pings",
+            "outbox_messages");
+
+        await testModulesHost.DeliverOutboxAsync();
+
+        var outboxRows = await testModulesHost.ReadOutboxRowsAsync();
+        var inboxRows = await testModulesHost.ReadInboxRowsAsync();
+
+        inboxRows.ShouldBeEmpty();
+        var outboxRow = outboxRows.ShouldHaveSingleItem();
+        outboxRow.IsProcessed.ShouldBeFalse();
+        outboxRow.HasFailed.ShouldBeFalse();
+        outboxRow.Attempts.ShouldBe(1);
+        outboxRow.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
+    }
+
+    [Fact]
     public async Task Event_type_this_instance_does_not_know_is_left_for_an_instance_that_does()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);

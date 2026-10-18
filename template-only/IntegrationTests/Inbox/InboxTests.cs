@@ -1,10 +1,26 @@
+using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Queues;
 using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Inbox;
 
 public sealed class InboxTests(PostgresFixture postgresFixture)
 {
+    private const String ReadPongIdsSql = "SELECT id FROM pongs.pongs WHERE ping_id = @PingId";
+
+    private static readonly TimeSpan OneTick = TimeSpan.FromTicks(1);
+
+    private static readonly TimeSpan[] BackoffPauses =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromMinutes(1),
+        TimeSpan.FromMinutes(5),
+        TimeSpan.FromMinutes(15),
+        TimeSpan.FromMinutes(30),
+    ];
+
     [Fact]
     public async Task Subscriber_handles_the_event_and_marks_its_inbox_row()
     {
@@ -55,6 +71,75 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
         boomRow.Attempts.ShouldBe(7);
         boomRow.HasFailed.ShouldBeTrue();
         boomRow.IsProcessed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Handlers_of_one_event_share_one_attempt_and_a_database_error_in_one_rolls_back_both()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: SecondPongHandlerRegistration.AddToPongs);
+
+        var secondPongHandlerHooks = testModulesHost.Services.GetRequiredService<SecondPongHandlerHooks>();
+        secondPongHandlerHooks.FailsNextCall = true;
+        var pingId = await testModulesHost.CreatePingAsync("shared");
+        await testModulesHost.DeliverOutboxAsync();
+        var failedOn = testModulesHost.Time.GetUtcNow();
+
+        await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+
+        var pongIdsAfterFailure = await ReadPongIdsAsync(testModulesHost, pingId);
+        var rowAfterFailure = (await testModulesHost.ReadInboxRowsAsync()).Single();
+        var firstHandlerCallsAfterFailure = testModulesHost.PongHooks.ReceivedPingIds.Count;
+        var secondHandlerCallsAfterFailure = secondPongHandlerHooks.ReceivedPingIds.Count;
+        testModulesHost.Time.Advance(TimeSpan.FromSeconds(1));
+
+        await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+
+        var pongIdsAfterRetry = await ReadPongIdsAsync(testModulesHost, pingId);
+        var rowAfterRetry = (await testModulesHost.ReadInboxRowsAsync()).Single();
+
+        pongIdsAfterFailure.ShouldBeEmpty();
+        rowAfterFailure.Attempts.ShouldBe(1);
+        rowAfterFailure.IsProcessed.ShouldBeFalse();
+        rowAfterFailure.HasFailed.ShouldBeFalse();
+        rowAfterFailure.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
+        firstHandlerCallsAfterFailure.ShouldBe(1);
+        secondHandlerCallsAfterFailure.ShouldBe(1);
+        pongIdsAfterRetry.Count.ShouldBe(2);
+        pongIdsAfterRetry.ShouldContain(pingId);
+        rowAfterRetry.Attempts.ShouldBe(2);
+        rowAfterRetry.IsProcessed.ShouldBeTrue();
+        testModulesHost.PongHooks.ReceivedPingIds.ShouldBe([pingId, pingId]);
+        secondPongHandlerHooks.ReceivedPingIds.ShouldBe([pingId, pingId]);
+    }
+
+    [Fact]
+    public async Task Each_retry_waits_exactly_its_backoff_pause_and_the_seventh_failure_fails_the_row()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        testModulesHost.PongHooks.ThrowFor = ["retried"];
+        await testModulesHost.CreatePingAsync("retried");
+        await DeliverAndProcessAsync(testModulesHost);
+        var attemptsAroundEachDueTime = new List<(Int32 OneTickBefore, Int32 AtDueTime)>();
+
+        foreach (var pause in BackoffPauses)
+        {
+            testModulesHost.Time.Advance(pause - OneTick);
+            await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+            var attemptsOneTickBefore = await ReadAttemptsAsync(testModulesHost);
+            testModulesHost.Time.Advance(OneTick);
+            await testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+            var attemptsAtDueTime = await ReadAttemptsAsync(testModulesHost);
+            attemptsAroundEachDueTime.Add((attemptsOneTickBefore, attemptsAtDueTime));
+        }
+
+        var row = (await testModulesHost.ReadInboxRowsAsync()).Single();
+
+        attemptsAroundEachDueTime.ShouldBe([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)]);
+        row.Attempts.ShouldBe(7);
+        row.HasFailed.ShouldBeTrue();
+        row.IsProcessed.ShouldBeFalse();
     }
 
     [Fact]
@@ -234,6 +319,16 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
 
         return rows.Single(row => row.Payload.Contains($"\"{label}\"", StringComparison.Ordinal));
     }
+
+    private static async Task<Int32> ReadAttemptsAsync(TestModulesHost testModulesHost)
+    {
+        var rows = await testModulesHost.ReadInboxRowsAsync();
+
+        return rows.Single().Attempts;
+    }
+
+    private static Task<IReadOnlyList<Guid>> ReadPongIdsAsync(TestModulesHost testModulesHost, Guid pingId) =>
+        testModulesHost.Database.QueryAsync<Guid>(ReadPongIdsSql, new { PingId = pingId });
 
     private static async Task RetryUntilGivenUpAsync(TestModulesHost testModulesHost)
     {

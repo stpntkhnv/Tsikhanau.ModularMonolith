@@ -20,7 +20,19 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         UPDATE pongs.inbox_messages SET last_error = last_error WHERE payload->>'secret' = 'stuck'
         """;
 
+    private const Int32 HeldPumpTestTimeoutMilliseconds = 60_000;
+
+    private const String PongCountSql = "SELECT count(*) FROM pongs.pongs";
+
+    private const String InsertSecretRowSql = """
+        INSERT INTO pongs.inbox_messages
+            (id, type, payload, attempts, next_attempt_on, occurred_on, received_on, contains_secrets)
+        VALUES (@Id, 'pings.ping-secret-sent', @Payload::jsonb, 0, @ReceivedOn, @ReceivedOn, @ReceivedOn, true)
+        """;
+
     private static readonly TimeSpan BarrierDeadline = TimeSpan.FromSeconds(30);
+
+    private static readonly TimeSpan NextStartWindow = TimeSpan.FromMilliseconds(500);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -45,21 +57,23 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Handler_outside_a_transaction_that_changes_state_fails_for_good()
+    public async Task Handler_outside_a_transaction_that_changes_state_fails_for_good_and_saves_none_of_it()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         testModulesHost.PongHooks.ChangeStateFor = ["meddle"];
-        await SendSecretAsync(testModulesHost, "meddle");
-        await testModulesHost.DeliverOutboxAsync();
+        await InsertSecretRowAsync(testModulesHost, "meddle");
 
         await testModulesHost.ProcessInboxAsync(CancellationToken);
 
         var row = await ReadSecretRowAsync(testModulesHost);
         var lastError = await testModulesHost.Database.ExecuteScalarAsync<String>(LastErrorSql, new { row.Id });
+        var pongCount = await testModulesHost.Database.ExecuteScalarAsync<Int64>(PongCountSql);
         row.HasFailed.ShouldBeTrue();
         row.Attempts.ShouldBe(1);
         row.Payload.ShouldBe("{}");
         lastError.ShouldBe("Handler.ChangedStateOutsideTransaction");
+        testModulesHost.PongHooks.ReceivedSecrets.ShouldBe(["meddle"]);
+        pongCount.ShouldBe(0);
     }
 
     [Fact]
@@ -86,6 +100,38 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         row.HasFailed.ShouldBeFalse();
         lastError.ShouldBe("Handler.Timeout");
         row.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
+    }
+
+    [Fact(Timeout = HeldPumpTestTimeoutMilliseconds)]
+    public async Task Handler_that_ignores_its_timeout_holds_the_pump_and_the_next_message_waits_for_it()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var firstHandlingHold = new FirstHandlingHold();
+        testModulesHost.PongHooks.WhileHandlingSecret = firstHandlingHold.HandleAsync;
+        await InsertSecretRowAsync(testModulesHost, "held");
+        var processing = testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+        Boolean hasNextStartedWhileHeld;
+        try
+        {
+            await firstHandlingHold.FirstStarted.WaitAsync(BarrierDeadline, CancellationToken);
+            await InsertSecretRowAsync(testModulesHost, "next");
+            testModulesHost.Time.Advance(TestModulesHost.HandlerTimeout + TimeSpan.FromSeconds(1));
+            await firstHandlingHold.FirstTimedOut.WaitAsync(BarrierDeadline, CancellationToken);
+            hasNextStartedWhileHeld = await HasCompletedWithinAsync(firstHandlingHold.SecondStarted, NextStartWindow);
+        }
+        finally
+        {
+            firstHandlingHold.Release();
+        }
+
+        var processedCount = await processing.WaitAsync(BarrierDeadline, CancellationToken);
+        var rows = await testModulesHost.ReadInboxRowsAsync();
+
+        hasNextStartedWhileHeld.ShouldBeFalse();
+        processedCount.ShouldBe(2);
+        testModulesHost.PongHooks.ReceivedSecrets.ShouldBe(["held", "next"]);
+        rows.Count.ShouldBe(2);
+        rows.ShouldAllBe(row => row.IsProcessed);
     }
 
     [Fact]
@@ -204,6 +250,36 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         return otherInstance.Time.GetUtcNow();
     }
 
+    private static async Task<Boolean> HasCompletedWithinAsync(Task task, TimeSpan window)
+    {
+        var firstCompleted = await Task.WhenAny(task, Task.Delay(window, CancellationToken));
+
+        return firstCompleted == task;
+    }
+
+    private static Task InsertSecretRowAsync(TestModulesHost testModulesHost, String secret)
+    {
+        var messageId = Guid.CreateVersion7();
+        return testModulesHost.Database.ExecuteAsync(
+            InsertSecretRowSql,
+            new
+            {
+                Id = messageId,
+                Payload = BuildSecretPayload(messageId, secret),
+                ReceivedOn = testModulesHost.Time.GetUtcNow(),
+            });
+    }
+
+    private static String BuildSecretPayload(Guid messageId, String secret) =>
+        $$"""
+        {
+            "id": "{{messageId}}",
+            "occurredOn": "2026-09-28T08:00:00+00:00",
+            "pingId": "{{messageId}}",
+            "secret": "{{secret}}"
+        }
+        """;
+
     private static async Task<QueueRow> ReadSecretRowAsync(TestModulesHost testModulesHost)
     {
         var rows = await testModulesHost.ReadInboxRowsAsync();
@@ -239,5 +315,40 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
             CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
+    }
+}
+
+file sealed class FirstHandlingHold
+{
+    private readonly TaskCompletionSource _firstStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _firstTimedOut = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _secondStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Int32 _handlingCount;
+
+    public Task FirstStarted => _firstStarted.Task;
+
+    public Task FirstTimedOut => _firstTimedOut.Task;
+
+    public Task SecondStarted => _secondStarted.Task;
+
+    public Task HandleAsync(CancellationToken cancellationToken) =>
+        Interlocked.Increment(ref _handlingCount) == 1
+            ? HoldIgnoringTheTokenAsync(cancellationToken)
+            : RecordSecondStartAsync();
+
+    public void Release() => _release.TrySetResult();
+
+    private async Task HoldIgnoringTheTokenAsync(CancellationToken cancellationToken)
+    {
+        await using var registration = cancellationToken.Register(() => _firstTimedOut.TrySetResult());
+        _firstStarted.TrySetResult();
+        await _release.Task;
+    }
+
+    private Task RecordSecondStartAsync()
+    {
+        _secondStarted.TrySetResult();
+        return Task.CompletedTask;
     }
 }

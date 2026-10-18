@@ -379,6 +379,23 @@ public sealed class SecretPayloadTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Inbox_copy_of_a_secret_outbox_row_written_before_the_flag_existed_carries_the_flag()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var messageId = await InsertLegacySecretRowAsync(testModulesHost, OutboxTable, PingSecretSentType, attempts: 0);
+
+        await testModulesHost.DeliverOutboxAsync();
+
+        var outboxFlag = await ReadFlagAsync(testModulesHost, "pings", "outbox_messages", PingSecretSentType);
+        var inboxRow = await GetSingleRowAsync(testModulesHost.ReadInboxRowsAsync(), messageId);
+        var inboxFlag = await ReadFlagAsync(testModulesHost, "pongs", "inbox_messages", PingSecretSentType);
+
+        outboxFlag.ShouldBeFalse();
+        inboxRow.Payload.ShouldContain(Secret);
+        inboxFlag.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Row_flagged_secret_is_erased_once_handled_although_its_type_is_not_secret_here()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);

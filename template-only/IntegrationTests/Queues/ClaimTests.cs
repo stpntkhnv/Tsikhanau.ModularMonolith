@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 using Tsikhanau.Monolith.TestModules.Pongs;
+using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
@@ -13,6 +16,12 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
     private const Int32 MaxAttempts = 7;
 
     private const String LastErrorSql = "SELECT last_error FROM pongs.inbox_messages WHERE id = @Id";
+
+    private const String InboxRowSql = """
+        SELECT attempts AS "Attempts", next_attempt_on AS "NextAttemptOn", received_on AS "ReceivedOn",
+               processed_on AS "ProcessedOn", failed_on AS "FailedOn", last_error AS "LastError"
+        FROM pongs.inbox_messages
+        """;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -186,6 +195,37 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Exception_thrown_after_the_commit_landed_leaves_the_row_processed_and_untouched()
+    {
+        var exceptionAfterCommitInterceptor = new ExceptionAfterCommitInterceptor();
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: builder => AddToPongsDbContext(builder, exceptionAfterCommitInterceptor));
+
+        await testModulesHost.CreatePingAsync("landed");
+        await testModulesHost.DeliverOutboxAsync();
+        var claimedOn = testModulesHost.Time.GetUtcNow();
+        exceptionAfterCommitInterceptor.ThrowsAfterNextCommit = true;
+
+        await testModulesHost.ProcessInboxAsync(CancellationToken);
+
+        var rows = await testModulesHost.Database.QueryAsync<InboxRow>(InboxRowSql);
+        var pongCount = await testModulesHost.CountPongsAsync();
+
+        exceptionAfterCommitInterceptor.ThrownCount.ShouldBe(1);
+        pongCount.ShouldBe(1);
+        var row = rows.ShouldHaveSingleItem();
+        row.ShouldBe(
+            new InboxRow(
+                Attempts: 1,
+                NextAttemptOn: claimedOn.UtcDateTime + 2 * TestModulesHost.HandlerTimeout,
+                ReceivedOn: claimedOn.UtcDateTime,
+                ProcessedOn: claimedOn.UtcDateTime,
+                FailedOn: null,
+                LastError: null));
+    }
+
+    [Fact]
     public async Task Database_ends_a_transaction_that_outlives_the_timeout_even_if_the_handler_ignores_it()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(
@@ -208,4 +248,11 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
         row.Attempts.ShouldBe(1);
         lastError.ShouldNotBeNullOrWhiteSpace();
     }
+
+    private static void AddToPongsDbContext(
+        IHostApplicationBuilder builder,
+        ExceptionAfterCommitInterceptor exceptionAfterCommitInterceptor) =>
+        builder.Services.ConfigureDbContext<PongsDbContext>(
+            (_, dbContextOptionsBuilder) => dbContextOptionsBuilder.AddInterceptors(exceptionAfterCommitInterceptor),
+            ServiceLifetime.Singleton);
 }
