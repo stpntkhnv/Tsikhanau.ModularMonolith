@@ -52,6 +52,16 @@ internal sealed class AggregateMutations(SourceTree sourceTree)
             RaisedEvent,
             "note.Raise(new NoteCreatedDomainEvent(TimeProvider.System.GetUtcNow(), id, title));");
 
+    public Result<Unit> DomainTakesTimeProvider() =>
+        sourceTree.Replace(
+            ScratchPaths.Note,
+            "    public static Note Create(",
+            """
+                public DateTimeOffset Stamp(TimeProvider timeProvider) => timeProvider.GetUtcNow();
+
+                public static Note Create(
+            """);
+
     public Result<Unit> KeywordTypeNames() =>
         sourceTree
             .Replace(NoteTitle, "public const Int32 MaxLength = 50;", "public const int MaxLength = 50;")

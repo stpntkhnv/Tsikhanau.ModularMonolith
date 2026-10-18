@@ -4,7 +4,7 @@ shopt -s inherit_errexit
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 runner=$script_dir/../Harness/run-mutations.sh
-readonly mutation_total=53
+readonly mutation_total=55
 
 passes=0
 failures=0
@@ -173,7 +173,7 @@ expect_source_unchanged() {
 output=$(run_routed --dry-run "$fake_source" "$scratch/work-dry")
 code=$?
 expect_equal "a dry run of applying mutations exits 0" "$code" "0"
-expect_contains "a dry run reports every mutation applied" "$output" "applied 53 of 53 mutations"
+expect_contains "a dry run reports every mutation applied" "$output" "applied 55 of 55 mutations"
 expect_source_unchanged "a successful dry run with GIT_DIR and GIT_WORK_TREE of the source"
 expect_equal "the copy holds the modified tracked file, not HEAD" \
   "$(cat "$scratch/work-dry/repo/src/Fake/tracked.txt" 2> /dev/null)" "changed in the working tree"
@@ -271,7 +271,7 @@ expect_contains "a full run counts the build catch" "$output" "f01_fake_mutation
 expect_contains "a full run counts the test catch" "$output" \
   'f02_fake_mutation CAUGHT ArchTests Fake.ArchTests.Planted_mistake_fails(name: "Fake")'
 expect_contains "a full run keeps an expected miss" "$output" "f03_fake_mutation MISSED"
-expect_contains "a full run sums up the run" "$output" "53 of 53 mutations as expected"
+expect_contains "a full run sums up the run" "$output" "55 of 55 mutations as expected"
 expect_source_unchanged "a successful full run"
 
 output=$(FAKE_BUILD_CATCH=f01_fake_mutation FAKE_TEST_CATCH=f02_fake_mutation FAKE_EXTRA_SKIP=f03_fake_mutation \

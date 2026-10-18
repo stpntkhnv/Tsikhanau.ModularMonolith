@@ -55,7 +55,7 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/*.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: Harness (54 mistakes planted one at a time, each caught as expected.txt says)
+      - name: Harness (56 mistakes planted one at a time, each caught as expected.txt says)
         run: bash template-only/Harness/run-mutations.sh . "$RUNNER_TEMP/harness"
 
       - uses: actions/upload-artifact@v4

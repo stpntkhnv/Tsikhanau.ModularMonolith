@@ -34,6 +34,7 @@ m36_result_value_after_wrong_check
 m11_clock_in_handler
 m12_clock_in_domain
 m12b_timeprovider_system_in_domain
+m55_domain_reads_timeprovider
 m12c_newguid_in_handler
 m13_integration_event_without_name
 m14_integration_event_carries_domain_type
@@ -50,4 +51,5 @@ m21_async_void
 m22_task_result_blocking
 m18d_task_returned_not_awaited_sync_method
 m23_cancellation_token_not_passed
+m56_pragma_hides_analyzer
 m30_exception_swallowed

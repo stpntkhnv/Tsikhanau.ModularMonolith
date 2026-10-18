@@ -34,6 +34,7 @@ m36_result_value_after_wrong_check error TR0003
 m11_clock_in_handler error RS0030
 m12_clock_in_domain error RS0030
 m12b_timeprovider_system_in_domain error RS0030
+m55_domain_reads_timeprovider failed ModularMonolith.ArchTests.Modules.DomainRulesTests.Domain_never_reads_the_clock_or_creates_random_ids(name: "Notes")
 m12c_newguid_in_handler error RS0030
 m13_integration_event_without_name failed ModularMonolith.ArchTests.Modules.IntegrationEventNameTests.Every_integration_event_has_a_unique_stable_name
 m14_integration_event_carries_domain_type error CS0234
@@ -50,4 +51,5 @@ m21_async_void error VSTHRD100
 m22_task_result_blocking error RS0030
 m18d_task_returned_not_awaited_sync_method error RS0030
 m23_cancellation_token_not_passed error CA2016
+m56_pragma_hides_analyzer failed ModularMonolith.ArchTests.Projects.CoreTests.Code_suppresses_no_diagnostic
 m30_exception_swallowed error CA1031

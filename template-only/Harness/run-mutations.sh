@@ -2,8 +2,8 @@
 set -euo pipefail
 shopt -s nullglob inherit_errexit
 
-readonly mutation_count=53
-readonly item_count=54
+readonly mutation_count=55
+readonly item_count=56
 readonly item_twelve_mutation=m14_integration_event_carries_domain_type
 readonly harness_folder=template-only/Harness
 readonly harness_project=$harness_folder/Tsikhanau.Monolith.Harness.csproj

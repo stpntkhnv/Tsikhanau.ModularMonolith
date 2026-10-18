@@ -1,6 +1,6 @@
-# The 54-mistake harness
+# The 56-mistake harness
 
-Plants typical mistakes of an AI agent, one at a time, into a copy of the template that has two scratch modules, Notes and Tags, and checks that the build or the tests catch each one exactly where `expected.txt` says. 53 mutations make 54 items: m14 also counts item 12, internal types of another module. The harness never ships to an app (`template-only` is excluded in `.template.config/template.json`).
+Plants typical mistakes of an AI agent, one at a time, into a copy of the template that has two scratch modules, Notes and Tags, and checks that the build or the tests catch each one exactly where `expected.txt` says. 55 mutations make 56 items: m14 also counts item 12, internal types of another module. The harness never ships to an app (`template-only` is excluded in `.template.config/template.json`).
 
 ## Files
 

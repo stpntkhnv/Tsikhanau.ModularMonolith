@@ -59,6 +59,7 @@ internal sealed class MutationCatalog
             ["m11_clock_in_handler"] = handlerDependencies.HandlerReadsTheClock,
             ["m12_clock_in_domain"] = aggregates.DomainReadsTheClock,
             ["m12b_timeprovider_system_in_domain"] = aggregates.DomainUsesSystemTimeProvider,
+            ["m55_domain_reads_timeprovider"] = aggregates.DomainTakesTimeProvider,
             ["m12c_newguid_in_handler"] = handlerDependencies.HandlerCreatesRandomId,
             ["m13_integration_event_without_name"] = messages.IntegrationEventWithoutName,
             ["m14_integration_event_carries_domain_type"] = messages.IntegrationEventCarriesDomainType,
@@ -76,6 +77,7 @@ internal sealed class MutationCatalog
             ["m22_task_result_blocking"] = eventHandlers.TaskResultBlocks,
             ["m18d_task_returned_not_awaited_sync_method"] = handlerResults.TaskWaitedSynchronously,
             ["m23_cancellation_token_not_passed"] = persistence.CancellationTokenNotPassed,
+            ["m56_pragma_hides_analyzer"] = persistence.PragmaHidesAnalyzer,
             ["m30_exception_swallowed"] = eventHandlers.ExceptionSwallowed,
         };
     }

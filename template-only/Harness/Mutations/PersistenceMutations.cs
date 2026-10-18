@@ -47,6 +47,17 @@ internal sealed class PersistenceMutations(SourceTree sourceTree)
                 "await sqlConnectionFactory.OpenConnectionAsync(cancellationToken);",
                 "await sqlConnectionFactory.OpenConnectionAsync(CancellationToken.None);"));
 
+    public Result<Unit> PragmaHidesAnalyzer() =>
+        sourceTree.Replace(
+            ScratchPaths.GetNoteQueryHandler,
+            "        await using var connection",
+            """
+            #pragma warning disable CA2016
+                    await Task.Delay(1);
+            #pragma warning restore CA2016
+                    await using var connection
+            """);
+
     public Result<Unit> MigrationInWrongSchema() => MoveNotesTo("tags");
 
     public Result<Unit> MigrationInPublicSchema() => MoveNotesTo("public");
