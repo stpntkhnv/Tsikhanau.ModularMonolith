@@ -1,6 +1,7 @@
 using System.Reflection;
 using Tsikhanau.Monolith.ArchRules.Projects;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
+using Tsikhanau.Monolith.Shared.Collections;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.FixtureModules;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.ScratchTree;
 
@@ -81,6 +82,12 @@ internal static class ProjectRuleCases
             [NestedBuildFile],
             () => Evaluate(BuildFileRules.OnlyTheCoreHasBuildAndAnalyzerConfigFiles)),
         new(
+            typeof(SuppressionRules),
+            nameof(SuppressionRules.CodeSuppressesNoDiagnostic),
+            () => Evaluate(AddSuppressingSources, SuppressionRules.CodeSuppressesNoDiagnostic),
+            [.. SuppressionSources.Suppressing.Select(source => source.Violation)],
+            () => Evaluate(AddCleanSources, SuppressionRules.CodeSuppressesNoDiagnostic)),
+        new(
             typeof(PackageVersionRules),
             nameof(PackageVersionRules.AspireSdkAndAspirePackagesShareOneVersion),
             () => Evaluate(
@@ -106,4 +113,13 @@ internal static class ProjectRuleCases
         tree.AddReference(GoodContracts, CoreDomain);
         tree.AddReference(GoodProject, PeerProject);
     }
+
+    private static void AddSuppressingSources(ScratchTree tree)
+    {
+        SuppressionSources.Suppressing.ForEach(source => tree.AddFile(source.Path, source.Text));
+        tree.RemoveFromCompile(GoodProject, SuppressionSources.RemovedFromCompile);
+    }
+
+    private static void AddCleanSources(ScratchTree tree) =>
+        SuppressionSources.Clean.ForEach(source => tree.AddFile(source.Path, source.Text));
 }

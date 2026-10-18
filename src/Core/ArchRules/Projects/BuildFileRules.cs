@@ -39,7 +39,7 @@ public static class BuildFileRules
         return RuleEvaluation.Create(buildFiles, () => buildFiles.Where(IsOutsideTheCore));
     }
 
-    private static IEnumerable<CheckedFolder> GetFoldersThatAffectCompilation(ArchSolution solution)
+    internal static IEnumerable<CheckedFolder> GetFoldersThatAffectCompilation(ArchSolution solution)
     {
         var root = Path.TrimEndingDirectorySeparator(solution.Root);
 
@@ -121,5 +121,5 @@ public static class BuildFileRules
     private static Boolean IsInACoreFolder(String path) =>
         CoreFolders.Any(folder => path.StartsWith(folder, StringComparison.Ordinal));
 
-    private sealed record CheckedFolder(String Path, Boolean ReadsSourceConfigFiles);
+    internal sealed record CheckedFolder(String Path, Boolean ReadsSourceConfigFiles);
 }

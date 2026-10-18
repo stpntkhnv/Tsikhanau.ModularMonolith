@@ -12,6 +12,11 @@ public abstract class CoreTests<TInputs> : ArchRuleTests<TInputs>
         + "build and analyzer rules or turns them off. Put the app's own build settings in its project files and "
         + "its packages in App.Packages.props; a change to the core's settings is made in the template.";
 
+    private const String SuppressionAdvice =
+        "Fix the code instead of quieting the diagnostic: a #pragma warning disable, #nullable disable or "
+        + "[SuppressMessage] hides what the compiler and the core's analyzers report. Under Migrations keep only what "
+        + "dotnet ef writes: the migration, its Designer part and the model snapshot.";
+
     [Fact]
     public void Core_projects_reference_only_core_and_package_projects() =>
         Check(
@@ -25,4 +30,11 @@ public abstract class CoreTests<TInputs> : ArchRuleTests<TInputs>
             BuildFileRules.OnlyTheCoreHasBuildAndAnalyzerConfigFiles(Solution),
             "The repository has no Directory.Build.props, .editorconfig or other build file",
             BuildFileAdvice);
+
+    [Fact]
+    public void Code_suppresses_no_diagnostic() =>
+        Check(
+            SuppressionRules.CodeSuppressesNoDiagnostic(Solution),
+            "The repository has no C# file in the folders its projects compile from",
+            SuppressionAdvice);
 }

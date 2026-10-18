@@ -80,6 +80,9 @@ internal sealed class ScratchTree : IDisposable
     public void AddPackageVersion(String path, String name, String version) =>
         AddItem(path, BuildPackageVersion(name, version));
 
+    public void RemoveFromCompile(String projectPath, String sourcePath) =>
+        AddItem(projectPath, BuildCompileRemove(projectPath, sourcePath));
+
     public void AddFile(String path, String text = "")
     {
         var fullPath = GetFullPath(path);
@@ -110,6 +113,9 @@ internal sealed class ScratchTree : IDisposable
 
     private static XElement BuildPackageVersion(String name, String version) =>
         new("PackageVersion", new XAttribute("Include", name), new XAttribute("Version", version));
+
+    private static XElement BuildCompileRemove(String projectPath, String sourcePath) =>
+        new("Compile", new XAttribute("Remove", BuildIncludePath(projectPath, sourcePath)));
 
     private static XElement BuildSolutionProject(String projectPath) =>
         new("Project", new XAttribute("Path", projectPath));

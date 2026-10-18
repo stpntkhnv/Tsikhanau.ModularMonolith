@@ -46,8 +46,8 @@ internal static class RuleLines
 
     private const String BuildSettingsInTheCore =
         "Build and analyzer settings live only in the core: no `.editorconfig`, `Directory.Build.*` or "
-        + "`Directory.Packages.props` anywhere else, and no `#pragma warning disable` or `[SuppressMessage]` to "
-        + "quiet a diagnostic: fix the code.";
+        + "`Directory.Packages.props` anywhere else, and no `#pragma warning disable`, `#nullable disable` or "
+        + "`[SuppressMessage]` to quiet a diagnostic: fix the code.";
 
     private static readonly RuleLine[] All =
     [
@@ -112,7 +112,8 @@ internal static class RuleLines
         new(
             BuildSettingsInTheCore,
             "",
-            nameof(CoreTests<>.Only_the_core_has_build_and_analyzer_config_files)),
+            nameof(CoreTests<>.Only_the_core_has_build_and_analyzer_config_files),
+            nameof(CoreTests<>.Code_suppresses_no_diagnostic)),
     ];
 
     public static String Explain(String test, String fix) =>
