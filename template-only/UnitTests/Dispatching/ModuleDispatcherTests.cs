@@ -48,6 +48,29 @@ public sealed class ModuleDispatcherTests
     }
 
     [Fact]
+    public async Task Marked_command_returns_the_commit_error_when_the_commit_after_its_failure_fails()
+    {
+        var commitError = Error.Conflict("Test.Commit", "Commit failed");
+        var fakeUnitOfWork = new FakeUnitOfWork { NextCommit = Result.Failure(commitError) };
+
+        var result = await SendAsync(new RecordRejectionCommand(), fakeUnitOfWork);
+
+        result.Error.ShouldBe(commitError);
+        fakeUnitOfWork.Commits.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Marked_command_that_fails_without_changes_is_not_committed()
+    {
+        var fakeUnitOfWork = new FakeUnitOfWork { HasChanges = false };
+
+        var result = await SendAsync(new RecordRejectionCommand(), fakeUnitOfWork);
+
+        result.Error.ShouldBe(RejectCommandHandler.Rejected);
+        fakeUnitOfWork.Commits.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Throwing_handler_surfaces_the_exception_and_skips_the_commit()
     {
         var fakeUnitOfWork = new FakeUnitOfWork();
@@ -123,6 +146,7 @@ public sealed class ModuleDispatcherTests
             .AddSingleton<IUnitOfWork<ITestModule>>(fakeUnitOfWork)
             .AddScoped<ICommandHandler<DoubleCommand, Int32>, DoubleCommandHandler>()
             .AddScoped<ICommandHandler<RejectCommand, Unit>, RejectCommandHandler>()
+            .AddScoped<ICommandHandler<RecordRejectionCommand, Unit>, RecordRejectionCommandHandler>()
             .AddScoped<ICommandHandler<FailCommand, Unit>, FailCommandHandler>()
             .AddScoped<ICommandHandler<ThrowCommand, Unit>, ThrowCommandHandler>()
             .AddScoped<IQueryHandler<EchoQuery, String>, EchoQueryHandler>()
@@ -133,6 +157,8 @@ public sealed class ModuleDispatcherTests
     private sealed record DoubleCommand(Int32 Value) : ICommand<Int32>;
 
     private sealed record RejectCommand : ICommand<Unit>;
+
+    private sealed record RecordRejectionCommand : ICommand<Unit>, ICommitOnFailure;
 
     private sealed record FailCommand(Error Error) : ICommand<Unit>;
 
@@ -152,6 +178,12 @@ public sealed class ModuleDispatcherTests
 
         public Task<Result<Unit>> Handle(RejectCommand command, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Failure(Rejected));
+    }
+
+    private sealed class RecordRejectionCommandHandler : ICommandHandler<RecordRejectionCommand, Unit>
+    {
+        public Task<Result<Unit>> Handle(RecordRejectionCommand command, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Failure(RejectCommandHandler.Rejected));
     }
 
     private sealed class FailCommandHandler : ICommandHandler<FailCommand, Unit>
@@ -176,7 +208,7 @@ public sealed class ModuleDispatcherTests
     {
         public Int32 Commits { get; private set; }
 
-        public Boolean HasChanges => true;
+        public Boolean HasChanges { get; init; } = true;
 
         public Result<Unit> NextCommit { get; init; } = Result.Success();
 

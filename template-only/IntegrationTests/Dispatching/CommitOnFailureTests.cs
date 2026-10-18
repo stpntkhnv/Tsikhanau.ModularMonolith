@@ -1,8 +1,12 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RecordRejectedTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RejectAfterTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RejectUntouched;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Dispatching;
 
@@ -58,4 +62,27 @@ public sealed class CommitOnFailureTests(PostgresFixture postgresFixture)
         ping.Touches.ShouldBe(0);
         ping.Version.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task Marked_command_that_throws_surfaces_the_exception_and_writes_nothing()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: AddCreatePingThenThrow);
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => testModulesHost.Pings.ExecuteCommandAsync(
+                new CreatePingThenThrowCommand(Guid.CreateVersion7()),
+                CancellationToken));
+
+        var pingIds = await testModulesHost.Database.QueryAsync<Guid>("SELECT id FROM pings.pings");
+
+        exception.Message.ShouldBe(CreatePingThenThrowCommandHandler.Failure);
+        pingIds.ShouldBeEmpty();
+    }
+
+    private static void AddCreatePingThenThrow(IHostApplicationBuilder builder) =>
+        builder.Services.AddScoped<
+            ICommandHandler<CreatePingThenThrowCommand, Unit>,
+            CreatePingThenThrowCommandHandler>();
 }

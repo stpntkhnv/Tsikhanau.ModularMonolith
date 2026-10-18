@@ -1,7 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Npgsql;
+using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ScheduleTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;
+using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.InternalCommands;
 
@@ -40,6 +47,33 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
 
         var row = rows.ShouldHaveSingleItem();
         row.Type.ShouldBe("touch-ping");
+    }
+
+    [Fact]
+    public async Task Scheduled_command_is_rolled_back_with_the_aggregate_change_when_the_save_fails()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(
+            postgresFixture,
+            configure: AddTouchAndScheduleTouch);
+
+        var pingId = await testModulesHost.CreatePingAsync("refused");
+        await using var commitRefusal = await CommitRefusal.InstallAsync(
+            testModulesHost.Database,
+            PingsDbContext.SchemaName,
+            OutboxMessage.Table);
+
+        var exception = await Should.ThrowAsync<PostgresException>(
+            () => testModulesHost.Pings.ExecuteCommandAsync(
+                new TouchAndScheduleTouchCommand(pingId),
+                CancellationToken));
+
+        var ping = await testModulesHost.GetPingAsync(pingId);
+        var internalCommandRows = await testModulesHost.ReadInternalCommandRowsAsync();
+
+        exception.MessageText.ShouldBe(CommitRefusal.Message);
+        ping.Touches.ShouldBe(0);
+        ping.Version.ShouldBe(1);
+        internalCommandRows.ShouldBeEmpty();
     }
 
     [Fact]
@@ -157,4 +191,9 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
         processedCount.ShouldBe(5);
         deliveredCountBeforeTouch.ShouldBe(1);
     }
+
+    private static void AddTouchAndScheduleTouch(IHostApplicationBuilder builder) =>
+        builder.Services.AddScoped<
+            ICommandHandler<TouchAndScheduleTouchCommand, Unit>,
+            TouchAndScheduleTouchCommandHandler>();
 }

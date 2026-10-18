@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
@@ -201,6 +203,22 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
             CancellationToken);
 
         result.Error.ShouldBe(PingErrors.LabelTaken);
+    }
+
+    [Fact]
+    public async Task Violation_of_an_unlisted_unique_constraint_propagates_as_an_exception()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        var pingId = await testModulesHost.CreatePingAsync("first");
+
+        var exception = await Should.ThrowAsync<DbUpdateException>(
+            () => testModulesHost.Pings.ExecuteCommandAsync(
+                new CreatePingCommand(pingId, "second", Optional<String>.None()),
+                CancellationToken));
+
+        var violation = exception.InnerException.ShouldBeOfType<PostgresException>();
+        violation.SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
+        violation.ConstraintName.ShouldBe("pk_pings");
     }
 
     [Fact]
