@@ -39,6 +39,12 @@ internal static class ModuleRuleCases
     private const String RenameCrateHandlerTypeName =
         $"{CommandHandlerTypeName}[{RenameCrateCommandTypeName},{UnitTypeName}]";
 
+    private const String StampTypeName = $"{BadRoot}.Domain.Stamps.Stamp";
+
+    private const String StampClockTypeName = $"{BadRoot}.Domain.Stamps.IStampClock";
+
+    private const String StampTimerTypeName = $"{BadRoot}.Domain.Stamps.StampTimer";
+
     public static IEnumerable<RuleCase> All =>
     [
         .. DomainCases,
@@ -95,7 +101,21 @@ internal static class ModuleRuleCases
             typeof(DomainRules),
             nameof(DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds),
             () => DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds(Bad),
-            [$"{BadRoot}.Domain.Stamps.Stamp::Now calls System.DateTimeOffset::get_UtcNow/0"],
+            [
+                $"{StampTypeName}::Now calls System.DateTimeOffset::get_UtcNow/0",
+                $"{StampTypeName}::Read takes System.TimeProvider",
+                $"{StampTypeName}::Read calls System.TimeProvider::GetUtcNow/0",
+                $"{StampTypeName}::Today calls System.DateTime::get_Today/0",
+                $"{StampTypeName}::Uptime calls System.Environment::get_TickCount/0",
+                $"{StampTypeName}::LongUptime calls System.Environment::get_TickCount64/0",
+                $"{StampTypeName}::StartLap calls System.Diagnostics.Stopwatch::StartNew/0",
+                $"{StampTypeName}::TicksPerSecond reads System.Diagnostics.Stopwatch::Frequency",
+                $"{StampClockTypeName}::Clock holds System.TimeProvider",
+                $"{StampClockTypeName}::StartLap returns System.Diagnostics.Stopwatch",
+                $"{StampClockTypeName}::Wind takes System.TimeProvider",
+                $"{StampTimerTypeName}::_stopwatch holds System.Diagnostics.Stopwatch",
+                $"{StampTimerTypeName}::.ctor takes System.Diagnostics.Stopwatch",
+            ],
             () => DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds(Good)),
     ];
 

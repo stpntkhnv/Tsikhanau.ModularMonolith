@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using Mono.Cecil;
 using Tsikhanau.Monolith.Application.Commands;
@@ -18,12 +19,23 @@ public static class DomainRules
 {
     private const BindingFlags InstanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
+    private const BindingFlags DeclaredMembers =
+        BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+        | BindingFlags.DeclaredOnly;
+
+    private static readonly HashSet<Type> ClockTypes = [typeof(TimeProvider), typeof(Stopwatch)];
+
+    private static readonly HashSet<String> ClockTypeNames = [.. ClockTypes.Select(type => type.FullNameOrName)];
+
     private static readonly HashSet<String> ForbiddenCalls =
     [
         "System.DateTime::get_UtcNow/0",
         "System.DateTime::get_Now/0",
+        "System.DateTime::get_Today/0",
         "System.DateTimeOffset::get_UtcNow/0",
         "System.DateTimeOffset::get_Now/0",
+        "System.Environment::get_TickCount/0",
+        "System.Environment::get_TickCount64/0",
         "System.Guid::NewGuid/0",
         "System.Guid::CreateVersion7/0",
     ];
@@ -61,7 +73,7 @@ public static class DomainRules
     public static RuleEvaluation DomainNeverReadsTheClockOrCreatesRandomIds(ArchModule module)
     {
         IReadOnlyList<Type> domainTypes = [.. module.GetTypesIn("Domain")];
-        return RuleEvaluation.Create(domainTypes, () => ReadForbiddenCalls(module, domainTypes));
+        return RuleEvaluation.Create(domainTypes, () => ReadClockUses(module, domainTypes));
     }
 
     private static Boolean IsModelType(Type type) =>
@@ -107,7 +119,15 @@ public static class DomainRules
             .GetProperties(InstanceMembers)
             .Select(property => property.PropertyType);
 
-    private static IEnumerable<String> ReadForbiddenCalls(ArchModule module, IReadOnlyList<Type> domainTypes)
+    private static IEnumerable<String> ReadClockUses(ArchModule module, IReadOnlyList<Type> domainTypes) =>
+    [
+        .. ReadForbiddenReferences(module, domainTypes),
+        .. domainTypes
+            .Where(type => !type.IsCompilerGenerated)
+            .SelectMany(GetClockTypedMembers),
+    ];
+
+    private static IEnumerable<String> ReadForbiddenReferences(ArchModule module, IReadOnlyList<Type> domainTypes)
     {
         var domainTypeNames = domainTypes
             .Select(type => type.FullName)
@@ -116,10 +136,10 @@ public static class DomainRules
         return module.Assemblies
             .Select(assembly => assembly.Location)
             .Distinct()
-            .SelectMany(location => ReadForbiddenCallsIn(location, domainTypeNames));
+            .SelectMany(location => ReadForbiddenReferencesIn(location, domainTypeNames));
     }
 
-    private static List<String> ReadForbiddenCallsIn(String location, HashSet<String?> domainTypeNames)
+    private static List<String> ReadForbiddenReferencesIn(String location, HashSet<String?> domainTypeNames)
     {
         using var assembly = AssemblyDefinition.ReadAssembly(location);
         return assembly.MainModule
@@ -127,23 +147,66 @@ public static class DomainRules
             .Where(type => domainTypeNames.Contains(GetTopLevelType(type).FullName))
             .SelectMany(type => type.Methods)
             .Where(method => method.HasBody)
-            .SelectMany(GetCallsFrom)
-            .Where(call => ForbiddenCalls.Contains(BuildSignature(call.CalledMethod)))
-            .Select(Describe)
+            .SelectMany(GetForbiddenReferencesFrom)
             .ToList();
     }
 
-    private static IEnumerable<(MethodDefinition CallingMethod, MethodReference CalledMethod)> GetCallsFrom(
-        MethodDefinition method) =>
-        method.Body.Instructions
-            .Select(instruction => instruction.Operand)
-            .OfType<MethodReference>()
-            .Select(calledMethod => (method, calledMethod));
-
-    private static String Describe((MethodDefinition CallingMethod, MethodReference CalledMethod) call)
+    private static IEnumerable<String> GetForbiddenReferencesFrom(MethodDefinition method)
     {
-        var callingMethodName = $"{call.CallingMethod.DeclaringType.FullName}::{call.CallingMethod.Name}";
-        return $"{callingMethodName} calls {BuildSignature(call.CalledMethod)}";
+        var methodName = $"{method.DeclaringType.FullName}::{method.Name}";
+        IReadOnlyList<Object> operands = [.. method.Body.Instructions.Select(instruction => instruction.Operand)];
+
+        var calls = operands
+            .OfType<MethodReference>()
+            .Where(IsForbidden)
+            .Select(calledMethod => $"{methodName} calls {BuildSignature(calledMethod)}");
+
+        var reads = operands
+            .OfType<FieldReference>()
+            .Where(field => IsClockType(field.DeclaringType))
+            .Select(field => $"{methodName} reads {field.DeclaringType.FullName}::{field.Name}");
+
+        return [.. calls, .. reads];
+    }
+
+    private static Boolean IsForbidden(MethodReference calledMethod) =>
+        ForbiddenCalls.Contains(BuildSignature(calledMethod)) || IsClockType(calledMethod.DeclaringType);
+
+    private static Boolean IsClockType(TypeReference type) => ClockTypeNames.Contains(type.FullName);
+
+    private static IEnumerable<String> GetClockTypedMembers(Type type) =>
+        GetSignatureTypes(type)
+            .Where(signatureType => ClockTypes.Contains(signatureType.Type))
+            .Select(signatureType => signatureType.Describe(type));
+
+    private static IEnumerable<SignatureType> GetSignatureTypes(Type type)
+    {
+        IReadOnlyList<MethodBase> methods =
+        [
+            .. type.GetConstructors(DeclaredMembers),
+            .. type
+                .GetMethods(DeclaredMembers)
+                .Where(method => !method.IsSpecialName && !method.IsCompilerGenerated),
+        ];
+
+        var parameters = methods
+            .SelectMany(method => method.GetParameters())
+            .Select(parameter => new SignatureType(parameter.Member, "takes", parameter.ParameterType));
+
+        var returns = methods
+            .OfType<MethodInfo>()
+            .Select(method => new SignatureType(method, "returns", method.ReturnType));
+
+        var fields = type
+            .GetFields(DeclaredMembers)
+            .Where(field => !field.IsCompilerGenerated)
+            .Select(field => new SignatureType(field, "holds", field.FieldType));
+
+        var properties = type
+            .GetProperties(DeclaredMembers)
+            .Select(property => new SignatureType(property, "holds", property.PropertyType));
+
+        return [.. parameters, .. returns, .. fields, .. properties];
     }
 
     private static String BuildSignature(MethodReference method) =>
@@ -151,4 +214,9 @@ public static class DomainRules
 
     private static TypeDefinition GetTopLevelType(TypeDefinition type) =>
         type.DeclaringType is null ? type : GetTopLevelType(type.DeclaringType);
+
+    private sealed record SignatureType(MemberInfo Member, String Use, Type Type)
+    {
+        public String Describe(Type owner) => $"{owner.FullName}::{Member.Name} {Use} {Type.FullName}";
+    }
 }

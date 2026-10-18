@@ -24,6 +24,10 @@ public sealed class ArchFailureMessageTests : ArchRuleTests<FixtureInputs>
         "Bind a settings record with AddSettings<TSettings>, take IOptions<TSettings> in the constructor and read its "
         + "Value";
 
+    private const String ClockFix =
+        "Keep TimeProvider and Stopwatch out of the domain: the handler reads the clock, makes ids with "
+        + "Guid.CreateVersion7(createdOn) and passes the moment in as a parameter";
+
     [Fact]
     public void Failing_rule_states_the_fix_the_rule_line_and_the_playbook()
     {
@@ -54,6 +58,16 @@ public sealed class ArchFailureMessageTests : ArchRuleTests<FixtureInputs>
 
         failure.Message.ShouldContain($"Fix: {SettingsFix}");
         failure.Message.ShouldContain("Playbook: docs/playbooks/add-settings.md");
+    }
+
+    [Fact]
+    public void Clock_failure_names_the_member_and_says_to_pass_the_moment_in()
+    {
+        var failure = Should.Throw<ShouldAssertException>(
+            () => new BadDomainRules().Domain_never_reads_the_clock_or_creates_random_ids(FixtureModules.Bad.Name));
+
+        failure.Message.ShouldContain("Acme.Modules.Bad.Domain.Stamps.Stamp::Read takes System.TimeProvider");
+        failure.Message.ShouldContain($"Fix: {ClockFix}");
     }
 
     private static void Domain_and_feature_classes_return_optional_instead_of_null() =>

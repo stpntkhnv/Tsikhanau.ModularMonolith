@@ -62,5 +62,6 @@ public abstract class DomainRulesTests<TInputs> : ArchRuleTests<TInputs>
         Check(
             DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds(GetModule(name)),
             $"{name} has no types in Domain",
-            "Take the moment as a parameter from the handler's TimeProvider; make ids with Guid.CreateVersion7");
+            "Keep TimeProvider and Stopwatch out of the domain: the handler reads the clock, makes ids with "
+            + "Guid.CreateVersion7(createdOn) and passes the moment in as a parameter");
 }
