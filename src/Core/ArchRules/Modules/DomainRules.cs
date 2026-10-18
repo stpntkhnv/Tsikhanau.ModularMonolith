@@ -176,8 +176,10 @@ public static class DomainRules
 
     private static IEnumerable<String> GetClockTypedMembers(Type type) =>
         GetSignatureTypes(type)
-            .Where(signatureType => ClockTypes.Contains(signatureType.Type))
+            .Where(signatureType => IsClockOrDerived(signatureType.Type))
             .Select(signatureType => signatureType.Describe(type));
+
+    private static Boolean IsClockOrDerived(Type type) => ClockTypes.Any(type.IsAssignableTo);
 
     private static IEnumerable<SignatureType> GetSignatureTypes(Type type)
     {

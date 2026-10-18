@@ -12,15 +12,18 @@ internal static class MigrationSyntaxExtensions
 
     extension(CompilationUnitSyntax source)
     {
-        public IEnumerable<SourceFinding> FindWhatDotnetEfDoesNotWrite()
+        public IEnumerable<SourceFinding> CollectWhatDotnetEfDoesNotWrite()
         {
             var directives = source.SuppressingDirectives;
             var directivesDotnetEfWrites = GetDirectivesDotnetEfWrites(source, directives);
 
             return
             [
-                .. source.FindSuppressions(directives.Except(directivesDotnetEfWrites)),
-                .. FindTypesDotnetEfDoesNotWrite(source),
+                .. directives
+                    .Except(directivesDotnetEfWrites)
+                    .Select(directive => directive.Describe()),
+                .. source.CollectQuietingAttributes(),
+                .. CollectTypesDotnetEfDoesNotWrite(source),
             ];
         }
     }
@@ -43,7 +46,7 @@ internal static class MigrationSyntaxExtensions
             .Where(DisablesObsoleteWarnings)
             .Take(1);
 
-    private static IEnumerable<SourceFinding> FindTypesDotnetEfDoesNotWrite(CompilationUnitSyntax source) =>
+    private static IEnumerable<SourceFinding> CollectTypesDotnetEfDoesNotWrite(CompilationUnitSyntax source) =>
     [
         .. source
             .DescendantNodes()

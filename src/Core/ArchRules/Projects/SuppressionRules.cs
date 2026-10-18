@@ -28,19 +28,25 @@ public static class SuppressionRules
     {
         var solutionPath = solution.ToSolutionPath(sourcePath);
 
-        return FindViolations(sourcePath)
+        return CollectViolations(sourcePath)
             .OrderBy(finding => finding.Line)
             .Select(finding => $"{solutionPath}:{finding.Line} {finding.Text}");
     }
 
-    private static IEnumerable<SourceFinding> FindViolations(String sourcePath)
+    private static IEnumerable<SourceFinding> CollectViolations(String sourcePath)
     {
         var source = ParseSource(sourcePath);
+        var fileName = Path.GetFileName(sourcePath);
 
         return IsInMigrationsFolder(sourcePath)
-            ? source.FindWhatDotnetEfDoesNotWrite()
-            : source.FindSuppressions(source.SuppressingDirectives);
+            ? CollectViolationsUnderMigrations(source, fileName)
+            : [.. GeneratedFileNames.Collect(fileName), .. source.CollectSuppressions()];
     }
+
+    private static IEnumerable<SourceFinding> CollectViolationsUnderMigrations(
+        CompilationUnitSyntax source,
+        String fileName) =>
+        [.. GeneratedFileNames.CollectExceptDotnetEfDesigner(fileName), .. source.CollectWhatDotnetEfDoesNotWrite()];
 
     private static CompilationUnitSyntax ParseSource(String sourcePath) =>
         CSharpSyntaxTree
