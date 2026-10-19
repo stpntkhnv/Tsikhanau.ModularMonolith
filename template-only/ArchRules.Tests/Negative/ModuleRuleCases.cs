@@ -47,6 +47,8 @@ internal static class ModuleRuleCases
 
     private const String StampDialTypeName = $"{BadRoot}.Domain.Stamps.StampDial";
 
+    private const String StampLedgerTypeName = $"{BadRoot}.Domain.Stamps.StampLedger";
+
     public static IEnumerable<RuleCase> All =>
     [
         .. DomainCases,
@@ -118,6 +120,8 @@ internal static class ModuleRuleCases
                 $"{StampTimerTypeName}::_stopwatch holds System.Diagnostics.Stopwatch",
                 $"{StampTimerTypeName}::.ctor takes System.Diagnostics.Stopwatch",
                 $"{StampDialTypeName}::Read takes Acme.SharedKernel.SystemClock",
+                $"{StampLedgerTypeName}::Item takes System.TimeProvider",
+                $"{StampLedgerTypeName}::op_Addition takes System.TimeProvider",
             ],
             () => DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds(Good)),
     ];

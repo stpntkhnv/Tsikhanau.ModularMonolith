@@ -47,14 +47,14 @@ internal static class SuppressionSyntaxExtensions
         [
             .. source.SuppressingDirectives.Select(directive => directive.Describe()),
             .. CollectGeneratedCodeHeaders(source),
-            .. source.CollectQuietingAttributes(),
+            .. source.CollectQuietingAttributesAndInactiveText(),
         ];
 
-        public IEnumerable<SourceFinding> CollectQuietingAttributes() =>
+        public IEnumerable<SourceFinding> CollectQuietingAttributesAndInactiveText() =>
         [
             .. CollectAttributes(source),
             .. CollectAttributeAliases(source),
-            .. CollectAttributesInInactiveText(source),
+            .. CollectQuietingInactiveText(source),
         ];
     }
 
@@ -97,12 +97,12 @@ internal static class SuppressionSyntaxExtensions
             .Where(IsQuietingAlias)
             .Select(DescribeAlias);
 
-    private static IEnumerable<SourceFinding> CollectAttributesInInactiveText(CompilationUnitSyntax source) =>
+    private static IEnumerable<SourceFinding> CollectQuietingInactiveText(CompilationUnitSyntax source) =>
         source
             .DescendantTrivia()
             .Where(trivia => trivia.IsKind(SyntaxKind.DisabledTextTrivia))
             .SelectMany(GetLines)
-            .Where(line => NamesQuietingAttribute(line.Text))
+            .Where(line => NamesQuietingAttribute(line.Text) || HasGeneratedCodeMarker(line.Text))
             .Select(line => line with { Text = line.Text + DescribeBranch(isActive: false) });
 
     private static IEnumerable<SourceFinding> GetLines(SyntaxTrivia trivia)

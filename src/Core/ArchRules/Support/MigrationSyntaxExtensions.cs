@@ -8,6 +8,8 @@ internal static class MigrationSyntaxExtensions
 {
     private const String NotDotnetEfOutput = "is not a migration, its Designer part or a model snapshot";
 
+    private const String NoConditionalDirective = "is a conditional directive, which dotnet ef never writes";
+
     private static readonly String[] ObsoleteWarningCodes = ["612", "618"];
 
     extension(CompilationUnitSyntax source)
@@ -22,7 +24,8 @@ internal static class MigrationSyntaxExtensions
                 .. directives
                     .Except(directivesDotnetEfWrites)
                     .Select(directive => directive.Describe()),
-                .. source.CollectQuietingAttributes(),
+                .. CollectConditionalDirectives(source),
+                .. source.CollectQuietingAttributesAndInactiveText(),
                 .. CollectTypesDotnetEfDoesNotWrite(source),
             ];
         }
@@ -36,15 +39,30 @@ internal static class MigrationSyntaxExtensions
             .OfType<NullableDirectiveTriviaSyntax>()
             .Take(1)
             .Where(nullable => HasNoTarget(nullable) && IsLeading(source, nullable)),
-        .. DeclaresADesignerPartOrSnapshot(source) ? GetFirstObsoleteWarningsDisable(directives) : [],
+        .. DeclaresADesignerPartOrSnapshot(source) ? GetRestoredObsoleteWarningsDisable(source) : [],
     ];
 
-    private static IEnumerable<DirectiveTriviaSyntax> GetFirstObsoleteWarningsDisable(
-        IReadOnlyList<DirectiveTriviaSyntax> directives) =>
-        directives
-            .OfType<PragmaWarningDirectiveTriviaSyntax>()
-            .Where(DisablesObsoleteWarnings)
-            .Take(1);
+    private static IEnumerable<DirectiveTriviaSyntax> GetRestoredObsoleteWarningsDisable(CompilationUnitSyntax source)
+    {
+        IReadOnlyList<PragmaWarningDirectiveTriviaSyntax> pair =
+        [
+            .. source
+                .DescendantNodes(descendIntoTrivia: true)
+                .OfType<PragmaWarningDirectiveTriviaSyntax>()
+                .SkipWhile(pragma => !SetsObsoleteWarnings(pragma, SyntaxKind.DisableKeyword))
+                .Take(2),
+        ];
+
+        return pair is [var disable, var restore] && SetsObsoleteWarnings(restore, SyntaxKind.RestoreKeyword)
+            ? [disable]
+            : [];
+    }
+
+    private static IEnumerable<SourceFinding> CollectConditionalDirectives(CompilationUnitSyntax source) =>
+        source
+            .DescendantNodes(descendIntoTrivia: true)
+            .OfType<BranchingDirectiveTriviaSyntax>()
+            .Select(DescribeConditionalDirective);
 
     private static IEnumerable<SourceFinding> CollectTypesDotnetEfDoesNotWrite(CompilationUnitSyntax source) =>
     [
@@ -66,8 +84,9 @@ internal static class MigrationSyntaxExtensions
     private static Boolean IsLeading(CompilationUnitSyntax source, DirectiveTriviaSyntax directive) =>
         source.Members.FirstOrDefault() is { } firstMember && directive.SpanStart < firstMember.SpanStart;
 
-    private static Boolean DisablesObsoleteWarnings(PragmaWarningDirectiveTriviaSyntax pragma) =>
-        pragma.ErrorCodes
+    private static Boolean SetsObsoleteWarnings(PragmaWarningDirectiveTriviaSyntax pragma, SyntaxKind setting) =>
+        pragma.DisableOrRestoreKeyword.IsKind(setting)
+        && pragma.ErrorCodes
             .Select(code => code.ToString())
             .SequenceEqual(ObsoleteWarningCodes);
 
@@ -102,4 +121,7 @@ internal static class MigrationSyntaxExtensions
 
     private static SourceFinding DescribeType(SyntaxToken identifier) =>
         new(identifier.GetLocation().StartLine, $"{identifier.ValueText} {NotDotnetEfOutput}");
+
+    private static SourceFinding DescribeConditionalDirective(BranchingDirectiveTriviaSyntax directive) =>
+        new(directive.GetLocation().StartLine, $"{directive} {NoConditionalDirective}");
 }

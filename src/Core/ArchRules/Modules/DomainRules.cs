@@ -183,12 +183,14 @@ public static class DomainRules
 
     private static IEnumerable<SignatureType> GetSignatureTypes(Type type)
     {
+        IReadOnlyList<PropertyInfo> properties = type.GetProperties(DeclaredMembers);
+        HashSet<MethodInfo> accessors = [.. properties.SelectMany(property => property.GetAccessors(nonPublic: true))];
         IReadOnlyList<MethodBase> methods =
         [
             .. type.GetConstructors(DeclaredMembers),
             .. type
                 .GetMethods(DeclaredMembers)
-                .Where(method => !method.IsSpecialName && !method.IsCompilerGenerated),
+                .Where(method => !accessors.Contains(method) && !method.IsCompilerGenerated),
         ];
 
         var parameters = methods
@@ -204,12 +206,17 @@ public static class DomainRules
             .Where(field => !field.IsCompilerGenerated)
             .Select(field => new SignatureType(field, "holds", field.FieldType));
 
-        var properties = type
-            .GetProperties(DeclaredMembers)
-            .Select(property => new SignatureType(property, "holds", property.PropertyType));
+        var propertyTypes = properties.Select(property => new SignatureType(property, "holds", property.PropertyType));
 
-        return [.. parameters, .. returns, .. fields, .. properties];
+        var indexParameters = properties.SelectMany(GetIndexParameterTypes);
+
+        return [.. parameters, .. returns, .. fields, .. propertyTypes, .. indexParameters];
     }
+
+    private static IEnumerable<SignatureType> GetIndexParameterTypes(PropertyInfo property) =>
+        property
+            .GetIndexParameters()
+            .Select(parameter => new SignatureType(property, "takes", parameter.ParameterType));
 
     private static String BuildSignature(MethodReference method) =>
         $"{method.DeclaringType.FullName}::{method.Name}/{method.Parameters.Count}";
