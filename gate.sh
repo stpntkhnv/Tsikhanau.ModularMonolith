@@ -9,9 +9,22 @@ bash scripts/core-hash.sh check
 root_solutions=(*.slnx)
 template_solution=template-only/Template.slnx
 test_output=$(mktemp)
+build_output=$(mktemp)
 harness_work=
-trap 'rm -rf -- "$test_output" ${harness_work:+"$harness_work"}' EXIT
+trap 'rm -rf -- "$test_output" "$build_output" ${harness_work:+"$harness_work"}' EXIT
 results=()
+
+stop_on_warnings() {
+  local solution=$1
+  local warnings
+  warnings=$(grep -E ': warning [A-Za-z]+[0-9]+:' "$build_output" | sort -u || true)
+
+  if [[ -n "$warnings" ]]; then
+    echo "gate: $solution: the build printed warnings; fix each one:" >&2
+    echo "$warnings" >&2
+    exit 1
+  fi
+}
 
 run_solution() {
   local solution=$1
@@ -24,8 +37,10 @@ run_solution() {
     exit 1
   fi
 
-  dotnet restore "$solution"
-  dotnet build "$solution" -c Release --no-restore
+  dotnet restore "$solution" | tee "$build_output"
+  stop_on_warnings "$solution"
+  dotnet build "$solution" -c Release --no-restore | tee "$build_output"
+  stop_on_warnings "$solution"
   dotnet test --solution "$solution" -c Release --no-build --no-ansi | tee "$test_output"
 
   summary=$(sed -n '/^Test run summary:/,$p' "$test_output")
