@@ -34,6 +34,8 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
 
     private static readonly TimeSpan NextStartWindow = TimeSpan.FromMilliseconds(500);
 
+    private static readonly TimeSpan PumpStopDeadline = TimeSpan.FromSeconds(30);
+
     private static readonly TimeSpan PastTheLeaseEnd = TestModulesHost.HandlerTimeout * 3;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -119,14 +121,19 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
             await InsertSecretRowAsync(testModulesHost, "next");
             testModulesHost.Time.Advance(PastTheLeaseEnd);
             await firstHandlingHold.FirstTimedOut.WaitAsync(BarrierDeadline, TestContext.Current.CancellationToken);
-            hasNextStartedWhileHeld = await HasCompletedWithinAsync(firstHandlingHold.SecondStarted, NextStartWindow);
+            hasNextStartedWhileHeld = await HasCompletedWithinAsync(
+                firstHandlingHold.SecondStarted,
+                NextStartWindow,
+                CancellationToken);
         }
         finally
         {
             firstHandlingHold.Release();
+            var hasPumpStopped = await HasCompletedWithinAsync(processing, PumpStopDeadline, CancellationToken.None);
+            hasPumpStopped.ShouldBeTrue("the pump still runs after the cleanup deadline");
         }
 
-        var processedCount = await processing.WaitAsync(BarrierDeadline, TestContext.Current.CancellationToken);
+        var processedCount = await processing;
         var rows = await testModulesHost.ReadInboxRowsAsync();
 
         hasNextStartedWhileHeld.ShouldBeFalse();
@@ -252,9 +259,12 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         return otherInstance.Time.GetUtcNow();
     }
 
-    private static async Task<Boolean> HasCompletedWithinAsync(Task task, TimeSpan window)
+    private static async Task<Boolean> HasCompletedWithinAsync(
+        Task task,
+        TimeSpan window,
+        CancellationToken cancellationToken)
     {
-        var firstCompleted = await Task.WhenAny(task, Task.Delay(window, CancellationToken));
+        var firstCompleted = await Task.WhenAny(task, Task.Delay(window, cancellationToken));
 
         return firstCompleted == task;
     }
