@@ -14,7 +14,9 @@ internal sealed class SecondPongIntegrationEventHandler(
     TimeProvider timeProvider)
     : IIntegrationEventHandler<PingCreatedIntegrationEvent>
 {
-    private const String FailingSql = "DO $$ BEGIN RAISE EXCEPTION 'second pong handler failed'; END $$";
+    public const String FailureMessage = "second pong handler failed";
+
+    private const String FailingSql = $"DO $$ BEGIN RAISE EXCEPTION '{FailureMessage}'; END $$";
 
     public Task<Result<Unit>> Handle(
         PingCreatedIntegrationEvent integrationEvent,

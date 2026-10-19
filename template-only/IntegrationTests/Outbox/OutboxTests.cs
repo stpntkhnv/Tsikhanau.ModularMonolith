@@ -1,10 +1,14 @@
+using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;
+using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Outbox;
 
 public sealed class OutboxTests(PostgresFixture postgresFixture)
 {
+    private const String ReadOutboxLastErrorSql = "SELECT last_error FROM pings.outbox_messages";
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -70,14 +74,17 @@ public sealed class OutboxTests(PostgresFixture postgresFixture)
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
         await testModulesHost.CreatePingAsync("refused mark");
         var failedOn = testModulesHost.Time.GetUtcNow();
-        await using var processedMarkRefusal = await ProcessedMarkRefusal.InstallAsync(
+        await using var processedMarkRefusal = await RowChangeRefusal.InstallAsync(
             testModulesHost.Database,
-            "pings",
-            "outbox_messages");
+            PingsDbContext.SchemaName,
+            OutboxMessage.Table,
+            "UPDATE",
+            RowChangeRefusal.ProcessedMark);
 
         await testModulesHost.DeliverOutboxAsync();
 
         var outboxRows = await testModulesHost.ReadOutboxRowsAsync();
+        var lastError = await testModulesHost.Database.ExecuteScalarAsync<String>(ReadOutboxLastErrorSql);
         var inboxRows = await testModulesHost.ReadInboxRowsAsync();
 
         inboxRows.ShouldBeEmpty();
@@ -86,6 +93,7 @@ public sealed class OutboxTests(PostgresFixture postgresFixture)
         outboxRow.HasFailed.ShouldBeFalse();
         outboxRow.Attempts.ShouldBe(1);
         outboxRow.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
+        lastError.ShouldContain(RowChangeRefusal.Message);
     }
 
     [Fact]

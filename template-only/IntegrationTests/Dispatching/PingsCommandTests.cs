@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
@@ -222,6 +223,22 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
+    public async Task Violation_of_a_check_constraint_propagates_as_an_exception()
+    {
+        await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
+        await using var labelCheck = await LabelCheck.AddAsync(testModulesHost.Database);
+
+        var exception = await Should.ThrowAsync<DbUpdateException>(
+            () => testModulesHost.Pings.ExecuteCommandAsync(
+                new CreatePingCommand(Guid.CreateVersion7(), LabelCheck.RefusedLabel, Optional<String>.None()),
+                CancellationToken));
+
+        var violation = exception.InnerException.ShouldBeOfType<PostgresException>();
+        violation.SqlState.ShouldBe(PostgresErrorCodes.CheckViolation);
+        violation.ConstraintName.ShouldBe(LabelCheck.Name);
+    }
+
+    [Fact]
     public async Task Missing_ping_query_returns_not_found()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
@@ -232,4 +249,27 @@ public sealed class PingsCommandTests(PostgresFixture postgresFixture)
 
         result.Error.ShouldBe(PingErrors.NotFound);
     }
+}
+
+file sealed class LabelCheck : IAsyncDisposable
+{
+    public const String Name = "ck_pings_label_not_refused";
+
+    public const String RefusedLabel = "refused";
+
+    private const String AddSql = $"ALTER TABLE pings.pings ADD CONSTRAINT {Name} CHECK (label <> '{RefusedLabel}')";
+
+    private const String DropSql = $"ALTER TABLE pings.pings DROP CONSTRAINT {Name}";
+
+    private readonly DatabaseProbe _databaseProbe;
+
+    private LabelCheck(DatabaseProbe databaseProbe) => _databaseProbe = databaseProbe;
+
+    public static async Task<LabelCheck> AddAsync(DatabaseProbe databaseProbe)
+    {
+        await databaseProbe.ExecuteAsync(AddSql);
+        return new LabelCheck(databaseProbe);
+    }
+
+    public async ValueTask DisposeAsync() => await _databaseProbe.ExecuteAsync(DropSql);
 }

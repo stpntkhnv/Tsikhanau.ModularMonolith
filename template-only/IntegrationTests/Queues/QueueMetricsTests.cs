@@ -374,10 +374,12 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
     public async Task Give_back_that_fails_with_a_database_error_counts_nothing()
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(postgresFixture);
-        await using var giveBackRefusal = await GiveBackRefusal.InstallAsync(
+        await using var giveBackRefusal = await RowChangeRefusal.InstallAsync(
             testModulesHost.Database,
             PongsDbContext.SchemaName,
             InboxMessage.Table,
+            "UPDATE",
+            RowChangeRefusal.GiveBack,
             "P0001");
 
         testModulesHost.PongHooks.CancelFor = ["cancelled"];

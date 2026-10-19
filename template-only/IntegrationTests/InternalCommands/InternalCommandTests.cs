@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
@@ -49,18 +50,23 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
         row.Type.ShouldBe("touch-ping");
     }
 
-    [Fact]
-    public async Task Scheduled_command_is_rolled_back_with_the_aggregate_change_when_the_save_fails()
+    [Theory]
+    [InlineData(OutboxMessage.Table)]
+    [InlineData(InternalCommandMessage.Table)]
+    public async Task Scheduled_command_is_rolled_back_with_the_aggregate_change_when_the_save_fails(
+        String refusedTable)
     {
         await using var testModulesHost = await TestModulesHost.StartAsync(
             postgresFixture,
             configure: AddTouchAndScheduleTouch);
 
         var pingId = await testModulesHost.CreatePingAsync("refused");
-        await using var commitRefusal = await CommitRefusal.InstallAsync(
+        await using var insertRefusal = await RowChangeRefusal.InstallAsync(
             testModulesHost.Database,
             PingsDbContext.SchemaName,
-            OutboxMessage.Table);
+            refusedTable,
+            "INSERT",
+            RowChangeRefusal.AnyRow);
 
         var exception = await Should.ThrowAsync<PostgresException>(
             () => testModulesHost.Pings.ExecuteCommandAsync(
@@ -69,11 +75,14 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
 
         var ping = await testModulesHost.GetPingAsync(pingId);
         var internalCommandRows = await testModulesHost.ReadInternalCommandRowsAsync();
+        var outboxRows = await testModulesHost.ReadOutboxRowsAsync();
 
-        exception.MessageText.ShouldBe(CommitRefusal.Message);
+        exception.MessageText.ShouldBe(RowChangeRefusal.Message);
         ping.Touches.ShouldBe(0);
         ping.Version.ShouldBe(1);
         internalCommandRows.ShouldBeEmpty();
+        var outboxRow = outboxRows.ShouldHaveSingleItem();
+        outboxRow.Type.ShouldBe("pings.ping-created");
     }
 
     [Fact]

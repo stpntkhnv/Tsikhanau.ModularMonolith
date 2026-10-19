@@ -202,6 +202,10 @@ internal sealed class TestModulesHost : IAsyncDisposable
         ResolvePump<IQueuePump<IPingsModule>>()
             .RunOnceAsync(CancellationToken);
 
+    public Task<Int32> RunPongsQueuesAsync(CancellationToken cancellationToken) =>
+        ResolvePump<IQueuePump<IPongsModule>>()
+            .RunOnceAsync(cancellationToken);
+
     public Task<Int32> RunCleanupAsync() => CleanupDriver.RunAllAsync(Services);
 
     public Task SampleQueuesAsync() =>

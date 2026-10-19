@@ -9,6 +9,8 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
 {
     private const String ReadPongIdsSql = "SELECT id FROM pongs.pongs WHERE ping_id = @PingId";
 
+    private const String ReadLastErrorSql = "SELECT last_error FROM pongs.inbox_messages";
+
     private static readonly TimeSpan OneTick = TimeSpan.FromTicks(1);
 
     private static readonly TimeSpan[] BackoffPauses =
@@ -90,6 +92,7 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
 
         var pongIdsAfterFailure = await ReadPongIdsAsync(testModulesHost, pingId);
         var rowAfterFailure = (await testModulesHost.ReadInboxRowsAsync()).Single();
+        var lastErrorAfterFailure = await testModulesHost.Database.ExecuteScalarAsync<String>(ReadLastErrorSql);
         var firstHandlerCallsAfterFailure = testModulesHost.PongHooks.ReceivedPingIds.Count;
         var secondHandlerCallsAfterFailure = secondPongHandlerHooks.ReceivedPingIds.Count;
         testModulesHost.Time.Advance(TimeSpan.FromSeconds(1));
@@ -104,6 +107,7 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
         rowAfterFailure.IsProcessed.ShouldBeFalse();
         rowAfterFailure.HasFailed.ShouldBeFalse();
         rowAfterFailure.NextAttemptOn.ShouldBe(failedOn.UtcDateTime.AddSeconds(1));
+        lastErrorAfterFailure.ShouldContain(SecondPongIntegrationEventHandler.FailureMessage);
         firstHandlerCallsAfterFailure.ShouldBe(1);
         secondHandlerCallsAfterFailure.ShouldBe(1);
         pongIdsAfterRetry.Count.ShouldBe(2);

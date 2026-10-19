@@ -34,6 +34,8 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
 
     private static readonly TimeSpan NextStartWindow = TimeSpan.FromMilliseconds(500);
 
+    private static readonly TimeSpan PastTheLeaseEnd = TestModulesHost.HandlerTimeout * 3;
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -109,14 +111,14 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
         var firstHandlingHold = new FirstHandlingHold();
         testModulesHost.PongHooks.WhileHandlingSecret = firstHandlingHold.HandleAsync;
         await InsertSecretRowAsync(testModulesHost, "held");
-        var processing = testModulesHost.ProcessInboxAsync(TestContext.Current.CancellationToken);
+        var processing = testModulesHost.RunPongsQueuesAsync(TestContext.Current.CancellationToken);
         Boolean hasNextStartedWhileHeld;
         try
         {
-            await firstHandlingHold.FirstStarted.WaitAsync(BarrierDeadline, CancellationToken);
+            await firstHandlingHold.FirstStarted.WaitAsync(BarrierDeadline, TestContext.Current.CancellationToken);
             await InsertSecretRowAsync(testModulesHost, "next");
-            testModulesHost.Time.Advance(TestModulesHost.HandlerTimeout + TimeSpan.FromSeconds(1));
-            await firstHandlingHold.FirstTimedOut.WaitAsync(BarrierDeadline, CancellationToken);
+            testModulesHost.Time.Advance(PastTheLeaseEnd);
+            await firstHandlingHold.FirstTimedOut.WaitAsync(BarrierDeadline, TestContext.Current.CancellationToken);
             hasNextStartedWhileHeld = await HasCompletedWithinAsync(firstHandlingHold.SecondStarted, NextStartWindow);
         }
         finally
@@ -124,7 +126,7 @@ public sealed class OutsideTransactionTests(PostgresFixture postgresFixture)
             firstHandlingHold.Release();
         }
 
-        var processedCount = await processing.WaitAsync(BarrierDeadline, CancellationToken);
+        var processedCount = await processing.WaitAsync(BarrierDeadline, TestContext.Current.CancellationToken);
         var rows = await testModulesHost.ReadInboxRowsAsync();
 
         hasNextStartedWhileHeld.ShouldBeFalse();

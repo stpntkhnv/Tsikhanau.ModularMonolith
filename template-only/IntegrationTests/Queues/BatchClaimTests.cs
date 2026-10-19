@@ -344,10 +344,12 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
             postgresFixture,
             configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
 
-        await using var giveBackRefusal = await GiveBackRefusal.InstallAsync(
+        await using var giveBackRefusal = await RowChangeRefusal.InstallAsync(
             testModulesHost.Database,
             PingsDbContext.SchemaName,
             OutboxMessage.Table,
+            "UPDATE",
+            RowChangeRefusal.GiveBack,
             giveBackSqlState);
 
         await CreatePingsAsync(testModulesHost, "refused", 3);
@@ -377,10 +379,12 @@ public sealed class BatchClaimTests(PostgresFixture postgresFixture)
             postgresFixture,
             configure: builder => builder.Logging.AddProvider(capturingLoggerProvider));
 
-        await using var giveBackRefusal = await GiveBackRefusal.InstallAsync(
+        await using var giveBackRefusal = await RowChangeRefusal.InstallAsync(
             testModulesHost.Database,
             PongsDbContext.SchemaName,
             InboxMessage.Table,
+            "UPDATE",
+            RowChangeRefusal.GiveBack,
             giveBackSqlState);
 
         testModulesHost.PongHooks.CancelFor = ["cancelled-0"];
