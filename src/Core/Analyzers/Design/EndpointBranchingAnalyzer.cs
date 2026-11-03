@@ -2,8 +2,9 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Tsikhanau.Monolith.Analyzers.Rules;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Design;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EndpointBranchingAnalyzer : DiagnosticAnalyzer

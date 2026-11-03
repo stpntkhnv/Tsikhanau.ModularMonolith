@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Rules;
 
 internal sealed class RuleLine(String text, String playbook, params String[] diagnostics)
 {

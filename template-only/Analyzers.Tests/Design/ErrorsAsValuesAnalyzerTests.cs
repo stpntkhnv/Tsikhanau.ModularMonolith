@@ -1,4 +1,7 @@
-namespace Tsikhanau.Monolith.Analyzers.Tests;
+using Tsikhanau.Monolith.Analyzers.Design;
+using Tsikhanau.Monolith.Analyzers.Tests.Running;
+
+namespace Tsikhanau.Monolith.Analyzers.Tests.Design;
 
 public sealed class ErrorsAsValuesAnalyzerTests
 {

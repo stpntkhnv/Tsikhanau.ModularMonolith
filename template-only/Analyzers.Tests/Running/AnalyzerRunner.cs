@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Tsikhanau.Monolith.Analyzers.Tests;
+namespace Tsikhanau.Monolith.Analyzers.Tests.Running;
 
 internal static class AnalyzerRunner
 {

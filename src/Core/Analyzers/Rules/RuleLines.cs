@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Rules;
 
 internal static class RuleLines
 {

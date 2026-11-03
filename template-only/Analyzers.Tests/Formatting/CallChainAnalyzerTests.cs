@@ -1,4 +1,7 @@
-namespace Tsikhanau.Monolith.Analyzers.Tests;
+using Tsikhanau.Monolith.Analyzers.Formatting;
+using Tsikhanau.Monolith.Analyzers.Tests.Running;
+
+namespace Tsikhanau.Monolith.Analyzers.Tests.Formatting;
 
 public sealed class CallChainAnalyzerTests
 {

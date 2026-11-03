@@ -3,8 +3,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Tsikhanau.Monolith.Analyzers.Rules;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Naming;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ClrTypeNameAnalyzer : DiagnosticAnalyzer

@@ -2,8 +2,9 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using Tsikhanau.Monolith.Analyzers.Rules;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Design;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SqlConstantAnalyzer : DiagnosticAnalyzer

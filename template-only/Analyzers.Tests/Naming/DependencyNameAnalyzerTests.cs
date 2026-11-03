@@ -1,4 +1,7 @@
-namespace Tsikhanau.Monolith.Analyzers.Tests;
+using Tsikhanau.Monolith.Analyzers.Naming;
+using Tsikhanau.Monolith.Analyzers.Tests.Running;
+
+namespace Tsikhanau.Monolith.Analyzers.Tests.Naming;
 
 public sealed class DependencyNameAnalyzerTests
 {

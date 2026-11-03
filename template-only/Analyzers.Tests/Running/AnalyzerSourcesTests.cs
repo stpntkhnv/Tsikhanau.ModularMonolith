@@ -3,8 +3,10 @@ using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Tsikhanau.Monolith.Analyzers.Formatting;
+using Tsikhanau.Monolith.Analyzers.Naming;
 
-namespace Tsikhanau.Monolith.Analyzers.Tests;
+namespace Tsikhanau.Monolith.Analyzers.Tests.Running;
 
 public sealed class AnalyzerSourcesTests
 {

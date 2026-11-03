@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Formatting;
 
 internal static class SyntaxTokenExtensions
 {

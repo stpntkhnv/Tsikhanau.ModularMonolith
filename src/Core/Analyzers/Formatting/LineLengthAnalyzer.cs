@@ -4,8 +4,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Tsikhanau.Monolith.Analyzers.Rules;
 
-namespace Tsikhanau.Monolith.Analyzers;
+namespace Tsikhanau.Monolith.Analyzers.Formatting;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class LineLengthAnalyzer : DiagnosticAnalyzer
