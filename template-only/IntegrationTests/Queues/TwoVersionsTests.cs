@@ -1,8 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Application.Events;
+using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Infrastructure.EventBus;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.TestModules.Pings;
+using Tsikhanau.Monolith.TestModules.Pongs;
+using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 
@@ -157,4 +165,59 @@ public sealed class TwoVersionsTests(PostgresFixture postgresFixture)
 
     private static Task<IReadOnlyList<String>> ReadPongLabelsAsync(TestModulesHost testModulesHost, Guid pingId) =>
         testModulesHost.Database.QueryAsync<String>(ReadPongLabelsSql, new { PingId = pingId });
+
+    [IntegrationEventName(Name)]
+    private sealed record PingOfALaterReleaseIntegrationEvent(DateTimeOffset OccurredOn, Guid PingId, String Label)
+        : IntegrationEvent(OccurredOn)
+    {
+        public const String Name = "tests.ping-of-a-later-release";
+    }
+
+    private sealed class PingOfALaterReleaseIntegrationEventHandler(
+        IPongRepository pongRepository,
+        TimeProvider timeProvider)
+        : IIntegrationEventHandler<PingOfALaterReleaseIntegrationEvent>
+    {
+        public Task<Result<Unit>> Handle(
+            PingOfALaterReleaseIntegrationEvent integrationEvent,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(
+                PongLabel
+                    .Create(integrationEvent.Label, "label")
+                    .Map(label => CreatePong(integrationEvent.PingId, label))
+                    .Tap(pongRepository.Add)
+                    .Map(_ => Unit.Value));
+
+        private Pong CreatePong(Guid pingId, PongLabel label)
+        {
+            var createdOn = timeProvider.GetUtcNow();
+            return Pong.Create(PongId.From(Guid.CreateVersion7(createdOn)), pingId, label, createdOn);
+        }
+    }
+
+    private static class PingOfALaterReleaseSubscription
+    {
+        public static void AddToPongs(IHostApplicationBuilder builder)
+        {
+            builder.Services.AddKeyedScoped<
+                IIntegrationEventHandler<PingOfALaterReleaseIntegrationEvent>,
+                PingOfALaterReleaseIntegrationEventHandler>(typeof(IPongsModule));
+
+            builder.Services
+                .GetOrAddInstance<IntegrationEventRegistry>()
+                .Register(typeof(PingOfALaterReleaseIntegrationEvent));
+
+            builder.Services
+                .GetOrAddInstance<SubscriptionRegistry>()
+                .Subscribe(
+                    PingOfALaterReleaseIntegrationEvent.Name,
+                    GetPongs(builder.Services),
+                    runsOutsideTransaction: false);
+        }
+
+        private static ModuleDescriptor GetPongs(IServiceCollection services) =>
+            services
+                .GetOrAddInstance<ModuleRegistry>().Modules
+                .Single(module => module.Key == typeof(IPongsModule));
+    }
 }

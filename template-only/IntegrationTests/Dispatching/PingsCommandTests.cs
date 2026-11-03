@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;

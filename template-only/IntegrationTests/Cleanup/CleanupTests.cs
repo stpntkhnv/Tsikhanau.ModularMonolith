@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Cleanup;

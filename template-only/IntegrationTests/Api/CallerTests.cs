@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.TestModules.Pongs.Features;
 using Tsikhanau.Railway;
 

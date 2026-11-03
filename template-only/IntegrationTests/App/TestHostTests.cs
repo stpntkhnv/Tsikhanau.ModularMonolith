@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.TestApp;
 
 namespace Tsikhanau.Monolith.IntegrationTests.App;
 

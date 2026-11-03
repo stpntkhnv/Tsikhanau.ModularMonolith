@@ -2,7 +2,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Api;
 

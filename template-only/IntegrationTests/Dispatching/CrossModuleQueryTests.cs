@@ -1,4 +1,5 @@
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Features.GetPongSource;
 

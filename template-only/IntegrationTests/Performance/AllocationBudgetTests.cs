@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Performance;
 

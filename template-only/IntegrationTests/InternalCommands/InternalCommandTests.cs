@@ -4,7 +4,9 @@ using Npgsql;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
+using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ScheduleTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;
@@ -205,4 +207,23 @@ public sealed class InternalCommandTests(PostgresFixture postgresFixture)
         builder.Services.AddScoped<
             ICommandHandler<TouchAndScheduleTouchCommand, Unit>,
             TouchAndScheduleTouchCommandHandler>();
+
+    private sealed record TouchAndScheduleTouchCommand(Guid PingId) : IPingsCommand<Unit>;
+
+    private sealed class TouchAndScheduleTouchCommandHandler(
+        IPingRepository pingRepository,
+        IInternalCommandScheduler<IPingsModule> internalCommandScheduler,
+        TimeProvider timeProvider)
+        : ICommandHandler<TouchAndScheduleTouchCommand, Unit>
+    {
+        public Task<Result<Unit>> Handle(TouchAndScheduleTouchCommand command, CancellationToken cancellationToken) =>
+            pingRepository
+                .GetAsync(PingId.From(command.PingId), cancellationToken)
+                .BindAsync(ping => ping.Touch(timeProvider.GetUtcNow()))
+                .TapAsync(_ => ScheduleTouch(command.PingId));
+
+        private void ScheduleTouch(Guid pingId) =>
+            internalCommandScheduler.Enqueue(
+                new TouchPingInternalCommand(Guid.CreateVersion7(timeProvider.GetUtcNow()), pingId));
+    }
 }

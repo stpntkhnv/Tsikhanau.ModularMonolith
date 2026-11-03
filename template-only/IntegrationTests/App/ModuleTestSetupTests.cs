@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.TestApp;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.TestModules.Pings.Settings;
 using Tsikhanau.Monolith.TestModules.Pongs.Settings;

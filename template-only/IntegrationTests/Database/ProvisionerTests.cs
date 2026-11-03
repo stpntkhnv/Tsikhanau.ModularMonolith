@@ -1,7 +1,7 @@
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 

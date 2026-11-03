@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Logging;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Queues;
 

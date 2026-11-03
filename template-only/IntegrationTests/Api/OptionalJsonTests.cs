@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Railway;

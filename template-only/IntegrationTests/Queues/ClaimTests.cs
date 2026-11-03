@@ -1,9 +1,12 @@
+using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Features.SendSecret;
 using Tsikhanau.Monolith.TestModules.Pongs;
@@ -255,4 +258,26 @@ public sealed class ClaimTests(PostgresFixture postgresFixture)
         builder.Services.ConfigureDbContext<PongsDbContext>(
             (_, dbContextOptionsBuilder) => dbContextOptionsBuilder.AddInterceptors(exceptionAfterCommitInterceptor),
             ServiceLifetime.Singleton);
+
+    private sealed class ExceptionAfterCommitInterceptor : DbTransactionInterceptor
+    {
+        public Boolean ThrowsAfterNextCommit { get; set; }
+
+        public Int32 ThrownCount { get; private set; }
+
+        public override Task TransactionCommittedAsync(
+            DbTransaction transaction,
+            TransactionEndEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            if (!ThrowsAfterNextCommit)
+            {
+                return Task.CompletedTask;
+            }
+
+            ThrowsAfterNextCommit = false;
+            ThrownCount++;
+            throw new InvalidOperationException("Thrown after the commit landed");
+        }
+    }
 }

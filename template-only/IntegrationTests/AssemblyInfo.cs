@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Xunit.Sdk;
 using Xunit.v3;
 

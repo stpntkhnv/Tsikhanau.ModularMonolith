@@ -3,7 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

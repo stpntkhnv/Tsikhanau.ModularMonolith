@@ -1,6 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.TestApp;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ProduceError;

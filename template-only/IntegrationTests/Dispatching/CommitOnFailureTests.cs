@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Application.Commands;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
+using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RecordRejectedTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RejectAfterTouch;
@@ -85,4 +87,23 @@ public sealed class CommitOnFailureTests(PostgresFixture postgresFixture)
         builder.Services.AddScoped<
             ICommandHandler<CreatePingThenThrowCommand, Unit>,
             CreatePingThenThrowCommandHandler>();
+
+    private sealed record CreatePingThenThrowCommand(Guid PingId) : IPingsCommand<Unit>, ICommitOnFailure;
+
+    private sealed class CreatePingThenThrowCommandHandler(IPingRepository pingRepository, TimeProvider timeProvider)
+        : ICommandHandler<CreatePingThenThrowCommand, Unit>
+    {
+        public const String Failure = "Handler failed after adding a ping";
+
+        public Task<Result<Unit>> Handle(CreatePingThenThrowCommand command, CancellationToken cancellationToken) =>
+            Task.FromResult(
+                PingLabel
+                    .Create("thrown", "label")
+                    .Map(label => Ping.Create(PingId.From(command.PingId), label, timeProvider.GetUtcNow()))
+                    .Tap(pingRepository.Add)
+                    .Bind(Throw));
+
+        private static Result<Unit> Throw(Ping _) =>
+            throw new InvalidOperationException(Failure);
+    }
 }

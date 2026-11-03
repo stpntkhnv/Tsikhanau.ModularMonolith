@@ -1,7 +1,16 @@
+using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.IntegrationTests.Queues;
+using Microsoft.Extensions.Hosting;
+using Tsikhanau.Monolith.Application.Events;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.TestModules.Pongs;
+using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
+using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Inbox;
 
@@ -354,4 +363,63 @@ public sealed class InboxTests(PostgresFixture postgresFixture)
             VALUES (@messageId, @type, @payload::jsonb, 0, @receivedOn, @receivedOn, @receivedOn)
             """,
             new { messageId, type, payload, receivedOn = testModulesHost.Time.GetUtcNow() });
+
+    private sealed class SecondPongHandlerHooks
+    {
+        public Boolean FailsNextCall { get; set; }
+
+        public ConcurrentQueue<Guid> ReceivedPingIds { get; } = new();
+    }
+
+    private sealed class SecondPongIntegrationEventHandler(
+        IPongRepository pongRepository,
+        PongsDbContext pongsDbContext,
+        SecondPongHandlerHooks secondPongHandlerHooks,
+        TimeProvider timeProvider)
+        : IIntegrationEventHandler<PingCreatedIntegrationEvent>
+    {
+        public const String FailureMessage = "second pong handler failed";
+
+        private const String FailingSql = $"DO $$ BEGIN RAISE EXCEPTION '{FailureMessage}'; END $$";
+
+        public Task<Result<Unit>> Handle(
+            PingCreatedIntegrationEvent integrationEvent,
+            CancellationToken cancellationToken)
+        {
+            secondPongHandlerHooks.ReceivedPingIds.Enqueue(integrationEvent.PingId);
+            return PongLabel
+                .Create(integrationEvent.Label, "label")
+                .Map(label => CreatePong(integrationEvent.PingId, label))
+                .Tap(pongRepository.Add)
+                .BindAsync(_ => FlushThenFailIfAskedAsync(cancellationToken));
+        }
+
+        private Pong CreatePong(Guid pingId, PongLabel label)
+        {
+            var createdOn = timeProvider.GetUtcNow();
+            return Pong.Create(PongId.From(Guid.CreateVersion7(createdOn)), pingId, label, createdOn);
+        }
+
+        private async Task<Result<Unit>> FlushThenFailIfAskedAsync(CancellationToken cancellationToken)
+        {
+            await pongsDbContext.SaveChangesAsync(cancellationToken);
+            if (secondPongHandlerHooks.FailsNextCall)
+            {
+                secondPongHandlerHooks.FailsNextCall = false;
+                await pongsDbContext.Database.ExecuteSqlRawAsync(FailingSql, cancellationToken);
+            }
+
+            return Unit.Value;
+        }
+    }
+
+    private static class SecondPongHandlerRegistration
+    {
+        public static void AddToPongs(IHostApplicationBuilder builder) =>
+            builder.Services
+                .AddSingleton<SecondPongHandlerHooks>()
+                .AddKeyedScoped<
+                    IIntegrationEventHandler<PingCreatedIntegrationEvent>,
+                    SecondPongIntegrationEventHandler>(typeof(IPongsModule));
+    }
 }

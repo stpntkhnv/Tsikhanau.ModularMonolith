@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
-using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
+using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPingWithRetry;
 
