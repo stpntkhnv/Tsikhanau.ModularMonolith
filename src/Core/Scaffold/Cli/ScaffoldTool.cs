@@ -1,5 +1,7 @@
 using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Files;
+using Tsikhanau.Monolith.Scaffold.Plans;
+using Tsikhanau.Monolith.Scaffold.Processes;
 using Tsikhanau.Monolith.Scaffold.Transactions;
 using Tsikhanau.Railway;
 

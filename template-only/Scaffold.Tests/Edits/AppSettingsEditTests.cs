@@ -1,8 +1,8 @@
 using System.Text;
 using Tsikhanau.Monolith.Scaffold.Edits;
 using Tsikhanau.Monolith.Scaffold.Files;
-using Tsikhanau.Monolith.Scaffold.Tests.Support;
-using Tsikhanau.Monolith.Scaffold.Transactions;
+using Tsikhanau.Monolith.Scaffold.Plans;
+using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Edits;

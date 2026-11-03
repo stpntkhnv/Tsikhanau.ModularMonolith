@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Files;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;

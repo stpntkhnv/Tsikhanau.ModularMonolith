@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Text;
-using Tsikhanau.Monolith.Scaffold.Tests.Support;
+using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Checks;
 

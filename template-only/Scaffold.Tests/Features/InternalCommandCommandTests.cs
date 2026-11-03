@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Files;
-using Tsikhanau.Monolith.Scaffold.Tests.Support;
+using Tsikhanau.Monolith.Scaffold.Tests.Fakes;
+using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Features;
 

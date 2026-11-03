@@ -2,7 +2,9 @@ using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Edits;
 using Tsikhanau.Monolith.Scaffold.Files;
-using Tsikhanau.Monolith.Scaffold.Transactions;
+using Tsikhanau.Monolith.Scaffold.Names;
+using Tsikhanau.Monolith.Scaffold.Plans;
+using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;

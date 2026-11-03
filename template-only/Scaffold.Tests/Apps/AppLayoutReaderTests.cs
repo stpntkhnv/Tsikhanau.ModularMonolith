@@ -1,6 +1,6 @@
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Scaffold.Apps;
-using Tsikhanau.Monolith.Scaffold.Tests.Support;
+using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Apps;

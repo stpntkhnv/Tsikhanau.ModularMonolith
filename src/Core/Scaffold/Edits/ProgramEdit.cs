@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Modules;
-using Tsikhanau.Monolith.Scaffold.Transactions;
+using Tsikhanau.Monolith.Scaffold.Names;
+using Tsikhanau.Monolith.Scaffold.Plans;
+using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Edits;

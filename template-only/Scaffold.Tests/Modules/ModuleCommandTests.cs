@@ -1,6 +1,7 @@
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Files;
-using Tsikhanau.Monolith.Scaffold.Tests.Support;
+using Tsikhanau.Monolith.Scaffold.Tests.Fakes;
+using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Modules;

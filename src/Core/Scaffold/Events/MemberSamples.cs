@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Sources;
 using Tsikhanau.Railway;
 

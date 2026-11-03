@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Features;

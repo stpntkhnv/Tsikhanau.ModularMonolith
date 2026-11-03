@@ -1,4 +1,5 @@
 using Tsikhanau.Monolith.Scaffold.Apps;
+using Tsikhanau.Monolith.Scaffold.Names;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;
 
