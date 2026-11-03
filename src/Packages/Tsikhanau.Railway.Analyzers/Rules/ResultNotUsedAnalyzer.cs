@@ -2,8 +2,9 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using Tsikhanau.Railway.Analyzers.Symbols;
 
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ResultNotUsedAnalyzer : DiagnosticAnalyzer

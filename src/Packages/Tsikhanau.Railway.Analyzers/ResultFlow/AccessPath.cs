@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.ResultFlow;
 
 internal sealed class AccessPath : IEquatable<AccessPath>
 {

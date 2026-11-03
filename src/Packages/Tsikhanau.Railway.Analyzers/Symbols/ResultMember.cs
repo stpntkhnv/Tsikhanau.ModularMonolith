@@ -1,4 +1,4 @@
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.Symbols;
 
 internal enum ResultMember
 {

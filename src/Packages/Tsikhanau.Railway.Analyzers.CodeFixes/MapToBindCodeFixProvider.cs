@@ -5,8 +5,9 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Tsikhanau.Railway.Analyzers.Rules;
 
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.CodeFixes;
 
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(MapToBindCodeFixProvider))]
 [Shared]

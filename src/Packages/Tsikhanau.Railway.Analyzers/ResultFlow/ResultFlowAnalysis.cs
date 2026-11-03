@@ -1,8 +1,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
+using Tsikhanau.Railway.Analyzers.Rules;
+using Tsikhanau.Railway.Analyzers.Symbols;
 
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.ResultFlow;
 
 internal sealed class ResultFlowAnalysis
 {

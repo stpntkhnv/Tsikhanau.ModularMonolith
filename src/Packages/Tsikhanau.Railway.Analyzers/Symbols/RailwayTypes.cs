@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace Tsikhanau.Railway.Analyzers;
+namespace Tsikhanau.Railway.Analyzers.Symbols;
 
 internal sealed class RailwayTypes
 {
