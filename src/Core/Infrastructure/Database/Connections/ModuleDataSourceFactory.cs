@@ -22,7 +22,6 @@ internal static class ModuleDataSourceFactory
         var login = ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey);
         var connectionString = connectionStrings.BuildForModule(
             login,
-            loginNames.BuildApplicationName(module.Schema),
             settings.CalculatePoolSizePerModule(moduleCount),
             handlerTimeout);
 

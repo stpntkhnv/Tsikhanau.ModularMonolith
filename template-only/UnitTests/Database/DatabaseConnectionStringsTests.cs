@@ -90,7 +90,7 @@ public sealed class DatabaseConnectionStringsTests
         var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+            connectionStrings.BuildForModule(login, 7, TimeSpan.FromMinutes(1)));
 
         moduleConnectionStringBuilder.Host.ShouldBe("db");
         moduleConnectionStringBuilder.Port.ShouldBe(5433);
@@ -133,7 +133,7 @@ public sealed class DatabaseConnectionStringsTests
         var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+            connectionStrings.BuildForModule(login, 7, TimeSpan.FromMinutes(1)));
 
         moduleConnectionStringBuilder.Host.ShouldBe("db");
         moduleConnectionStringBuilder.Port.ShouldBe(5433);
@@ -161,7 +161,7 @@ public sealed class DatabaseConnectionStringsTests
         var handlerTimeout = TimeSpan.FromSeconds(handlerTimeoutSeconds);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, handlerTimeout));
+            connectionStrings.BuildForModule(login, 7, handlerTimeout));
 
         moduleConnectionStringBuilder.CommandTimeout.ShouldBe(commandTimeoutSeconds);
     }
@@ -189,7 +189,7 @@ public sealed class DatabaseConnectionStringsTests
         var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+            connectionStrings.BuildForModule(login, 7, TimeSpan.FromMinutes(1)));
 
         moduleConnectionStringBuilder.MaxAutoPrepare.ShouldBe(20);
     }
@@ -207,7 +207,7 @@ public sealed class DatabaseConnectionStringsTests
             connectionStrings.BuildForAdmin(PrepareTimeout));
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+            connectionStrings.BuildForModule(login, 7, TimeSpan.FromMinutes(1)));
 
         adminConnectionStringBuilder.Pooling.ShouldBeFalse();
         moduleConnectionStringBuilder.Pooling.ShouldBeTrue();
@@ -223,7 +223,7 @@ public sealed class DatabaseConnectionStringsTests
         var login = ModuleLogin.Create(LoginNames, "pings", TestSettings.LoginKey);
 
         var preparationConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModulePreparation(login, "monolith-pings", TimeSpan.FromSeconds(90.5)));
+            connectionStrings.BuildForModulePreparation(login, TimeSpan.FromSeconds(90.5)));
 
         preparationConnectionStringBuilder.Username.ShouldBe(login.Name);
         preparationConnectionStringBuilder.Password.ShouldBe(login.Password);
@@ -245,7 +245,7 @@ public sealed class DatabaseConnectionStringsTests
             connectionStrings.BuildForAdmin(PrepareTimeout));
 
         var preparationConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModulePreparation(login, "monolith-pings", PrepareTimeout));
+            connectionStrings.BuildForModulePreparation(login, PrepareTimeout));
 
         adminConnectionStringBuilder.HostRecheckSeconds.ShouldBe(0);
         preparationConnectionStringBuilder.HostRecheckSeconds.ShouldBe(0);
@@ -265,7 +265,7 @@ public sealed class DatabaseConnectionStringsTests
             connectionStrings.BuildForAdmin(PrepareTimeout));
 
         var moduleConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-            connectionStrings.BuildForModule(login, "monolith-pings", 7, TimeSpan.FromMinutes(1)));
+            connectionStrings.BuildForModule(login, 7, TimeSpan.FromMinutes(1)));
 
         adminConnectionStringBuilder.PersistSecurityInfo.ShouldBeFalse();
         moduleConnectionStringBuilder.PersistSecurityInfo.ShouldBeFalse();

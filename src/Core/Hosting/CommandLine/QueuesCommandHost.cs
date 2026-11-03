@@ -1,20 +1,19 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using Microsoft.Extensions.Options;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 namespace Tsikhanau.Monolith.Hosting.CommandLine;
 
 internal static class QueuesCommandHost
 {
-    public static async Task<Int32> RunAsync(String[] arguments, Action<WebApplicationBuilder> addServices)
+    public static async Task<Int32> HostQueuesToolAsync(String[] arguments, Action<WebApplicationBuilder> addServices)
     {
         try
         {
-            await using var app = Build(addServices);
-            ValidateSettings(app.Services);
+            await using var app = BuildApp(addServices);
+            _ = app.Services.ValidateSettings();
             await using var outputTextWriter = StandardOutput.CreateWriter();
             var queuesTool = new QueuesTool(app.Services, outputTextWriter, Console.Error);
             return await queuesTool.RunAsync(arguments, CancellationToken.None);
@@ -26,10 +25,9 @@ internal static class QueuesCommandHost
         }
     }
 
-    private static WebApplication Build(Action<WebApplicationBuilder> addServices)
+    private static WebApplication BuildApp(Action<WebApplicationBuilder> addServices)
     {
-        var builder = WebApplication.CreateBuilder([]);
-        addServices(builder);
+        var builder = MonolithHost.CreateBuilder([], addServices);
         builder.Logging
             .AddConsole(WriteEveryLevelToStandardError)
             .AddFilter<ConsoleLoggerProvider>(category: null, LogLevel.Warning);
@@ -39,9 +37,4 @@ internal static class QueuesCommandHost
 
     private static void WriteEveryLevelToStandardError(ConsoleLoggerOptions consoleLoggerOptions) =>
         consoleLoggerOptions.LogToStandardErrorThreshold = LogLevel.Trace;
-
-    private static void ValidateSettings(IServiceProvider serviceProvider) =>
-        serviceProvider
-            .GetRequiredService<IStartupValidator>()
-            .Validate();
 }

@@ -6,11 +6,12 @@ namespace Tsikhanau.Monolith.Infrastructure.Database.Logins;
 
 internal sealed class ModuleLogin
 {
-    private ModuleLogin(String schema, String name, String password)
+    private ModuleLogin(String schema, String name, String password, String applicationName)
     {
         Schema = schema;
         Name = name;
         Password = password;
+        ApplicationName = applicationName;
     }
 
     public String Schema { get; }
@@ -19,10 +20,12 @@ internal sealed class ModuleLogin
 
     public String Password { get; }
 
+    public String ApplicationName { get; }
+
     public static ModuleLogin Create(ModuleLoginNames loginNames, String schema, String loginKey)
     {
         var name = loginNames.BuildLoginName(schema);
-        return new ModuleLogin(schema, name, DerivePassword(name, loginKey));
+        return new ModuleLogin(schema, name, DerivePassword(name, loginKey), loginNames.BuildApplicationName(schema));
     }
 
     public override String ToString() => Name;

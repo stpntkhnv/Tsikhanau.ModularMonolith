@@ -71,27 +71,23 @@ internal sealed class DatabaseConnectionStrings
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
 
-    public String BuildForModulePreparation(ModuleLogin login, String applicationName, TimeSpan prepareTimeout) =>
+    public String BuildForModulePreparation(ModuleLogin login, TimeSpan prepareTimeout) =>
         new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Username = login.Name,
             Password = login.Password,
-            ApplicationName = applicationName,
+            ApplicationName = login.ApplicationName,
             Pooling = false,
             HostRecheckSeconds = 0,
             CommandTimeout = prepareTimeout.TotalSecondsRoundedUp,
         }.ConnectionString;
 
-    public String BuildForModule(
-        ModuleLogin login,
-        String applicationName,
-        Int32 maxPoolSize,
-        TimeSpan handlerTimeout) =>
+    public String BuildForModule(ModuleLogin login, Int32 maxPoolSize, TimeSpan handlerTimeout) =>
         new NpgsqlConnectionStringBuilder(_configuredConnectionStringBuilder.ConnectionString)
         {
             Username = login.Name,
             Password = login.Password,
-            ApplicationName = applicationName,
+            ApplicationName = login.ApplicationName,
             Pooling = true,
             MaxPoolSize = maxPoolSize,
             CommandTimeout = CalculateCommandTimeout(handlerTimeout),

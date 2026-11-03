@@ -27,16 +27,8 @@ public static class ModuleDatabaseExtensions
         this IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
-        var settings = ValidateSettings(serviceProvider);
+        var settings = serviceProvider.ValidateSettings();
         EnsurePreparesOnStartup(settings.PrepareMode);
-        await PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
-    }
-
-    internal static async Task PrepareModuleDatabasesOnlyAsync(
-        this IServiceProvider serviceProvider,
-        CancellationToken cancellationToken)
-    {
-        var settings = ValidateSettings(serviceProvider);
         await PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
     }
 
@@ -44,7 +36,45 @@ public static class ModuleDatabaseExtensions
         this IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
-        var settings = ValidateSettings(serviceProvider);
+        var settings = serviceProvider.ValidateSettings();
+        await VerifyAsync(serviceProvider, settings, cancellationToken);
+    }
+
+    internal static DatabaseSettings ValidateSettings(this IServiceProvider serviceProvider)
+    {
+        serviceProvider
+            .GetRequiredService<IStartupValidator>()
+            .Validate();
+
+        return serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
+    }
+
+    internal static Task PrepareOrVerifyModuleDatabasesAsync(
+        this IServiceProvider serviceProvider,
+        DatabaseSettings settings,
+        CancellationToken cancellationToken) =>
+        settings.PrepareMode == DatabasePrepareMode.Never
+            ? VerifyAsync(serviceProvider, settings, cancellationToken)
+            : PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
+
+    private static void EnsurePreparesOnStartup(DatabasePrepareMode prepareMode)
+    {
+        if (prepareMode == DatabasePrepareMode.Never)
+        {
+            throw new InvalidOperationException(NeverPrepares);
+        }
+
+        if (prepareMode == DatabasePrepareMode.Only)
+        {
+            throw new InvalidOperationException(OnlyStops);
+        }
+    }
+
+    private static async Task VerifyAsync(
+        IServiceProvider serviceProvider,
+        DatabaseSettings settings,
+        CancellationToken cancellationToken)
+    {
         var connectionStrings = serviceProvider.GetRequiredService<DatabaseConnectionStrings>();
         var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
 
@@ -64,28 +94,6 @@ public static class ModuleDatabaseExtensions
             CreateLogger(serviceProvider),
             connectionStrings.DatabaseName,
             JoinNames(modules));
-    }
-
-    private static DatabaseSettings ValidateSettings(IServiceProvider serviceProvider)
-    {
-        serviceProvider
-            .GetRequiredService<IStartupValidator>()
-            .Validate();
-
-        return serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
-    }
-
-    private static void EnsurePreparesOnStartup(DatabasePrepareMode prepareMode)
-    {
-        if (prepareMode == DatabasePrepareMode.Never)
-        {
-            throw new InvalidOperationException(NeverPrepares);
-        }
-
-        if (prepareMode == DatabasePrepareMode.Only)
-        {
-            throw new InvalidOperationException(OnlyStops);
-        }
     }
 
     private static async Task PrepareWithinTimeoutAsync(
@@ -137,13 +145,12 @@ public static class ModuleDatabaseExtensions
             settings.MaxConnections,
             cancellationToken);
 
+        var preparationConnectionStrings = logins.Select(
+            login => connectionStrings.BuildForModulePreparation(login, settings.PrepareTimeout));
+
         await MigrateAndGrantInboxDeliveryAsync(
             serviceProvider,
-            modules,
-            module => connectionStrings.BuildForModulePreparation(
-                ModuleLogin.Create(loginNames, module.Schema, settings.LoginKey),
-                loginNames.BuildApplicationName(module.Schema),
-                settings.PrepareTimeout),
+            modules.Zip(preparationConnectionStrings),
             loginNames.Group,
             cancellationToken);
 
@@ -154,16 +161,15 @@ public static class ModuleDatabaseExtensions
 
     private static async Task MigrateAndGrantInboxDeliveryAsync(
         IServiceProvider serviceProvider,
-        IEnumerable<ModuleDescriptor> modules,
-        Func<ModuleDescriptor, String> buildConnectionString,
+        IEnumerable<(ModuleDescriptor Module, String ConnectionString)> modulePreparations,
         String group,
         CancellationToken cancellationToken)
     {
         await using var scope = serviceProvider.CreateAsyncScope();
-        foreach (var module in modules)
+        foreach (var (module, connectionString) in modulePreparations)
         {
             await using var preparationConnection = await PreparationConnection.OpenAsync(
-                buildConnectionString(module),
+                connectionString,
                 cancellationToken);
 
             var dbContext = ResolveDbContext(module, scope.ServiceProvider);

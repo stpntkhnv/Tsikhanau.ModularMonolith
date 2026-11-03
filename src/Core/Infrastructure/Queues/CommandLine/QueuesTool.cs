@@ -27,24 +27,19 @@ internal sealed class QueuesTool(
             return await QueuesCommandLine
                 .Parse(arguments, serviceProvider.GetRequiredService<ModuleRegistry>())
                 .MatchAsync(
-                    command => RunAsync(command, cancellationToken),
+                    command => command
+                        .RunAsync(serviceProvider, outputTextWriter, cancellationToken)
+                        .MatchAsync(_ => Task.FromResult(DoneExitCode), ReportConflictAsync),
                     ReportUsageAsync);
         }
         catch (Exception exception) when (IsDatabaseOrOutputFailure(exception))
         {
-            return await ReportAsync(exception.Message, FailedExitCode);
+            return await ReportFailureAsync(exception);
         }
     }
 
     private static Boolean IsDatabaseOrOutputFailure(Exception exception) =>
         exception is NpgsqlException or IOException or InvalidOperationException { InnerException: NpgsqlException };
-
-    private Task<Int32> RunAsync(IQueuesCommand command, CancellationToken cancellationToken) =>
-        command
-            .RunAsync(serviceProvider, outputTextWriter, cancellationToken)
-            .MatchAsync(
-                _ => Task.FromResult(DoneExitCode),
-                error => ReportAsync(error.Message, ConflictExitCode));
 
     private async Task<Int32> ReportUsageAsync(Error error)
     {
@@ -53,9 +48,15 @@ internal sealed class QueuesTool(
         return UsageExitCode;
     }
 
-    private async Task<Int32> ReportAsync(String message, Int32 exitCode)
+    private async Task<Int32> ReportConflictAsync(Error error)
     {
-        await errorTextWriter.WriteLineAsync($"{Name}: {message}");
-        return exitCode;
+        await errorTextWriter.WriteLineAsync($"{Name}: {error.Message}");
+        return ConflictExitCode;
+    }
+
+    private async Task<Int32> ReportFailureAsync(Exception exception)
+    {
+        await errorTextWriter.WriteLineAsync($"{Name}: {exception.Message}");
+        return FailedExitCode;
     }
 }

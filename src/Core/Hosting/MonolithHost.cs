@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Hosting.CommandLine;
+using Tsikhanau.Monolith.Hosting.Observability;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 namespace Tsikhanau.Monolith.Hosting;
@@ -15,16 +14,26 @@ public static class MonolithHost
     private const Int32 Success = 0;
 
     public static Task<Int32> RunAsync(String[] args, Action<WebApplicationBuilder> addServices) =>
-        args is [QueuesTool.Name, .. var commandArguments]
-            ? QueuesCommandHost.RunAsync(commandArguments, addServices)
-            : RunHostAsync(args, addServices);
+        args is [QueuesTool.Name, .. var queuesArguments]
+            ? QueuesCommandHost.HostQueuesToolAsync(queuesArguments, addServices)
+            : HostWebAppAsync(args, addServices);
 
-    private static async Task<Int32> RunHostAsync(String[] args, Action<WebApplicationBuilder> addServices)
+    private static async Task<Int32> HostWebAppAsync(String[] args, Action<WebApplicationBuilder> addServices)
     {
-        await using var app = Build(args, addServices);
+        await using var app = BuildApp(args, addServices);
         try
         {
-            await RunAsync(app);
+            var settings = app.Services.ValidateSettings();
+            await app.Services.PrepareOrVerifyModuleDatabasesAsync(settings, CancellationToken.None);
+            if (settings.PrepareMode == DatabasePrepareMode.Only)
+            {
+                HostLog.PreparedOnly(app.Logger);
+            }
+            else
+            {
+                await ServeAsync(app);
+            }
+
             return Success;
         }
         catch (Exception exception)
@@ -34,14 +43,12 @@ public static class MonolithHost
         }
     }
 
-    private static WebApplication Build(String[] args, Action<WebApplicationBuilder> addServices)
+    private static WebApplication BuildApp(String[] args, Action<WebApplicationBuilder> addServices)
     {
         try
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            addServices(builder);
-            return builder.Build();
+            return CreateBuilder(args, addServices)
+                .Build();
         }
         catch (Exception exception) when (exception is not HostAbortedException)
         {
@@ -50,48 +57,20 @@ public static class MonolithHost
         }
     }
 
-    private static Task RunAsync(WebApplication app)
+    internal static WebApplicationBuilder CreateBuilder(String[] args, Action<WebApplicationBuilder> addServices)
     {
-        ValidateSettings(app.Services);
-        return ReadPrepareMode(app.Services) switch
-        {
-            DatabasePrepareMode.Only => PrepareOnlyAsync(app),
-            DatabasePrepareMode.Never => VerifyAndServeAsync(app),
-            _ => PrepareAndServeAsync(app),
-        };
-    }
-
-    private static void ValidateSettings(IServiceProvider serviceProvider) =>
-        serviceProvider
-            .GetRequiredService<IStartupValidator>()
-            .Validate();
-
-    private static DatabasePrepareMode ReadPrepareMode(IServiceProvider serviceProvider) =>
-        serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value.PrepareMode;
-
-    private static async Task PrepareAndServeAsync(WebApplication app)
-    {
-        await app.Services.PrepareModuleDatabasesAsync(CancellationToken.None);
-        await ServeAsync(app);
-    }
-
-    private static async Task PrepareOnlyAsync(WebApplication app)
-    {
-        await app.Services.PrepareModuleDatabasesOnlyAsync(CancellationToken.None);
-        HostLog.PreparedOnly(app.Logger);
-    }
-
-    private static async Task VerifyAndServeAsync(WebApplication app)
-    {
-        await app.Services.VerifyModuleDatabasesAsync(CancellationToken.None);
-        await ServeAsync(app);
+        var builder = WebApplication.CreateBuilder(args);
+        builder.AddTelemetryAndHttpDefaults();
+        builder.Services.AddPlatformServices(builder.Configuration);
+        addServices(builder);
+        builder.EnsureConnectionString();
+        builder.AddOtlpExporterWhenConfigured();
+        return builder;
     }
 
     private static async Task ServeAsync(WebApplication app)
     {
-        app.UseServiceDefaults();
-        app.UseModules();
-        app.MapModules();
+        app.UseRequestPipeline();
         await app.StartAsync();
         await app.WaitForShutdownAsync();
     }
