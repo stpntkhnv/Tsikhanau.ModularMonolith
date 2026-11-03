@@ -1,7 +1,7 @@
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Pings;
 
 internal static class PingsModuleExtensions
 {

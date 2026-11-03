@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using Tsikhanau.Monolith.Perf.Measuring;
 
-namespace Tsikhanau.Monolith.Perf.Measuring;
+namespace Tsikhanau.Monolith.Perf.Load;
 
 internal static class LoadGenerator
 {

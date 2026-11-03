@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Startup;
 
 internal sealed class UnmigratedPropertyModelCustomizer(ModelCustomizerDependencies modelCustomizerDependencies)
     : RelationalModelCustomizer(modelCustomizerDependencies)

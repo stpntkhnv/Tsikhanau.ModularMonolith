@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;
 
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Shutdown;
 
 internal sealed class PongWriteBlocker(TimeSpan blockDuration, CancellationToken observedToken)
     : SaveChangesInterceptor

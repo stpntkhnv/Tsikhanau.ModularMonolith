@@ -1,7 +1,7 @@
 using System.Diagnostics.Metrics;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Shutdown;
 
 internal sealed class OutcomeStopBarrier : IHostedService, IDisposable
 {

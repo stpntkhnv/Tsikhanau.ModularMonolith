@@ -1,3 +1,4 @@
+using Tsikhanau.Monolith.Harness.ScratchModules;
 using Tsikhanau.Monolith.Harness.Sources;
 using Tsikhanau.Railway;
 

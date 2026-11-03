@@ -1,7 +1,7 @@
 using System.Globalization;
 using Tsikhanau.Monolith.Perf.Running;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal sealed class AutovacuumParameters
 {

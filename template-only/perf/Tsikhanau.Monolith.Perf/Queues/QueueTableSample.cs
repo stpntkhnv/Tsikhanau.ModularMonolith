@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Perf.Database;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal sealed record QueueTableSample(
     Int64 LiveRows,

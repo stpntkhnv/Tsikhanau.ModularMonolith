@@ -6,6 +6,7 @@ using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Queues;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;

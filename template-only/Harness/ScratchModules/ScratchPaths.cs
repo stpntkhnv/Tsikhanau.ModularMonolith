@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Harness.Mutations;
+namespace Tsikhanau.Monolith.Harness.ScratchModules;
 
 internal static class ScratchPaths
 {

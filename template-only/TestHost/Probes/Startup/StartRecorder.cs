@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Startup;
 
 internal sealed class StartRecorder(String recordPath) : IHostedService
 {

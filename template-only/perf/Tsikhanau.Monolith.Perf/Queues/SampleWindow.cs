@@ -1,7 +1,6 @@
-using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Measuring;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal sealed record SampleWindow(
     TimeSpan EndsAfter,

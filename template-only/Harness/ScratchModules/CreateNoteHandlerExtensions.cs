@@ -1,7 +1,7 @@
 using Tsikhanau.Monolith.Harness.Sources;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Harness.Mutations;
+namespace Tsikhanau.Monolith.Harness.ScratchModules;
 
 internal static class CreateNoteHandlerExtensions
 {

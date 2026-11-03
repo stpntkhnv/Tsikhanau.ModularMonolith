@@ -1,6 +1,6 @@
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Pings;
 
 internal static class ResultExtensions
 {

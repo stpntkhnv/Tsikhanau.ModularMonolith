@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Tsikhanau.Monolith.Perf.Measuring;
+namespace Tsikhanau.Monolith.Perf.Load;
 
 internal sealed class ConstantRateLoad(Int32 operationsPerSecond, TimeSpan duration)
 {

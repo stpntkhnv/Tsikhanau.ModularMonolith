@@ -1,4 +1,6 @@
-namespace Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Measuring;
+
+namespace Tsikhanau.Monolith.Perf.Load;
 
 internal sealed record LoadResult(
     String Name,

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Tsikhanau.Monolith.Domain.Aggregates;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Perf.Pings;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 

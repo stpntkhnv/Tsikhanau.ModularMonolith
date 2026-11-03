@@ -1,7 +1,7 @@
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
 using Tsikhanau.Monolith.TestModules.Pongs;
 
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Shutdown;
 
 internal sealed class PassReportingQueuePump(ModuleQueuePump<IPongsModule> moduleQueuePump)
     : IQueuePump<IPongsModule>

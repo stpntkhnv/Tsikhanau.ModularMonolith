@@ -2,7 +2,7 @@ using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Pings;
 
 internal sealed class PingCreator
 {

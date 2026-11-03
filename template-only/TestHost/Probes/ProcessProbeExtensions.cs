@@ -1,6 +1,8 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Tsikhanau.Monolith.TestHost.Probes.Shutdown;
+using Tsikhanau.Monolith.TestHost.Probes.Startup;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.TestHost.Probes;

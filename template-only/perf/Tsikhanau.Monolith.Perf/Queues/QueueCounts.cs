@@ -3,7 +3,7 @@ using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal readonly record struct QueueCounts(Int64 ProcessedOutboxMessages, Int64 Pongs)
 {

@@ -5,7 +5,7 @@ using Tsikhanau.Monolith.TestModules.Pongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Features;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Shutdown;
 
 internal static class ShutdownProbeExtensions
 {

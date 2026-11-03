@@ -12,6 +12,7 @@ using Tsikhanau.Monolith.Infrastructure.Dispatching.Invokers;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Perf.Hosting;
+using Tsikhanau.Monolith.Perf.Pings;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;

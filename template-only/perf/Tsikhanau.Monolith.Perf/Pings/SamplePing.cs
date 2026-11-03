@@ -1,7 +1,6 @@
-using Tsikhanau.Monolith.Perf.Scenarios;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 
-namespace Tsikhanau.Monolith.Perf.Benchmarks;
+namespace Tsikhanau.Monolith.Perf.Pings;
 
 internal static class SamplePing
 {

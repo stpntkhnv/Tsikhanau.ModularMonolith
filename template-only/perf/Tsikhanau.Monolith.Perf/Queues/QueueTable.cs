@@ -4,7 +4,7 @@ using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal sealed record QueueTable(String Schema, String Table)
 {

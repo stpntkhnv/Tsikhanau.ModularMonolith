@@ -2,11 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
-using Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Load;
+using Tsikhanau.Monolith.Perf.Pings;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pongs;
 
-namespace Tsikhanau.Monolith.Perf.Scenarios;
+namespace Tsikhanau.Monolith.Perf.Queues;
 
 internal static class QueueDriver
 {

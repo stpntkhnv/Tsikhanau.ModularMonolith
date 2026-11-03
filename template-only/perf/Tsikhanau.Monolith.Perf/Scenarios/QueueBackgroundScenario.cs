@@ -5,6 +5,8 @@ using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Pings;
+using Tsikhanau.Monolith.Perf.Queues;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Railway;
 

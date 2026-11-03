@@ -8,6 +8,7 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Pings;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pongs;

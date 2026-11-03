@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
+using Tsikhanau.Monolith.Perf.Load;
 using Tsikhanau.Monolith.Perf.Measuring;
+using Tsikhanau.Monolith.Perf.Pings;
 using Tsikhanau.Monolith.Perf.Running;
 using Tsikhanau.Monolith.TestModules.Pings;
 

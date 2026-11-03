@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.TestHost.Probes;
+namespace Tsikhanau.Monolith.TestHost.Probes.Shutdown;
 
 internal sealed class SecretHandlerProbe(TimeSpan blockDuration, String effectPath)
 {
