@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
 using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;

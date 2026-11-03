@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
+using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Infrastructure.Database.Verification;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.Infrastructure.Modules;
 
-namespace Tsikhanau.Monolith.Infrastructure.Database.Preparation;
+namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 public static class ModuleDatabaseExtensions
 {
