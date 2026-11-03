@@ -4,7 +4,6 @@ using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Facades;
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Modules;
-using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Neighbours;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using Tsikhanau.Monolith.Scaffold.Sources;
