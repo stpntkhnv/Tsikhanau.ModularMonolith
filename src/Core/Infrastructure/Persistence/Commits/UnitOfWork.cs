@@ -7,7 +7,6 @@ using Tsikhanau.Monolith.Infrastructure.Dispatching.Invokers;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Railway;
