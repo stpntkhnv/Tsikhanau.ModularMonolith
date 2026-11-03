@@ -1,6 +1,6 @@
 using System.Xml.Linq;
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Rules;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 

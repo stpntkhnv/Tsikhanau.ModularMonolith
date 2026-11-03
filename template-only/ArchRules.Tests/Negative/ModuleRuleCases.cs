@@ -1,6 +1,10 @@
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Modules;
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Modules.Dependencies;
+using Tsikhanau.Monolith.ArchRules.Modules.Names;
+using Tsikhanau.Monolith.ArchRules.Modules.Sql;
+using Tsikhanau.Monolith.ArchRules.Modules.TypeDesign;
+using Tsikhanau.Monolith.ArchRules.Modules.Visibility;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.FixtureModules;
 

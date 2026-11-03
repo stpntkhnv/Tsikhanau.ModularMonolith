@@ -1,5 +1,7 @@
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Projects.BuildSettings;
+using Tsikhanau.Monolith.ArchRules.Projects.Core;
 using Xunit;
 
 namespace Tsikhanau.Monolith.ArchRules.Projects;

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
+using Tsikhanau.Monolith.ArchRules.Modules.TypeDesign;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using Tsikhanau.Monolith.ArchRules.Tests.Inputs;
 

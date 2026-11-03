@@ -1,7 +1,7 @@
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Modules;
-using Tsikhanau.Monolith.ArchRules.Projects;
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Modules.Dependencies;
+using Tsikhanau.Monolith.ArchRules.Projects.References;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.FixtureModules;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.ScratchTree;

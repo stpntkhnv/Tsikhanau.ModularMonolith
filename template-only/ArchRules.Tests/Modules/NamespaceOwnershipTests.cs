@@ -1,5 +1,5 @@
 using Tsikhanau.Monolith.ArchRules.Modules;
-using Tsikhanau.Monolith.ArchRules.Support;
+using Tsikhanau.Monolith.ArchRules.Reflection;
 using Tsikhanau.Monolith.ArchRules.Tests.Inputs;
 using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Monolith.TestModules.Pings;

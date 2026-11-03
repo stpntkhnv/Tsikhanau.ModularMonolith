@@ -1,8 +1,10 @@
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Modules;
-using Tsikhanau.Monolith.ArchRules.Projects;
+using Tsikhanau.Monolith.ArchRules.Modules.Names;
+using Tsikhanau.Monolith.ArchRules.Modules.TypeDesign;
+using Tsikhanau.Monolith.ArchRules.Modules.Visibility;
+using Tsikhanau.Monolith.ArchRules.Projects.Hosts;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using Tsikhanau.Monolith.TestModules.Pings;
 

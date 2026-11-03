@@ -1,5 +1,5 @@
 using System.Reflection;
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Negative;

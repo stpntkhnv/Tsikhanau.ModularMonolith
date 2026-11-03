@@ -3,6 +3,7 @@ using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
+using Tsikhanau.Monolith.ArchRules.Modules.Dependencies;
 using Tsikhanau.Monolith.ArchRules.Tests.Inputs;
 using Tsikhanau.Monolith.Contracts.Queries;
 using Tsikhanau.Railway;

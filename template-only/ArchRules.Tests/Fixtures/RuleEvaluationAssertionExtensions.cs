@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 

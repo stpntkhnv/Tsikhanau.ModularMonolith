@@ -1,7 +1,7 @@
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
-using Tsikhanau.Monolith.ArchRules.Support;
+using Tsikhanau.Monolith.ArchRules.Modules.Sql;
 using Tsikhanau.Monolith.ArchRules.Tests.Inputs;
 using Tsikhanau.Monolith.Contracts.Queries;
 using Tsikhanau.Railway;

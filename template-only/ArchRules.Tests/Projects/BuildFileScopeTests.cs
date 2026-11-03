@@ -1,6 +1,6 @@
+using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
-using Tsikhanau.Monolith.ArchRules.Projects;
-using Tsikhanau.Monolith.ArchRules.Rules;
+using Tsikhanau.Monolith.ArchRules.Projects.BuildSettings;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Projects;
 

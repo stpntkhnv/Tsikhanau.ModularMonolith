@@ -1,5 +1,6 @@
 using System.Reflection;
-using Tsikhanau.Monolith.ArchRules.Support;
+using Tsikhanau.Monolith.ArchRules.ArchUnit;
+using Tsikhanau.Monolith.ArchRules.Reflection;
 using Architecture = ArchUnitNET.Domain.Architecture;
 
 namespace Tsikhanau.Monolith.ArchRules.Inputs;

@@ -1,5 +1,8 @@
 using System.Reflection;
-using Tsikhanau.Monolith.ArchRules.Projects;
+using Tsikhanau.Monolith.ArchRules.Projects.BuildSettings;
+using Tsikhanau.Monolith.ArchRules.Projects.Core;
+using Tsikhanau.Monolith.ArchRules.Projects.Hosts;
+using Tsikhanau.Monolith.ArchRules.Projects.References;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
 using Tsikhanau.Monolith.Shared.Collections;
 using static Tsikhanau.Monolith.ArchRules.Tests.Fixtures.FixtureModules;

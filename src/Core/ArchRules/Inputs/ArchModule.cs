@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Queries;
-using Tsikhanau.Monolith.ArchRules.Support;
+using Tsikhanau.Monolith.ArchRules.Reflection;
 using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Railway;
 
