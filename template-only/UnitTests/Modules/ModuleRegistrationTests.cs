@@ -4,6 +4,7 @@ using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.Contracts.Modules;
+using Tsikhanau.Monolith.Infrastructure.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Persistence;

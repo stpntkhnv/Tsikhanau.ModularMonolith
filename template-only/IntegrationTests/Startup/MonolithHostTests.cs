@@ -157,13 +157,14 @@ public sealed class MonolithHostTests(PostgresFixture postgresFixture)
     public async Task Connection_string_of_a_source_added_in_add_services_is_checked_before_the_host_is_built()
     {
         using var environmentOverride = new EnvironmentOverride(CreateEnvironment(String.Empty, OnStartup));
+        var settingsValidated = new TaskCompletionSource();
+        var addServices = AddingSource(new() { [ConnectionStringKey] = ConnectionStringWithoutSslMode });
 
         var startupFailure = await Should.ThrowAsync<InvalidOperationException>(
-            () => MonolithHost.RunAsync(
-                [],
-                AddingSource(new() { [ConnectionStringKey] = ConnectionStringWithoutSslMode })));
+            () => MonolithHost.RunAsync([], RecordingSettingsValidation(addServices, settingsValidated)));
 
         startupFailure.Message.ShouldContain(SslModeRequirement);
+        settingsValidated.Task.IsCompleted.ShouldBeFalse();
     }
 
     [Fact]
@@ -207,6 +208,18 @@ public sealed class MonolithHostTests(PostgresFixture postgresFixture)
         {
             addServices(builder);
             builder.Services.AddHostedService(serviceProvider => new HostStartProbe(serviceProvider, hostStarted));
+        };
+
+    private static Action<WebApplicationBuilder> RecordingSettingsValidation(
+        Action<WebApplicationBuilder> addServices,
+        TaskCompletionSource settingsValidated) =>
+        builder =>
+        {
+            addServices(builder);
+            builder.Services
+                .AddOptions<SettingsValidationProbe>()
+                .Validate(_ => settingsValidated.TrySetResult())
+                .ValidateOnStart();
         };
 
     private static TaskCompletionSource<IServiceProvider> CreateHostStartedSource() =>
@@ -366,4 +379,6 @@ public sealed class MonolithHostTests(PostgresFixture postgresFixture)
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
+
+    private sealed class SettingsValidationProbe;
 }

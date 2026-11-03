@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Tsikhanau.Monolith.Infrastructure.Modules;
+namespace Tsikhanau.Monolith.Infrastructure.DependencyInjection;
 
 internal static class ServiceCollectionInstanceExtensions
 {

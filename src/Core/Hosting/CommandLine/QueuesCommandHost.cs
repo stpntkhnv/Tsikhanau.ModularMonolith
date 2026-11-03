@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 namespace Tsikhanau.Monolith.Hosting.CommandLine;

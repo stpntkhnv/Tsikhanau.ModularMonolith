@@ -14,7 +14,7 @@ using Tsikhanau.Monolith.Contracts.Json;
 using Tsikhanau.Monolith.Hosting.Observability;
 using Tsikhanau.Monolith.Hosting.OpenApi;
 using Tsikhanau.Monolith.Hosting.Problems;
-using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.DependencyInjection;
 
 namespace Tsikhanau.Monolith.Hosting;
 

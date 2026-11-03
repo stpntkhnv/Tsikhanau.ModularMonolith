@@ -21,12 +21,21 @@ public sealed class PlatformServicesTests
             .AddPlatformServices(configuration)
             .AddPlatformServices(configuration);
 
-        IReadOnlyList<String> validatorCounts =
-        [
-            DescribeValidatorCount<QueueSettings>(services),
-            DescribeValidatorCount<CleanupSettings>(services),
-            DescribeValidatorCount<DatabaseSettings>(services),
-        ];
+        var validatorCounts = DescribeValidatorCounts(services);
+
+        validatorCounts.ShouldBe(["QueueSettings 1", "CleanupSettings 1", "DatabaseSettings 1"]);
+    }
+
+    [Fact]
+    public void Repeated_platform_validates_each_platform_settings_record_once()
+    {
+        var builder = CreateDevelopmentBuilder();
+        builder.Configuration[ConnectionStringKey] = "Host=db;Database=checked;Username=postgres;Password=p";
+        builder
+            .AddPlatform()
+            .AddPlatform();
+
+        var validatorCounts = DescribeValidatorCounts(builder.Services);
 
         validatorCounts.ShouldBe(["QueueSettings 1", "CleanupSettings 1", "DatabaseSettings 1"]);
     }
@@ -34,9 +43,7 @@ public sealed class PlatformServicesTests
     [Fact]
     public void Connection_strings_come_from_the_configuration_the_host_was_built_with()
     {
-        var builder = new HostApplicationBuilder(
-            new HostApplicationBuilderSettings { DisableDefaults = true, EnvironmentName = Environments.Development });
-
+        var builder = CreateDevelopmentBuilder();
         builder.Configuration[ConnectionStringKey] = "Host=db;Database=checked;Username=postgres;Password=p";
         builder.EnsureConnectionString();
         builder.Services.AddPlatformServices(builder.Configuration);
@@ -47,6 +54,16 @@ public sealed class PlatformServicesTests
 
         databaseName.ShouldBe("final");
     }
+
+    private static HostApplicationBuilder CreateDevelopmentBuilder() =>
+        new(new HostApplicationBuilderSettings { DisableDefaults = true, EnvironmentName = Environments.Development });
+
+    private static IReadOnlyList<String> DescribeValidatorCounts(IServiceCollection services) =>
+    [
+        DescribeValidatorCount<QueueSettings>(services),
+        DescribeValidatorCount<CleanupSettings>(services),
+        DescribeValidatorCount<DatabaseSettings>(services),
+    ];
 
     private static String DescribeValidatorCount<TSettings>(IServiceCollection services)
         where TSettings : class =>

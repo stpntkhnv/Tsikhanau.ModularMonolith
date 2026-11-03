@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Infrastructure.Database.Verification;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
+using Tsikhanau.Monolith.Infrastructure.Platform;
 
 namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
@@ -37,16 +37,7 @@ public static class ModuleDatabaseExtensions
         CancellationToken cancellationToken)
     {
         var settings = serviceProvider.ValidateSettings();
-        await VerifyAsync(serviceProvider, settings, cancellationToken);
-    }
-
-    internal static DatabaseSettings ValidateSettings(this IServiceProvider serviceProvider)
-    {
-        serviceProvider
-            .GetRequiredService<IStartupValidator>()
-            .Validate();
-
-        return serviceProvider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
+        await VerifyEveryModuleAsync(serviceProvider, settings, cancellationToken);
     }
 
     internal static Task PrepareOrVerifyModuleDatabasesAsync(
@@ -54,7 +45,7 @@ public static class ModuleDatabaseExtensions
         DatabaseSettings settings,
         CancellationToken cancellationToken) =>
         settings.PrepareMode == DatabasePrepareMode.Never
-            ? VerifyAsync(serviceProvider, settings, cancellationToken)
+            ? VerifyEveryModuleAsync(serviceProvider, settings, cancellationToken)
             : PrepareWithinTimeoutAsync(serviceProvider, settings, cancellationToken);
 
     private static void EnsurePreparesOnStartup(DatabasePrepareMode prepareMode)
@@ -70,7 +61,7 @@ public static class ModuleDatabaseExtensions
         }
     }
 
-    private static async Task VerifyAsync(
+    private static async Task VerifyEveryModuleAsync(
         IServiceProvider serviceProvider,
         DatabaseSettings settings,
         CancellationToken cancellationToken)

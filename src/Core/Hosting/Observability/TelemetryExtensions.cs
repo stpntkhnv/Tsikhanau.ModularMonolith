@@ -8,8 +8,8 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Tsikhanau.Monolith.Infrastructure.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-using Tsikhanau.Monolith.Infrastructure.Modules;
 
 namespace Tsikhanau.Monolith.Hosting.Observability;
 

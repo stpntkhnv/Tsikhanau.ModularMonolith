@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Infrastructure.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
