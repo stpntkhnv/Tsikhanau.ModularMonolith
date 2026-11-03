@@ -1,14 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using Tsikhanau.Monolith.Api.Endpoints;
 
 namespace Tsikhanau.Monolith.Hosting.OpenApi;
 
 internal sealed class ProblemDetailsSchemaTransformer : IOpenApiSchemaTransformer
 {
-    private const String CodeKey = "code";
-    private const String TraceIdKey = "traceId";
-
     public Task TransformAsync(
         OpenApiSchema schema,
         OpenApiSchemaTransformerContext context,
@@ -27,7 +25,7 @@ internal sealed class ProblemDetailsSchemaTransformer : IOpenApiSchemaTransforme
     private static void DescribeExtensions(OpenApiSchema schema)
     {
         var properties = schema.Properties ??= new Dictionary<String, IOpenApiSchema>();
-        properties[CodeKey] = new OpenApiSchema { Type = JsonSchemaType.String };
-        properties[TraceIdKey] = new OpenApiSchema { Type = JsonSchemaType.String };
+        properties[ProblemMembers.Code] = new OpenApiSchema { Type = JsonSchemaType.String };
+        properties[ProblemMembers.TraceId] = new OpenApiSchema { Type = JsonSchemaType.String };
     }
 }

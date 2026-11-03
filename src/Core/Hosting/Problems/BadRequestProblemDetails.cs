@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
+using Tsikhanau.Monolith.Api.Endpoints;
 
 namespace Tsikhanau.Monolith.Hosting.Problems;
 
@@ -11,8 +12,6 @@ internal static class BadRequestProblemDetails
 {
     public const String Code = "Request.Invalid";
 
-    private const String CodeKey = "code";
-    private const String ErrorsKey = "errors";
     private const String ValidationTitle = "One or more validation errors occurred.";
     private const String RootPath = "$";
     private const String RootPathPrefix = "$.";
@@ -41,8 +40,8 @@ internal static class BadRequestProblemDetails
     private static void DescribeAsInvalidRequest(ProblemDetails problemDetails, Dictionary<String, String[]> errors)
     {
         problemDetails.Title = ValidationTitle;
-        problemDetails.Extensions[ErrorsKey] = errors;
-        problemDetails.Extensions[CodeKey] = Code;
+        problemDetails.Extensions[ProblemMembers.Errors] = errors;
+        problemDetails.Extensions[ProblemMembers.Code] = Code;
     }
 
     private static Dictionary<String, String[]> ToErrors(

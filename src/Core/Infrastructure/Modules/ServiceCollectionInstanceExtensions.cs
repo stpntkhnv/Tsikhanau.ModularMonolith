@@ -22,4 +22,16 @@ internal static class ServiceCollectionInstanceExtensions
         services.AddSingleton(createdInstance);
         return createdInstance;
     }
+
+    public static Boolean TryAddMarker<TMarker>(this IServiceCollection services)
+        where TMarker : class, new()
+    {
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(TMarker)))
+        {
+            return false;
+        }
+
+        services.AddSingleton(new TMarker());
+        return true;
+    }
 }

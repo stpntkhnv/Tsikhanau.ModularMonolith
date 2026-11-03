@@ -9,6 +9,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 
 namespace Tsikhanau.Monolith.Hosting.Observability;
 
@@ -19,9 +20,35 @@ internal static class TelemetryExtensions
 
     public static IHostApplicationBuilder AddTelemetry(this IHostApplicationBuilder builder, String[] activitySources)
     {
+        if (builder.Services.TryAddMarker<TelemetryMarker>())
+        {
+            builder.AddLogsMetricsAndTraces();
+        }
+
+        builder.Services
+            .AddOpenTelemetry()
+            .WithTracing(tracing => tracing.AddSource(activitySources));
+
+        return builder;
+    }
+
+    public static IHostApplicationBuilder AddOtlpExporterWhenConfigured(this IHostApplicationBuilder builder)
+    {
+        if (HasOtlpEndpoint(builder.Configuration) && builder.Services.TryAddMarker<OtlpExporterMarker>())
+        {
+            builder.Services
+                .AddOpenTelemetry()
+                .UseOtlpExporter();
+        }
+
+        return builder;
+    }
+
+    private static void AddLogsMetricsAndTraces(this IHostApplicationBuilder builder)
+    {
         builder.Logging.AddOpenTelemetry(IncludeMessagesAndScopes);
 
-        var openTelemetryBuilder = builder.Services
+        builder.Services
             .AddOpenTelemetry()
             .ConfigureResource(resourceBuilder => DescribeService(resourceBuilder, builder.Environment.ApplicationName))
             .WithMetrics(metrics => metrics
@@ -32,17 +59,10 @@ internal static class TelemetryExtensions
                 .AddMeter(AppDiagnostics.SourceName))
             .WithTracing(tracing => tracing
                 .AddSource(builder.Environment.ApplicationName)
-                .AddSource(activitySources)
+                .AddSource(AppDiagnostics.SourceName)
                 .AddSource(NpgsqlTelemetry)
                 .AddAspNetCoreInstrumentation(SkipProbes)
                 .AddHttpClientInstrumentation());
-
-        if (HasOtlpEndpoint(builder.Configuration))
-        {
-            openTelemetryBuilder.UseOtlpExporter();
-        }
-
-        return builder;
     }
 
     private static void DescribeService(ResourceBuilder resourceBuilder, String applicationName) =>
@@ -67,3 +87,7 @@ internal static class TelemetryExtensions
     private static Boolean HasOtlpEndpoint(IConfiguration configuration) =>
         !String.IsNullOrWhiteSpace(configuration[OtlpEndpointKey]);
 }
+
+file sealed class TelemetryMarker;
+
+file sealed class OtlpExporterMarker;

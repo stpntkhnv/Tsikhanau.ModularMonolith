@@ -16,6 +16,13 @@ public static class PlatformServiceCollectionExtensions
 {
     public const String ConnectionName = DatabaseConnectionStrings.Name;
 
+    public static IHostApplicationBuilder AddPlatform(this IHostApplicationBuilder builder)
+    {
+        builder.EnsureConnectionString();
+        builder.Services.AddPlatformServices(builder.Configuration);
+        return builder;
+    }
+
     public static IHostApplicationBuilder EnsureConnectionString(this IHostApplicationBuilder builder)
     {
         _ = DatabaseConnectionStrings.From(builder.Configuration, builder.Environment);
@@ -24,18 +31,28 @@ public static class PlatformServiceCollectionExtensions
 
     public static IServiceCollection AddPlatformServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<QueueSignals>();
-        services.TryAddSingleton<IEventBus, PostgresEventBus>();
-        services.GetOrAddInstance<ModuleRegistry>();
-        services.GetOrAddInstance<IntegrationEventRegistry>();
-        services.GetOrAddInstance<SubscriptionRegistry>();
-        AddSettings<QueueSettings>(services, configuration.GetSection(QueueSettings.Section));
-        AddSettings<CleanupSettings>(services, configuration.GetSection(CleanupSettings.Section));
-        AddSettings<DatabaseSettings>(services, configuration.GetSection(DatabaseSettings.Section));
-        MatchSnakeCaseColumnsInDapper();
+        if (services.TryAddMarker<PlatformServicesMarker>())
+        {
+            services.TryAddSingleton(TimeProvider.System);
+            services.TryAddSingleton<QueueSignals>();
+            services.TryAddSingleton<IEventBus, PostgresEventBus>();
+            services.TryAddSingleton(ReadConnectionStrings);
+            services.GetOrAddInstance<ModuleRegistry>();
+            services.GetOrAddInstance<IntegrationEventRegistry>();
+            services.GetOrAddInstance<SubscriptionRegistry>();
+            AddSettings<QueueSettings>(services, configuration.GetSection(QueueSettings.Section));
+            AddSettings<CleanupSettings>(services, configuration.GetSection(CleanupSettings.Section));
+            AddSettings<DatabaseSettings>(services, configuration.GetSection(DatabaseSettings.Section));
+            MatchSnakeCaseColumnsInDapper();
+        }
+
         return services;
     }
+
+    private static DatabaseConnectionStrings ReadConnectionStrings(IServiceProvider serviceProvider) =>
+        DatabaseConnectionStrings.From(
+            serviceProvider.GetRequiredService<IConfiguration>(),
+            serviceProvider.GetRequiredService<IHostEnvironment>());
 
     private static void AddSettings<TSettings>(IServiceCollection services, IConfigurationSection settingsSection)
         where TSettings : class =>
@@ -47,3 +64,5 @@ public static class PlatformServiceCollectionExtensions
 
     private static void MatchSnakeCaseColumnsInDapper() => DefaultTypeMap.MatchNamesWithUnderscores = true;
 }
+
+file sealed class PlatformServicesMarker;

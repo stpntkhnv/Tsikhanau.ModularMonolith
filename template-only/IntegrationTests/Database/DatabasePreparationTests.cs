@@ -13,6 +13,7 @@ using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
 using Tsikhanau.Monolith.IntegrationTests.Logging;
 using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.TestModules.Pings;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 
@@ -26,6 +27,11 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
     private const Int32 AdminConnectionCount = 2;
     private const String ModuleSchemasSql = "SELECT nspname FROM pg_namespace WHERE nspname IN ('pings', 'pongs')";
     private const String UpgradeNotes = "the upgrade notes in docs/engineering-principles.md, section 5.6";
+    private const String ConnectionStringKey = "ConnectionStrings:database";
+
+    private const String ImplicitSslModeRefusal =
+        "Connection string 'database' must set SSL Mode to VerifyFull, VerifyCA, Require or Disable outside "
+        + "Development, not Prefer";
 
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan SilenceLimit = TimeSpan.FromSeconds(1);
@@ -387,6 +393,35 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         moduleSchemas.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Connection_string_set_after_the_build_check_is_the_one_preparation_and_the_modules_use()
+    {
+        var finalConnectionString = await CreateDatabaseAsync();
+        using var host = TestModulesHost.BuildUnstarted(
+            BuildClosedPortConnectionString(SslMode.Disable),
+            builder => builder.Configuration[ConnectionStringKey] = finalConnectionString);
+
+        await host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+        var moduleServer = DescribeServer(
+            host.Services.GetRequiredKeyedService<NpgsqlDataSource>(typeof(IPingsModule)).ConnectionString);
+
+        moduleServer.ShouldBe(DescribeServer(finalConnectionString));
+    }
+
+    [Fact]
+    public async Task Ssl_mode_made_implicit_after_the_build_check_stops_the_start_with_the_ssl_error()
+    {
+        var implicitSslConnectionString = BuildClosedPortConnectionString(SslMode.Prefer);
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => TestModulesHost.StartAsync(
+                BuildClosedPortConnectionString(SslMode.Disable),
+                configure: builder => builder.Configuration[ConnectionStringKey] = implicitSslConnectionString,
+                environmentName: Environments.Production));
+
+        exception.Message.ShouldBe(ImplicitSslModeRefusal);
+    }
+
     private static Task<AdminSession> HoldPreparationLockAsync(String connectionString) =>
         AdminSession.OpenLockedAsync(BuildUnpooled(connectionString), CancellationToken);
 
@@ -465,6 +500,23 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         {
             Pooling = false,
         }.ConnectionString;
+
+    private static String BuildClosedPortConnectionString(SslMode sslMode) =>
+        new NpgsqlConnectionStringBuilder
+        {
+            Host = "127.0.0.1",
+            Port = GetClosedPort(),
+            Database = "monolith",
+            Username = "postgres",
+            Password = "postgres",
+            SslMode = sslMode,
+        }.ConnectionString;
+
+    private static String DescribeServer(String connectionString)
+    {
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+        return $"{connectionStringBuilder.Host}:{connectionStringBuilder.Port}/{connectionStringBuilder.Database}";
+    }
 
     private static Int32 GetClosedPort()
     {

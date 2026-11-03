@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -47,7 +45,7 @@ public static class ModuleDatabaseExtensions
         CancellationToken cancellationToken)
     {
         var settings = ValidateSettings(serviceProvider);
-        var connectionStrings = ReadConnectionStrings(serviceProvider);
+        var connectionStrings = serviceProvider.GetRequiredService<DatabaseConnectionStrings>();
         var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
 
         await using var scope = serviceProvider.CreateAsyncScope();
@@ -121,7 +119,7 @@ public static class ModuleDatabaseExtensions
         CancellationToken cancellationToken)
     {
         var modules = serviceProvider.GetRequiredService<ModuleRegistry>().Modules;
-        var connectionStrings = ReadConnectionStrings(serviceProvider);
+        var connectionStrings = serviceProvider.GetRequiredService<DatabaseConnectionStrings>();
         var adminConnectionString = connectionStrings.BuildForAdmin(settings.PrepareTimeout);
         var loginNames = new ModuleLoginNames(connectionStrings.DatabaseName);
         var logins = modules
@@ -183,11 +181,6 @@ public static class ModuleDatabaseExtensions
             }
         }
     }
-
-    private static DatabaseConnectionStrings ReadConnectionStrings(IServiceProvider serviceProvider) =>
-        DatabaseConnectionStrings.From(
-            serviceProvider.GetRequiredService<IConfiguration>(),
-            serviceProvider.GetRequiredService<IHostEnvironment>());
 
     private static Boolean HasRunOutOfTime(CancellationTokenSource deadline, CancellationToken cancellationToken) =>
         deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested;

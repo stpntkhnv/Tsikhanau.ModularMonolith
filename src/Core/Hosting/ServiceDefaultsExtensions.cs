@@ -14,6 +14,7 @@ using Tsikhanau.Monolith.Contracts.Json;
 using Tsikhanau.Monolith.Hosting.Observability;
 using Tsikhanau.Monolith.Hosting.OpenApi;
 using Tsikhanau.Monolith.Hosting.Problems;
+using Tsikhanau.Monolith.Infrastructure.Modules;
 
 namespace Tsikhanau.Monolith.Hosting;
 
@@ -25,30 +26,63 @@ public static class ServiceDefaultsExtensions
         this WebApplicationBuilder builder,
         params String[] activitySources)
     {
-        builder.AddTelemetry(activitySources);
-        return builder.AddHttpDefaults();
+        builder.AddTelemetryAndHttpDefaults(activitySources);
+        builder.AddOtlpExporterWhenConfigured();
+        return builder;
     }
 
     public static WebApplicationBuilder AddHttpDefaults(this WebApplicationBuilder builder)
     {
-        builder.AddHealth();
-        builder.Services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
-        builder.Services.AddProblemDetails();
-        builder.Services.PostConfigure<ProblemDetailsOptions>(KeepTheCoreProblemShape);
-
-        builder.Services.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IProblemDetailsWriter, AnyAcceptProblemDetailsWriter>());
-
-        builder.Services.Configure<RouteHandlerOptions>(
-            routeHandlerOptions => routeHandlerOptions.ThrowOnBadRequest = true);
-
-        builder.Services.ConfigureHttpJsonOptions(ReadAndWriteOptionals);
-        builder.Services.AddOpenApi(DescribeOptionalsAndProblems);
+        if (builder.Services.TryAddMarker<HttpDefaultsMarker>())
+        {
+            builder.AddHealth();
+            builder.Services
+                .SetShutdownTimeout()
+                .AddProblemResponses()
+                .AddOptionalJson()
+                .AddOpenApiDocument();
+        }
 
         return builder;
     }
 
     public static WebApplication UseServiceDefaults(this WebApplication app)
+    {
+        app.UseProblemResponses();
+        app.UseCorsWhenRegistered();
+        app.UseAuthenticationAndAuthorizationWhenRegistered();
+        app.MapHealth();
+        app.MapApiReferenceInDevelopment();
+        return app;
+    }
+
+    internal static WebApplicationBuilder AddTelemetryAndHttpDefaults(
+        this WebApplicationBuilder builder,
+        params String[] activitySources)
+    {
+        builder.AddTelemetry(activitySources);
+        return builder.AddHttpDefaults();
+    }
+
+    private static IServiceCollection SetShutdownTimeout(this IServiceCollection services) =>
+        services.Configure<HostOptions>(hostOptions => hostOptions.ShutdownTimeout = ShutdownTimeout);
+
+    private static IServiceCollection AddProblemResponses(this IServiceCollection services)
+    {
+        services.AddProblemDetails();
+        services.PostConfigure<ProblemDetailsOptions>(KeepTheCoreProblemShape);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IProblemDetailsWriter, AnyAcceptProblemDetailsWriter>());
+        return services.Configure<RouteHandlerOptions>(
+            routeHandlerOptions => routeHandlerOptions.ThrowOnBadRequest = true);
+    }
+
+    private static IServiceCollection AddOptionalJson(this IServiceCollection services) =>
+        services.ConfigureHttpJsonOptions(ReadAndWriteOptionals);
+
+    private static IServiceCollection AddOpenApiDocument(this IServiceCollection services) =>
+        services.AddOpenApi(DescribeOptionalsAndProblems);
+
+    private static void UseProblemResponses(this WebApplication app)
     {
         app.UseExceptionHandler(
             new ExceptionHandlerOptions
@@ -58,21 +92,6 @@ public static class ServiceDefaultsExtensions
             });
 
         app.UseStatusCodePages();
-        app.UseCorsWhenRegistered();
-        app.UseAuthenticationAndAuthorizationWhenRegistered();
-        app.MapHealth();
-        if (app.Environment.IsDevelopment())
-        {
-            app
-                .MapOpenApi()
-                .AllowAnonymous();
-
-            app
-                .MapScalarApiReference()
-                .AllowAnonymous();
-        }
-
-        return app;
     }
 
     private static void UseCorsWhenRegistered(this WebApplication app)
@@ -93,6 +112,20 @@ public static class ServiceDefaultsExtensions
         if (app.IsRegistered<IAuthorizationHandlerProvider>())
         {
             app.UseAuthorization();
+        }
+    }
+
+    private static void MapApiReferenceInDevelopment(this WebApplication app)
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            app
+                .MapOpenApi()
+                .AllowAnonymous();
+
+            app
+                .MapScalarApiReference()
+                .AllowAnonymous();
         }
     }
 
@@ -120,3 +153,5 @@ public static class ServiceDefaultsExtensions
         openApiOptions.AddSchemaTransformer<ProblemDetailsSchemaTransformer>();
     }
 }
+
+file sealed class HttpDefaultsMarker;

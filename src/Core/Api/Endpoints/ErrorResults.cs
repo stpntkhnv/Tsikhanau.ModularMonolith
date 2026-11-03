@@ -6,8 +6,6 @@ namespace Tsikhanau.Monolith.Api.Endpoints;
 
 internal static class ErrorResults
 {
-    private const String CodeKey = "code";
-
     public static Results<TSuccess, ValidationProblem, ProblemHttpResult> ToProblem<TSuccess>(Error error)
         where TSuccess : IResult =>
         error switch
@@ -29,7 +27,7 @@ internal static class ErrorResults
         kind is ErrorKind.Validation or ErrorKind.Unauthorized or ErrorKind.Forbidden or ErrorKind.NotFound
             or ErrorKind.Conflict or ErrorKind.Failure;
 
-    private static Dictionary<String, Object?> CodeOf(Error error) => new() { [CodeKey] = error.Code };
+    private static Dictionary<String, Object?> CodeOf(Error error) => new() { [ProblemMembers.Code] = error.Code };
 
     private static Dictionary<String, String[]> GroupMessagesByField(Error error) =>
         CollectFieldErrors(error)

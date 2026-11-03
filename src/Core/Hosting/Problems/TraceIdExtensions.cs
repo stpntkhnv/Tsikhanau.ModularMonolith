@@ -1,13 +1,13 @@
 using System.Text.Json;
+using Tsikhanau.Monolith.Api.Endpoints;
 
 namespace Tsikhanau.Monolith.Hosting.Problems;
 
 internal static class TraceIdExtensions
 {
-    private const String TraceIdName = "traceId";
-
     extension(JsonSerializerOptions serializerOptions)
     {
-        public String TraceIdKey => serializerOptions.PropertyNamingPolicy?.ConvertName(TraceIdName) ?? TraceIdName;
+        public String TraceIdKey =>
+            serializerOptions.PropertyNamingPolicy?.ConvertName(ProblemMembers.TraceId) ?? ProblemMembers.TraceId;
     }
 }

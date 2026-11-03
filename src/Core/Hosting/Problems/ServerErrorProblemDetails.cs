@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Tsikhanau.Monolith.Api.Endpoints;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 namespace Tsikhanau.Monolith.Hosting.Problems;
@@ -10,8 +11,6 @@ namespace Tsikhanau.Monolith.Hosting.Problems;
 internal static class ServerErrorProblemDetails
 {
     public const String Code = "Server.Unexpected";
-
-    private const String CodeKey = "code";
 
     private static readonly ProblemDetails Defaults =
         TypedResults.Problem(statusCode: StatusCodes.Status500InternalServerError).ProblemDetails;
@@ -31,7 +30,7 @@ internal static class ServerErrorProblemDetails
         problemDetails.Detail = null;
         problemDetails.Instance = null;
         KeepOnlyTheTraceId(problemDetails.Extensions, traceIdKey);
-        problemDetails.Extensions[CodeKey] = Code;
+        problemDetails.Extensions[ProblemMembers.Code] = Code;
     }
 
     private static void KeepOnlyTheTraceId(IDictionary<String, Object?> extensions, String traceIdKey) =>
