@@ -1,7 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 internal static class SecretRowRuleExtensions
 {

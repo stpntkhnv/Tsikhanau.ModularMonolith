@@ -1,6 +1,8 @@
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Infrastructure.Diagnostics;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 
 internal sealed record QueueSample(
     String Module,

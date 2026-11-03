@@ -3,8 +3,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 
 public sealed class ModuleQueueProcessor<TModule>(
     IQueuePump<TModule> queuePump,

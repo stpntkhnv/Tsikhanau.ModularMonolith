@@ -4,7 +4,9 @@ using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Xunit;
 
 namespace Tsikhanau.Monolith.Testing.Queues;

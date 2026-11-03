@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 
 public sealed class QueueSignals
 {

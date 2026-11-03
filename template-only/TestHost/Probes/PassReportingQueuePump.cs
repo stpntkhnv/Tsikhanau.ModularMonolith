@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
 using Tsikhanau.Monolith.TestModules.Pongs;
 
 namespace Tsikhanau.Monolith.TestHost.Probes;

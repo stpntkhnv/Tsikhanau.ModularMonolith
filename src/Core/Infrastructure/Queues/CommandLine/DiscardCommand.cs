@@ -3,6 +3,10 @@ using System.Globalization;
 using System.Text.Json;
 using Dapper;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Retries;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;

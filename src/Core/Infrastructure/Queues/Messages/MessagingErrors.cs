@@ -1,6 +1,6 @@
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 public static class MessagingErrors
 {

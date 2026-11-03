@@ -1,6 +1,6 @@
 using Tsikhanau.Monolith.Contracts.Secrets;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 internal static class SecretTypeExtensions
 {

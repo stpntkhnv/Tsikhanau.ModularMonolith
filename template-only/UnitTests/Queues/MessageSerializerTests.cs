@@ -1,4 +1,6 @@
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.UnitTests.Queues;

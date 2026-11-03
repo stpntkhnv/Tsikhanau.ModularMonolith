@@ -1,7 +1,6 @@
-using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 
 internal sealed record QueueSampleRow(Int64 PendingCount, Int64 FailedCount, DateTime? OldestDueOn)
 {

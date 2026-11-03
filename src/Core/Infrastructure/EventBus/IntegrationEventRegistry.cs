@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.EventBus;

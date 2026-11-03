@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
 

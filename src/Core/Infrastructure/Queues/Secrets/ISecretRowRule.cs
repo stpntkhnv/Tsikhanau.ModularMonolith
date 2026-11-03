@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 internal interface ISecretRowRule
 {

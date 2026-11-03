@@ -3,10 +3,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
-using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
+using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Railway;
 

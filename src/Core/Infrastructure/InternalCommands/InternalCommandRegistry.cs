@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Application.Modules;
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
+using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;

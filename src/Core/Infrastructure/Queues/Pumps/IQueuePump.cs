@@ -1,6 +1,6 @@
 using Tsikhanau.Monolith.Application.Modules;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
 
 public interface IQueuePump
 {

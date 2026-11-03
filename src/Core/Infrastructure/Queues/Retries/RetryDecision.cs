@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Retries;
 
 internal readonly record struct RetryDecision(Int32 Attempts, DateTimeOffset NextAttemptOn, DateTimeOffset? FailedOn)
 {

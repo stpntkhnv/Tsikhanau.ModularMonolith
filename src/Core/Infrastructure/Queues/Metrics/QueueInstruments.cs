@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace Tsikhanau.Monolith.Infrastructure.Diagnostics;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 
 internal sealed class QueueInstruments
 {

@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Queues;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
 

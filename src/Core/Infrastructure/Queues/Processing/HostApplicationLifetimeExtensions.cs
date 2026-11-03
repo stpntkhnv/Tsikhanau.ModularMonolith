@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 
 internal static class HostApplicationLifetimeExtensions
 {

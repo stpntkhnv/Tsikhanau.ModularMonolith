@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Infrastructure.Diagnostics;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 
 internal readonly struct HandlingMeasurement(
     QueueInstruments queueInstruments,

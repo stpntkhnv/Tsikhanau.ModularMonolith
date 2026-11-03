@@ -2,7 +2,7 @@ using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 internal static class QueueTables
 {

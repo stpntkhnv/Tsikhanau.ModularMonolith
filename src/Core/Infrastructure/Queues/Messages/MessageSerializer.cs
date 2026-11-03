@@ -2,7 +2,7 @@ using System.Text.Json;
 using Tsikhanau.Monolith.Contracts.Json;
 using Tsikhanau.Railway;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 internal static class MessageSerializer
 {

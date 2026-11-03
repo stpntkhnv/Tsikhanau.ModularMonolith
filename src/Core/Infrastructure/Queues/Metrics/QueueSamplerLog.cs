@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 
 internal static partial class QueueSamplerLog
 {

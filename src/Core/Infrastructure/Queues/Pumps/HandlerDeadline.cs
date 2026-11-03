@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Infrastructure.Queues;
+namespace Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
 
 internal sealed class HandlerDeadline : IDisposable
 {
