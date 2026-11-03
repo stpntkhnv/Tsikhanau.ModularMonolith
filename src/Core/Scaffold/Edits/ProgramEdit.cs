@@ -9,6 +9,12 @@ namespace Tsikhanau.Monolith.Scaffold.Edits;
 
 internal static partial class ProgramEdit
 {
+    private const String AddServicesDeclaration = "static void AddServices(WebApplicationBuilder builder)";
+
+    private const String BodyOpening = "{";
+
+    private const String BodyIndentation = "    ";
+
     private const String PlatformCall = "builder.AddPlatform();";
 
     private const String ModuleApiNamespace = "Tsikhanau.Monolith.Api.Modules";
@@ -28,20 +34,49 @@ internal static partial class ProgramEdit
     {
         var moduleCall = $"builder.AddModule<{module.ModuleClass}>();";
         var moduleUsing = $"using {module.Namespace};";
-        var platformIndexes = lines.GetIndexes(line => line.Trim() == PlatformCall);
         var usingIndexes = lines.GetIndexes(UsingPattern.IsMatch);
 
-        return Result
-            .Success(lines)
-            .Ensure(_ => platformIndexes.Count == 1, BuildAnchorError(path, $"exactly one line {PlatformCall}"))
+        return FindModuleCallAnchor(lines, path)
             .Ensure(_ => usingIndexes.Count > 0, BuildAnchorError(path, "using directives at the top"))
             .Ensure(_ => !lines.Contains(moduleCall), BuildAnchorError(path, $"no {moduleCall} yet"))
             .Ensure(_ => !lines.Contains(moduleUsing), BuildAnchorError(path, $"no {moduleUsing} yet"))
-            .Map(_ => AddModuleCall(lines, platformIndexes[0], module.Name, moduleCall))
+            .Map(anchor => AddModuleCall(lines, anchor, module.Name, moduleCall))
             .Map(withCall => AddUsing(withCall, usingIndexes, module.Namespace))
             .Map(AddModuleApiUsingWhenMissing)
             .Map(updatedLines => updatedLines.Join());
     }
+
+    private static Result<ModuleCallAnchor> FindModuleCallAnchor(TextLines lines, String path)
+    {
+        var platformIndexes = lines.GetIndexes(line => line.Trim() == PlatformCall);
+
+        return platformIndexes.Count > 0
+            ? FindPlatformCallAnchor(lines, path, platformIndexes)
+            : FindAddServicesAnchor(lines, path);
+    }
+
+    private static Result<ModuleCallAnchor> FindPlatformCallAnchor(
+        TextLines lines,
+        String path,
+        IReadOnlyList<Int32> platformIndexes) =>
+        platformIndexes is [var platformIndex]
+            ? new ModuleCallAnchor(platformIndex, TextLines.ReadIndentation(lines.Lines[platformIndex]))
+            : BuildAnchorError(path, $"exactly one line {PlatformCall}");
+
+    private static Result<ModuleCallAnchor> FindAddServicesAnchor(TextLines lines, String path)
+    {
+        var declarationIndexes = lines.GetIndexes(line => line.Trim() == AddServicesDeclaration);
+
+        return declarationIndexes is [var declarationIndex] && OpensBody(lines, declarationIndex + 1)
+            ? new ModuleCallAnchor(declarationIndex + 1, ReadBodyIndentation(lines.Lines[declarationIndex + 1]))
+            : BuildAnchorError(path, $"exactly one line {AddServicesDeclaration} followed by a line {BodyOpening}");
+    }
+
+    private static Boolean OpensBody(TextLines lines, Int32 index) =>
+        index < lines.Lines.Count && lines.Lines[index].Trim() == BodyOpening;
+
+    private static String ReadBodyIndentation(String openingLine) =>
+        TextLines.ReadIndentation(openingLine) + BodyIndentation;
 
     private static TextLines AddModuleApiUsingWhenMissing(TextLines lines) =>
         lines.Contains($"using {ModuleApiNamespace};")
@@ -54,23 +89,25 @@ internal static partial class ProgramEdit
         return coreUsingIndexes.Count > 0 ? coreUsingIndexes : lines.GetIndexes(UsingPattern.IsMatch);
     }
 
-    private static TextLines AddModuleCall(TextLines lines, Int32 platformIndex, String moduleName, String moduleCall)
+    private static TextLines AddModuleCall(
+        TextLines lines,
+        ModuleCallAnchor anchor,
+        String moduleName,
+        String moduleCall)
     {
         var moduleCalls = lines.Lines
-            .Skip(platformIndex + 1)
+            .Skip(anchor.Index + 1)
             .TakeWhile(IsModuleCall)
-            .Select((line, offset) => (ModuleName: ReadModuleName(line), Index: platformIndex + 1 + offset))
+            .Select((line, offset) => (ModuleName: ReadModuleName(line), Index: anchor.Index + 1 + offset))
             .ToList();
 
         var insertionIndex = moduleCalls
             .Where(existing => CodeLayout.NameOrder.Compare(existing.ModuleName, moduleName) > 0)
             .Select(existing => existing.Index)
-            .DefaultIfEmpty(platformIndex + 1 + moduleCalls.Count)
+            .DefaultIfEmpty(anchor.Index + 1 + moduleCalls.Count)
             .First();
 
-        var indentation = TextLines.ReadIndentation(lines.Lines[platformIndex]);
-
-        return lines.Insert(insertionIndex, $"{indentation}{moduleCall}");
+        return lines.Insert(insertionIndex, $"{anchor.Indentation}{moduleCall}");
     }
 
     private static TextLines AddUsing(TextLines lines, IReadOnlyList<Int32> usingIndexes, String moduleNamespace)
@@ -97,4 +134,6 @@ internal static partial class ProgramEdit
 
     private static Error BuildAnchorError(String path, String expected) =>
         Error.Failure("scaffold.anchor", $"{path} must hold {expected}");
+
+    private sealed record ModuleCallAnchor(Int32 Index, String Indentation);
 }

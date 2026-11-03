@@ -22,6 +22,10 @@ public sealed class TransactionTests : IDisposable
 
     private const String FileInAnExistingFolder = "src/Modules/Notes.md";
 
+    private const String AddServicesBody = "static void AddServices(WebApplicationBuilder builder)\n{\n";
+
+    private const String NotesCall = "    builder.AddModule<NotesModule>();\n";
+
     private const Int32 FirstNewFile = 1;
 
     private const Int32 NewFileInAnExistingFolder = 4;
@@ -58,6 +62,12 @@ public sealed class TransactionTests : IDisposable
 
     private readonly SampleApp _app = SampleApp.Create();
 
+    public TransactionTests()
+    {
+        _app.Write(SampleApp.ProgramPath, FrozenPrograms.Core103);
+        _app.Commit();
+    }
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     public void Dispose() => _app.Dispose();
@@ -75,7 +85,7 @@ public sealed class TransactionTests : IDisposable
 
         outcome.ShouldBe(Result.Success());
         createdFiles.ShouldBe(NewFiles.Select(newFile => newFile.Content));
-        program.ShouldContain("builder.AddPlatform();\nbuilder.AddModule<NotesModule>();\n", Case.Sensitive);
+        program.ShouldContain(AddServicesBody + NotesCall, Case.Sensitive);
         appSettings.ShouldContain("\"MaxConnections\": 20,\n      \"Notes\": true", Case.Sensitive);
         processRunner.Steps.ShouldBe(["bash scripts/add-migration.sh Notes Initial"]);
     }
@@ -303,8 +313,8 @@ public sealed class TransactionTests : IDisposable
         var plan = new ScaffoldPlan(
             NewFiles,
             [
-                PlanEdit(program, "using Acme.Shop.Bootstrapper.Platform;\n", "using Acme.Shop.Modules.Notes;\n"),
-                PlanEdit(program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n"),
+                PlanEdit(program, "using Tsikhanau.Monolith.Hosting;\n", "using Acme.Shop.Modules.Notes;\n"),
+                PlanEdit(program, AddServicesBody, NotesCall),
             ],
             [MigrationStep]);
 
@@ -327,7 +337,7 @@ public sealed class TransactionTests : IDisposable
         var program = _app.ReadLayout().Program;
         var plan = new ScaffoldPlan(
             [.. NewFiles, new NewFile(SampleApp.ProgramPath, "var app = 1;\n")],
-            [PlanEdit(program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n")],
+            [PlanEdit(program, AddServicesBody, NotesCall)],
             [MigrationStep]);
 
         var before = _app.TakeSnapshot();
@@ -388,7 +398,7 @@ public sealed class TransactionTests : IDisposable
                     app.HostProject,
                     "Infrastructure.csproj\" />\n",
                     "    <ProjectReference Include=\"Notes\" />\n"),
-                PlanEdit(app.Program, "builder.AddPlatform();\n", "builder.AddModule<NotesModule>();\n"),
+                PlanEdit(app.Program, AddServicesBody, NotesCall),
                 PlanEdit(app.AppSettings, "\"MaxConnections\": 20", ",\n      \"Notes\": true"),
             ],
             [MigrationStep]);

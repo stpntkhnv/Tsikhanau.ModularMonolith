@@ -345,8 +345,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
         builder.Configuration["App:Modules:Pings:Limit"] = "10";
         builder.Configuration["App:Modules:Pongs:Limit"] = "10";
 
-        builder.EnsureConnectionString();
-        builder.Services.AddPlatformServices(builder.Configuration);
+        builder.AddPlatform();
         builder.Services.AddSingleton<TimeProvider>(fakeTimeProvider);
         builder.AddModule<PingsModule>();
         if (hasPongs)
@@ -362,9 +361,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
         configure?.Invoke(builder);
 
         var app = builder.Build();
-        app.UseServiceDefaults();
-        app.UseModules();
-        app.MapModules();
+        app.UseRequestPipeline();
         return app;
     }
 

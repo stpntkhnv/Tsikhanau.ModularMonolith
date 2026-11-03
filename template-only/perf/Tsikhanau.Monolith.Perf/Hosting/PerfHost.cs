@@ -25,9 +25,8 @@ internal static class PerfHost
 
         Configure(builder, connectionString, settings);
         ConfigureLogging(builder.Logging, settings);
-        builder.EnsureConnectionString();
-        builder.Services.AddPlatformServices(builder.Configuration);
         builder
+            .AddPlatform()
             .AddModule<PingsModule>()
             .AddModule<PongsModule>();
 

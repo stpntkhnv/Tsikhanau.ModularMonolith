@@ -1,4 +1,4 @@
-From 1b17c4fc8b48ed664acc155615aab45867911e35 Mon Sep 17 00:00:00 2001
+From a07bc5019680acb7d548f14798fb0b22d2851347 Mon Sep 17 00:00:00 2001
 From: scratch <scratch@local>
 Date: Wed, 7 Oct 2026 12:02:02 +0000
 Subject: [PATCH 1/4] scratch: notes module
@@ -98,20 +98,18 @@ index c5243d7..79eb23a 100644
    </ItemGroup>
  </Project>
 diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-index a2cd8da..341c78e 100644
+index 610aec2..27eba0c 100644
 --- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
 +++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-@@ -1,4 +1,6 @@
- using ModularMonolith.Bootstrapper.Platform;
+@@ -1,9 +1,12 @@
 +using ModularMonolith.Modules.Notes;
 +using Tsikhanau.Monolith.Api.Modules;
  using Tsikhanau.Monolith.Hosting;
- using Tsikhanau.Monolith.Infrastructure.Diagnostics;
  
-@@ -8,6 +10,7 @@
+ return await MonolithHost.RunAsync(args, AddServices);
+ 
+ static void AddServices(WebApplicationBuilder builder)
  {
-     builder.AddServiceDefaults(AppDiagnostics.SourceName);
-     builder.AddPlatform();
 +    builder.AddModule<NotesModule>();
  }
  
@@ -1232,5 +1230,5 @@ index 0000000..9269ece
 +    public Int32 MaxNotes { get; init; } = 100;
 +}
 -- 
-2.55.0
+2.56.0
 

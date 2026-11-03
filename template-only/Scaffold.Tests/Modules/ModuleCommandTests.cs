@@ -16,9 +16,9 @@ public sealed class ModuleCommandTests : IDisposable
         """    <ProjectReference Include="..\..\Core\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />"""
         + "\n";
 
-    private const String PlatformUsing = "using Acme.Shop.Bootstrapper.Platform;\n";
+    private const String HostingUsing = "using Tsikhanau.Monolith.Hosting;\n";
 
-    private const String PlatformCall = "    builder.AddPlatform();\n";
+    private const String AddServicesBody = "static void AddServices(WebApplicationBuilder builder)\n{\n";
 
     private const String ModuleApiUsing = "using Tsikhanau.Monolith.Api.Modules;\n";
 
@@ -95,7 +95,7 @@ public sealed class ModuleCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task First_module_follows_the_modules_folder_the_core_references_and_the_platform_lines()
+    public async Task First_module_follows_the_modules_folder_the_core_references_and_the_add_services_body()
     {
         var exitCode = await RunAsync("Notes");
 
@@ -108,8 +108,8 @@ public sealed class ModuleCommandTests : IDisposable
         hostProject.ShouldBe(Insert(SampleApp.HostProject, CoreReference, BuildReference("Notes")));
         program.ShouldBe(
             Insert(
-                Insert(SampleApp.Program, PlatformUsing, BuildUsing("Notes") + ModuleApiUsing),
-                PlatformCall,
+                InsertBefore(SampleApp.Program, HostingUsing, BuildUsing("Notes") + ModuleApiUsing),
+                AddServicesBody,
                 BuildCall("Notes")));
     }
 
@@ -332,10 +332,7 @@ public sealed class ModuleCommandTests : IDisposable
     {
         _app.Write(
             SampleApp.ProgramPath,
-            SampleApp.Program.Replace(
-                PlatformUsing,
-                "using Contoso.Enterprise.Logistics.Warehousing.Bootstrapper.Platform;\n",
-                StringComparison.Ordinal));
+            SampleModules.RenameApp(FrozenPrograms.Core102, "Contoso.Enterprise.Logistics.Warehousing"));
 
         _app.Commit();
         var before = _app.TakeSnapshot();
@@ -381,11 +378,11 @@ public sealed class ModuleCommandTests : IDisposable
                 Insert(SampleApp.HostProject, CoreReference, BuildReference(earlier) + BuildReference(later))),
             () => program.ShouldBe(
                 Insert(
-                    Insert(
+                    InsertBefore(
                         SampleApp.Program,
-                        PlatformUsing,
+                        HostingUsing,
                         BuildUsing(earlier) + BuildUsing(later) + ModuleApiUsing),
-                    PlatformCall,
+                    AddServicesBody,
                     BuildCall(earlier) + BuildCall(later))),
             () => appSettings.ShouldBe(
                 WithModules($"    \"Modules\": {{\n      \"{earlier}\": {{}},\n      \"{later}\": {{}}\n    }}")));
@@ -393,6 +390,9 @@ public sealed class ModuleCommandTests : IDisposable
 
     private static String Insert(String text, String anchor, String addition) =>
         text.Replace(anchor, anchor + addition, StringComparison.Ordinal);
+
+    private static String InsertBefore(String text, String anchor, String addition) =>
+        text.Replace(anchor, addition + anchor, StringComparison.Ordinal);
 
     private static String BuildFolder(String name)
     {

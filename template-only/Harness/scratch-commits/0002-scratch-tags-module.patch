@@ -1,4 +1,4 @@
-From 28db46c34b4032ea0421968bb2995df2ca999ed0 Mon Sep 17 00:00:00 2001
+From d1211706acdf144d56294e6173adb7f839587e63 Mon Sep 17 00:00:00 2001
 From: scratch <scratch@local>
 Date: Wed, 7 Oct 2026 12:02:03 +0000
 Subject: [PATCH 2/4] scratch: tags module
@@ -58,19 +58,18 @@ index 79eb23a..01a8253 100644
    </ItemGroup>
  </Project>
 diff --git a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-index 341c78e..89fa0b7 100644
+index 27eba0c..a2735cd 100644
 --- a/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
 +++ b/src/Bootstrapper/ModularMonolith.Bootstrapper/Program.cs
-@@ -1,5 +1,6 @@
- using ModularMonolith.Bootstrapper.Platform;
+@@ -1,4 +1,5 @@
  using ModularMonolith.Modules.Notes;
 +using ModularMonolith.Modules.Tags;
  using Tsikhanau.Monolith.Api.Modules;
  using Tsikhanau.Monolith.Hosting;
- using Tsikhanau.Monolith.Infrastructure.Diagnostics;
-@@ -11,6 +12,7 @@
-     builder.AddServiceDefaults(AppDiagnostics.SourceName);
-     builder.AddPlatform();
+ 
+@@ -7,6 +8,7 @@ return await MonolithHost.RunAsync(args, AddServices);
+ static void AddServices(WebApplicationBuilder builder)
+ {
      builder.AddModule<NotesModule>();
 +    builder.AddModule<TagsModule>();
  }
@@ -733,5 +732,5 @@ index 0000000..751fe13
 +        services.AddModuleInfrastructure<ITagsModule, TagsModuleFacade, TagsDbContext>();
 +}
 -- 
-2.55.0
+2.56.0
 

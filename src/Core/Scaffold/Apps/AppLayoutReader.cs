@@ -15,9 +15,6 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
 
     private const String AppHostPattern = $"src/Aspire/*.AppHost/{AppHostFileName}";
 
-    private const String MissingPlatformUsing =
-        "has no 'using <App>.Bootstrapper.Platform;', which names the root namespace";
-
     private const String DatabaseNameRule =
         "which cannot name the module roles <database>__<schema>: it must be groups of a-z and 0-9 joined by "
         + "single underscores, and be neither pg nor start with pg_, which PostgreSQL reserves for its own roles";
@@ -72,6 +69,7 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
     private Result<AppLayout> ReadLayout(String solutionPath, String hostProjectPath, String appHostPath)
     {
         var hostFolder = Path.GetDirectoryName(hostProjectPath) ?? String.Empty;
+        var projectPrefix = ReadProjectPrefix(hostProjectPath);
 
         return Result
             .Collect(fileSystem.ReadTextFile(solutionPath))
@@ -80,12 +78,10 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
             .And(fileSystem.ReadTextFile(Path.Combine(hostFolder, "appsettings.json")))
             .And(fileSystem.ReadTextFile(appHostPath))
             .Bind((solution, hostProject, program, appSettings, appHost) =>
-                Result
-                    .Collect(ReadRootNamespace(program))
-                    .And(ReadDatabaseName(appHost))
-                    .Map((rootNamespace, databaseName) => new AppLayout(
-                        ReadProjectPrefix(hostProjectPath),
-                        rootNamespace,
+                ReadDatabaseName(appHost)
+                    .Map(databaseName => new AppLayout(
+                        projectPrefix,
+                        ReadRootNamespace(program, projectPrefix),
                         databaseName,
                         solution,
                         hostProject,
@@ -96,10 +92,10 @@ internal sealed partial class AppLayoutReader(IFileSystem fileSystem)
     private static String ReadProjectPrefix(String hostProjectPath) =>
         Path.GetFileName(hostProjectPath)[..^HostProjectSuffix.Length];
 
-    private static Result<String> ReadRootNamespace(TextFile program) =>
+    private static String ReadRootNamespace(TextFile program, String projectPrefix) =>
         PlatformUsingPattern.Match(program.Text) is { Success: true } match
             ? match.Groups["root"].Value
-            : Error.Failure("scaffold.app-layout", $"{program.Path} {MissingPlatformUsing}");
+            : projectPrefix;
 
     private static Result<String> ReadDatabaseName(TextFile appHost)
     {

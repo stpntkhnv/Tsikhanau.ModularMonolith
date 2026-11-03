@@ -108,14 +108,19 @@ public sealed class AppLayoutReaderTests : IDisposable
     }
 
     [Fact]
-    public void Program_without_the_platform_using_is_refused()
+    public void Program_without_the_platform_using_takes_the_root_namespace_from_the_host_project()
     {
-        _app.Write(SampleApp.ProgramPath, "using Acme.Shop.Bootstrapper;\n");
+        _app.Delete(SampleApp.HostProjectPath);
+        _app.Delete(SampleApp.ProgramPath);
+        _app.Delete(SampleApp.AppSettingsPath);
+        _app.Write("src/Bootstrapper/AcmeShop.Bootstrapper/AcmeShop.Bootstrapper.csproj", SampleApp.HostProject);
+        _app.Write("src/Bootstrapper/AcmeShop.Bootstrapper/Program.cs", FrozenPrograms.Core103);
+        _app.Write("src/Bootstrapper/AcmeShop.Bootstrapper/appsettings.json", SampleApp.AppSettings);
 
-        var message = ReadMessage();
+        var layout = _app.ReadLayout();
 
-        message.ShouldBe(
-            $"{SampleApp.ProgramPath} has no 'using <App>.Bootstrapper.Platform;', which names the root namespace");
+        layout.ProjectPrefix.ShouldBe("AcmeShop");
+        layout.RootNamespace.ShouldBe("AcmeShop");
     }
 
     [Fact]
