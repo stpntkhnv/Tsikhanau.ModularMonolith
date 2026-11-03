@@ -27,6 +27,9 @@ noted_files=(
   src/Tests/IntegrationTests/Host/HostProcessTests.cs
   src/Tests/IntegrationTests/Host/TelemetrySourceTests.cs
 )
+deleted_files=(
+  src/Bootstrapper/$name.Bootstrapper/Platform/PlatformExtensions.cs
+)
 host=src/Bootstrapper/$name.Bootstrapper
 closed_port_connection="Host=127.0.0.1;Port=1;Database=${name,,};Username=postgres;Password=postgres;SSL Mode=Disable"
 login_key_refusal='App:Database:LoginKey is required'
@@ -142,6 +145,11 @@ follow_notes() {
     mkdir -p "$(dirname "$app/$file")"
     cp "$work/new/$name/$file" "$app/$file"
   done
+  for file in "${deleted_files[@]}"; do
+    [[ -f "$app/$file" ]] || fail "the app made from core $old_version has no $file, which the notes delete"
+    rm -- "$app/$file"
+    rmdir --ignore-fail-on-non-empty -- "$(dirname "$app/$file")"
+  done
   differences=$work/logs/4-differences.diff
   if ! diff -r -x bin -x obj -x .git -x core.lock "${generated_lines[@]/#/-I}" "$app" "$work/new/$name" \
     > "$differences"; then
@@ -149,7 +157,8 @@ follow_notes() {
   fi
   git -C "$app" add -A
   git -C "$app" commit -q -m "follow the upgrade notes"
-  summary="${#noted_files[@]} files edited as the notes say; the app now equals a new app of the template"
+  summary="${#noted_files[@]} files edited and ${#deleted_files[@]} deleted as the notes say;"
+  summary+=" the app now equals a new app of the template"
   summary+=" but for core.lock, the generated ports and UserSecretsId"
 }
 
