@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion;
 using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.SharedKernel;

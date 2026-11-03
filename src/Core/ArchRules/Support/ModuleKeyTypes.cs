@@ -2,12 +2,13 @@ using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
+using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
 using Tsikhanau.Monolith.Infrastructure.Inbox;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 
 namespace Tsikhanau.Monolith.ArchRules.Support;

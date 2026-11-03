@@ -5,7 +5,7 @@ using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.Contracts.Queries;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.UnitTests.Dispatching;

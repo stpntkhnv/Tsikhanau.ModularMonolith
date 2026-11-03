@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;

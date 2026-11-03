@@ -3,8 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Api.Modules;
-using Tsikhanau.Monolith.Infrastructure.Database;
-using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Hosting.CommandLine;
+using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
+using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 
 namespace Tsikhanau.Monolith.Hosting;

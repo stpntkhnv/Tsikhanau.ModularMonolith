@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
@@ -12,6 +11,7 @@ using Tsikhanau.Monolith.TestModules.Pings.Features.RelayEcho;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ReschedulePing;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ThrowAfterTouch;
 using Tsikhanau.Monolith.TestModules.Pings.Features.TouchPing;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Dispatching;

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Tsikhanau.Monolith.Domain.Aggregates;
 using Tsikhanau.Monolith.Domain.Ids;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Persistence;
 

@@ -4,7 +4,7 @@ using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Domain.Events;
 using Tsikhanau.Monolith.Infrastructure.Dispatching.Invokers;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Railway;
 using Xunit;

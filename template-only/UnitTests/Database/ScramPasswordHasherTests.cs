@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 
 namespace Tsikhanau.Monolith.UnitTests.Database;
 

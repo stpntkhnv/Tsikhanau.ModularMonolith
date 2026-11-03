@@ -2,7 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
+using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Testing.App;
 
 namespace Tsikhanau.Monolith.UnitTests.Database;

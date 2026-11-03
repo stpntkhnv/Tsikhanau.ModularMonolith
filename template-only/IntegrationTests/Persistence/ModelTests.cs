@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Tsikhanau.Monolith.Domain.Aggregates;
 using Tsikhanau.Monolith.Domain.Ids;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
+using Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 

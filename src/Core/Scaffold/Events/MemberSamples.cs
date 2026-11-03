@@ -15,7 +15,7 @@ internal sealed class MemberSamples(SourceProject project)
 
     private const String Clock = "App.Time.GetUtcNow()";
 
-    private const String FactoryNamespace = "Tsikhanau.Monolith.Infrastructure.Persistence";
+    private const String FactoryNamespace = "Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion";
 
     private const String RailwayNamespace = "Tsikhanau.Railway";
 

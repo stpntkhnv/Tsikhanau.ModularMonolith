@@ -6,6 +6,7 @@ using Tsikhanau.Monolith.Domain.Events;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Perf.Scenarios;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;

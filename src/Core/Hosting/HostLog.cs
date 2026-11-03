@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 
 namespace Tsikhanau.Monolith.Hosting;
 

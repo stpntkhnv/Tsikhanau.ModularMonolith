@@ -133,7 +133,7 @@ public sealed class EventReaderTests
             [
                 "Acme.Shop.Modules.Notes.Domain.Notes.Events",
                 "Acme.Shop.Modules.Notes.Domain.Notes",
-                "Tsikhanau.Monolith.Infrastructure.Persistence",
+                "Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion",
                 "Tsikhanau.Railway",
             ],
             ignoreOrder: true);

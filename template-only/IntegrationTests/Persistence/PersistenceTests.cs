@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ReschedulePing;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Persistence;

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Application.Events;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings;
 

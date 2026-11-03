@@ -15,7 +15,7 @@ public sealed class EventHandlerTemplateTests
 
     private const String NotesEvents = "Acme.Shop.Modules.Notes.Contracts.IntegrationEvents";
 
-    private const String Persistence = "Tsikhanau.Monolith.Infrastructure.Persistence";
+    private const String Persistence = "Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion";
 
     private const String Railway = "Tsikhanau.Railway";
 
@@ -134,7 +134,7 @@ public sealed class EventHandlerTemplateTests
                 using Acme.Shop.Modules.Notes.Domain.Notes;
                 using Acme.Shop.Modules.Notes.Domain.Notes.Events;
                 using Acme.Shop.Testing.App;
-                using Tsikhanau.Monolith.Infrastructure.Persistence;
+                using Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion;
                 using Tsikhanau.Railway;
 
                 namespace Acme.Shop.IntegrationTests.Modules.Notes;

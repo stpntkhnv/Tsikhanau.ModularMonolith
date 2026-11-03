@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
+using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 
 namespace Tsikhanau.Monolith.Testing.Database;
 

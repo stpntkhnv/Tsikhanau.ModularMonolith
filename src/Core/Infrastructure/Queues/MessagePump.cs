@@ -12,6 +12,7 @@ using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;

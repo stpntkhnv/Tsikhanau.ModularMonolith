@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.TestModules.Pings.Features.AddEcho;
 using Tsikhanau.Monolith.TestModules.Pings.Features.RemoveEcho;

@@ -11,6 +11,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 using Tsikhanau.Monolith.Contracts.Json;
+using Tsikhanau.Monolith.Hosting.Observability;
+using Tsikhanau.Monolith.Hosting.OpenApi;
+using Tsikhanau.Monolith.Hosting.Problems;
 
 namespace Tsikhanau.Monolith.Hosting;
 

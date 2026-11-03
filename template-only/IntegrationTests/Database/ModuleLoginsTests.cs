@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

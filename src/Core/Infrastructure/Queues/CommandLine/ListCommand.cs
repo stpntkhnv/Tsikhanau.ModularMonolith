@@ -1,7 +1,7 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Railway;
 

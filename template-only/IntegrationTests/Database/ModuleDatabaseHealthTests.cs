@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 

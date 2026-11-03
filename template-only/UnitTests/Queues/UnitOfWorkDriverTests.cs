@@ -3,7 +3,7 @@ using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Domain.Events;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Testing.Queues;
 using Tsikhanau.Railway;
 

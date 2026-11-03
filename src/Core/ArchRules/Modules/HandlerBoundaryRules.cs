@@ -9,7 +9,7 @@ using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Rules;
 using Tsikhanau.Monolith.ArchRules.Support;
 using Tsikhanau.Monolith.Contracts.Queries;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace Tsikhanau.Monolith.ArchRules.Modules;

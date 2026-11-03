@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Railway;
 

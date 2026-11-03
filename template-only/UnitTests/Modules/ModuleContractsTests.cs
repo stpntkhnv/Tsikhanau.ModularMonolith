@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace Tsikhanau.Monolith.UnitTests.Modules;

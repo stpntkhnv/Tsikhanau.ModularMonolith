@@ -1,5 +1,5 @@
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Modules;
+using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 using Tsikhanau.Monolith.Testing.Database;
 

@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Tests.Support;
 using Tsikhanau.Railway;

@@ -33,7 +33,7 @@ public static class LayerDependencyRules
             "Dapper",
             "Tsikhanau.Monolith.Infrastructure",
         ],
-        allowedTypeNames: ["Tsikhanau.Monolith.Infrastructure.Persistence.UnitOfWorkErrors"]);
+        allowedTypeNames: ["Tsikhanau.Monolith.Infrastructure.Persistence.Commits.UnitOfWorkErrors"]);
 
     public static RuleEvaluation DomainDependsOnlyOnItselfTheDomainBuildingBlocksAndRailway(
         ArchModules modules,

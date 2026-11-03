@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;

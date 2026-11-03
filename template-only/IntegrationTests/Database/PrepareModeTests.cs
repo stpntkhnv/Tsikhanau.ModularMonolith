@@ -4,12 +4,12 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.Testing.App;
-using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Testing.App;
+using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

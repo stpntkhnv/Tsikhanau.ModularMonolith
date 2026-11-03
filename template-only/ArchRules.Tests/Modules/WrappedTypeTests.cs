@@ -4,7 +4,7 @@ using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Support;
 using Tsikhanau.Monolith.Infrastructure.Dispatching;
 using Tsikhanau.Monolith.Infrastructure.InternalCommands;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Modules;
 

@@ -1,4 +1,4 @@
-using Tsikhanau.Monolith.Infrastructure.Database;
+using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 
 namespace Tsikhanau.Monolith.UnitTests.Database;
 

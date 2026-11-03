@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Contracts.Queries;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Dispatching;

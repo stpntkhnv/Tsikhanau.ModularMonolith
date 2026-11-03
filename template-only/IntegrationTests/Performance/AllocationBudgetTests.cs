@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Performance;

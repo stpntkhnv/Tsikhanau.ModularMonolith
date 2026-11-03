@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues;
