@@ -9,7 +9,6 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Railway;
 

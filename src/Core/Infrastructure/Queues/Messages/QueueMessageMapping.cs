@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Messages;

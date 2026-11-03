@@ -2,8 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;
 

@@ -6,10 +6,10 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
-using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
+using Tsikhanau.Monolith.TestModules.Pongs.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
 

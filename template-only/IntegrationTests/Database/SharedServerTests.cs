@@ -4,10 +4,10 @@ using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
-using Tsikhanau.Monolith.TestModules.Pings;
-using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
+using Tsikhanau.Monolith.TestModules.Pings;
+using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;

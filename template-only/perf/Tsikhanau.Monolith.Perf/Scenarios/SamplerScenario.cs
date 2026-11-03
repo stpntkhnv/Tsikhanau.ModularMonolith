@@ -3,8 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Perf.Database;
 using Tsikhanau.Monolith.Perf.Hosting;
 using Tsikhanau.Monolith.Perf.Measuring;

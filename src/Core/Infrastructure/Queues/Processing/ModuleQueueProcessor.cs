@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 

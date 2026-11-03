@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Tsikhanau.Monolith.Infrastructure.Diagnostics;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Shared.Collections;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Metrics;

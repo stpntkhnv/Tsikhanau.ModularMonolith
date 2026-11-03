@@ -1,7 +1,5 @@
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.CommandLine;

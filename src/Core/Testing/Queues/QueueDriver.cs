@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Xunit;
 
 namespace Tsikhanau.Monolith.Testing.Queues;

@@ -4,6 +4,7 @@ using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion;
 using Tsikhanau.Monolith.IntegrationTests.Hosting;
+using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
@@ -13,7 +14,6 @@ using Tsikhanau.Monolith.TestModules.Pings.Features.CreatePing;
 using Tsikhanau.Monolith.TestModules.Pings.Features.ScheduleTouch;
 using Tsikhanau.Monolith.TestModules.Pongs;
 using Tsikhanau.Monolith.TestModules.Pongs.Features;
-using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.IntegrationTests.App;

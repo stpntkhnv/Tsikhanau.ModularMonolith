@@ -1,7 +1,6 @@
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Shared.Collections;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
