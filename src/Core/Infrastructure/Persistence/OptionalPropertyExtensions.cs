@@ -9,6 +9,10 @@ namespace Tsikhanau.Monolith.Infrastructure.Persistence;
 
 public static class OptionalPropertyExtensions
 {
+    private const String EmptyColumnNameProblem =
+        "gets an empty column name, since the naming convention drops letters without upper and lower case: "
+        + "give the property a name with Latin letters and keep its old column with HasColumnName after HasOptional";
+
     extension<TEntity>(EntityTypeBuilder<TEntity> builder)
         where TEntity : class
     {
@@ -19,7 +23,7 @@ public static class OptionalPropertyExtensions
             builder.Ignore(propertyName);
             return builder
                 .Property<TValue?>(BuildFieldName(propertyName))
-                .HasColumnName(ColumnNames.Of(propertyName));
+                .HasColumnName(BuildColumnName(typeof(TEntity), propertyName));
         }
     }
 
@@ -30,4 +34,13 @@ public static class OptionalPropertyExtensions
 
     private static String BuildFieldName(String propertyName) =>
         $"_{JsonNamingPolicy.CamelCase.ConvertName(propertyName)}";
+
+    private static String BuildColumnName(Type entityType, String propertyName)
+    {
+        var columnName = ColumnNames.Of(propertyName);
+        return columnName.Length > 0
+            ? columnName
+            : throw new InvalidOperationException(
+                $"Optional property {entityType.FullName}.{propertyName} {EmptyColumnNameProblem}");
+    }
 }

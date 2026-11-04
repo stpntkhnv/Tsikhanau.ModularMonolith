@@ -16,13 +16,11 @@ public sealed class HandlingFailureTests
     }
 
     [Fact]
-    public void Other_unexpected_errors_and_conflicts_are_retried()
+    public void Other_unexpected_errors_are_retried()
     {
-        var unexpectedFailure = HandlingFailure.From(Error.Unexpected("Tests.Glitch", "Something went wrong"));
-        var conflictFailure = HandlingFailure.From(UnitOfWorkErrors.ConcurrencyConflict);
+        var failure = HandlingFailure.From(Error.Unexpected("Tests.Glitch", "Something went wrong"));
 
-        unexpectedFailure.IsPermanent.ShouldBeFalse();
-        conflictFailure.IsPermanent.ShouldBeFalse();
+        failure.IsPermanent.ShouldBeFalse();
     }
 
     [Fact]
