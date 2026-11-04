@@ -12,7 +12,6 @@ using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Inbox;
@@ -65,8 +64,7 @@ public sealed class InboxPump<TModule>(
         InboxMessage message,
         CancellationToken cancellationToken) =>
         integrationEventRegistry
-            .FindType(message.Type)
-            .ToResult(() => MessagingErrors.UnknownType(message.Type))
+            .FindKnownType(message.Type)
             .Ensure(_ => IsSubscribed(message), _ => MessagingErrors.UnsubscribedType(message.Type))
             .Bind(type => MessageSerializer.Deserialize<IntegrationEvent>(message.Payload, type))
             .Ensure(

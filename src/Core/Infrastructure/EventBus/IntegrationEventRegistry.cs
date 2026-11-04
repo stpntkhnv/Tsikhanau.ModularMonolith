@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
@@ -37,4 +38,12 @@ public sealed class IntegrationEventRegistry
 
     public Boolean ContainsSecrets(Type eventType) =>
         _secretTypes.GetOrAdd(eventType, static type => type.ContainsSecrets);
+
+    internal Result<Type> FindKnownType(String name)
+    {
+        var knownType = FindType(name);
+        return knownType.HasValue
+            ? knownType.Value
+            : MessagingErrors.UnknownType(name);
+    }
 }

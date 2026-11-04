@@ -6,11 +6,9 @@ using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Monolith.Infrastructure.Queues;
-using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Railway;
 
@@ -46,18 +44,11 @@ public sealed class OutboxPump<TModule>(
         OutboxMessage message,
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
-        FindKnownType(message)
+        integrationEventRegistry
+            .FindKnownType(message.Type)
             .BindAsync(_ => DeliverAndMarkProcessedAsync(dbContext, message, processedOn, cancellationToken));
 
     protected override Boolean IsSecretType(String type) => integrationEventRegistry.ContainsSecrets(type);
-
-    private Result<Type> FindKnownType(OutboxMessage message)
-    {
-        var knownType = integrationEventRegistry.FindType(message.Type);
-        return knownType.HasValue
-            ? knownType.Value
-            : MessagingErrors.UnknownType(message.Type);
-    }
 
     private async Task<Result<Unit>> DeliverAndMarkProcessedAsync(
         ModuleDbContext dbContext,

@@ -1,6 +1,5 @@
 using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
-using Tsikhanau.Monolith.Infrastructure.Queues.Processing;
 using Tsikhanau.Monolith.Shared.Collections;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
@@ -131,7 +130,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
         var finishedOn = timeProvider.GetUtcNow();
         if (!CanStart(message, finishedOn))
         {
-            RenewOneAtATime(BuildReasonNotToStart(message, finishedOn));
+            ClaimOneAtATimeAfterSlowBatch(BuildReasonNotToStart(message, finishedOn));
         }
 
         return true;
@@ -145,7 +144,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
         messagePump.LogClaimsOneAtATime(reason, unstarted.Count);
     }
 
-    private void RenewOneAtATime(String reason)
+    private void ClaimOneAtATimeAfterSlowBatch(String reason)
     {
         ClaimOneAtATimeForAPollInterval();
         if (!_claimsOneAtATime && !HasMessages)

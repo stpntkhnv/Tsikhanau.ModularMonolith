@@ -10,7 +10,6 @@ using Tsikhanau.Monolith.Infrastructure.Queues;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 using Tsikhanau.Monolith.Infrastructure.Queues.Pumps;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.InternalCommands;
@@ -43,8 +42,7 @@ public sealed class InternalCommandsPump<TModule>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
         internalCommandRegistry
-            .FindType(message.Type)
-            .ToResult(() => MessagingErrors.UnknownType(message.Type))
+            .FindKnownType(message.Type)
             .Bind(type => MessageSerializer.Deserialize<InternalCommand>(message.Payload, type))
             .Tap(_ => MarkProcessed(message, processedOn))
             .BindAsync(command => SendAsync(command, serviceProvider, cancellationToken));

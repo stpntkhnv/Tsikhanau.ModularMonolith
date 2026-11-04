@@ -238,8 +238,8 @@ public abstract class MessagePump<TModule, TMessage>(
             }
         }
 
-        EraseSecretsOf(message);
-        await RecordProcessedAsync(message, timeProvider.GetUtcNow());
+        MarkProcessed(message, timeProvider.GetUtcNow());
+        await RecordProcessedAsync(message);
         OnCommitted(message);
         return Optional<HandlingFailure>.None();
     }
@@ -344,12 +344,12 @@ public abstract class MessagePump<TModule, TMessage>(
         QueueInstruments.CountRetried(recordedCount);
     }
 
-    private async Task RecordProcessedAsync(TMessage message, DateTimeOffset processedOn)
+    private async Task RecordProcessedAsync(TMessage message)
     {
         var processedCount = await UpdateClaimedRowsAsync(
             UntouchedSince(message),
             setters => setters
-                .SetProperty(candidate => candidate.ProcessedOn, processedOn)
+                .SetProperty(candidate => candidate.ProcessedOn, message.ProcessedOn)
                 .SetProperty(candidate => candidate.Payload, message.Payload)
                 .SetProperty(candidate => candidate.LastError, message.LastError));
 

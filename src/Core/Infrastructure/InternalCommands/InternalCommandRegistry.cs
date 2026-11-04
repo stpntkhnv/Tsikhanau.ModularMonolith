@@ -1,4 +1,5 @@
 using Tsikhanau.Monolith.Application.Modules;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Tsikhanau.Railway;
 
@@ -37,4 +38,12 @@ public sealed class InternalCommandRegistry<TModule>
             .GetValueOrDefault(false);
 
     public Boolean ContainsSecrets(Type commandType) => _secretTypes.Contains(commandType);
+
+    internal Result<Type> FindKnownType(String name)
+    {
+        var knownType = FindType(name);
+        return knownType.HasValue
+            ? knownType.Value
+            : MessagingErrors.UnknownType(name);
+    }
 }

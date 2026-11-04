@@ -9,7 +9,7 @@ using Tsikhanau.Monolith.TestModules.Pings.Infrastructure.Persistence;
 
 namespace Tsikhanau.Monolith.UnitTests.Queues;
 
-public sealed class ClaimOrderTests
+public sealed class OrderColumnTests
 {
     public static TheoryData<Type, String, String> Queues { get; } = new()
     {
@@ -20,7 +20,7 @@ public sealed class ClaimOrderTests
 
     [Theory]
     [MemberData(nameof(Queues))]
-    public void Claim_orders_by_the_mapped_column_of_the_order_property_like_the_claim_index(
+    public void Order_column_is_the_mapped_column_of_the_order_property_and_second_in_the_claim_index(
         Type messageType,
         String orderProperty,
         String orderColumn)
