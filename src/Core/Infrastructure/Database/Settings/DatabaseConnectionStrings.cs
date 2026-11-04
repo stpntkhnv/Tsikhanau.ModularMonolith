@@ -10,6 +10,8 @@ internal sealed class DatabaseConnectionStrings
 {
     public const String Name = "database";
 
+    public const String Setting = $"ConnectionStrings:{Name}";
+
     private const Int32 MinCommandTimeoutSeconds = 30;
 
     private const Int32 MaxAutoPreparedStatements = 20;

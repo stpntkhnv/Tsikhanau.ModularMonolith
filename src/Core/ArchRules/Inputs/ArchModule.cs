@@ -5,6 +5,7 @@ using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Reflection;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Monolith.Testing.Modules;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.ArchRules.Inputs;
@@ -44,7 +45,7 @@ public sealed class ArchModule
 
     internal IEnumerable<Assembly> ProjectAssemblies => GetAssembliesNamed(RootNamespace);
 
-    internal String ContractsName => $"{RootNamespace}.Contracts";
+    internal String ContractsName => ModuleLayout.BuildContractsName(RootNamespace);
 
     internal IEnumerable<Assembly> ContractsAssemblies => GetAssembliesNamed(ContractsName);
 
@@ -53,6 +54,11 @@ public sealed class ArchModule
     internal String RootPattern => $"^{Regex.Escape(RootNamespace)}(\\..+)?$";
 
     internal String OutsideContractsPattern => $"^{Regex.Escape(RootNamespace)}(?!\\.Contracts(\\.|$))(\\..+)?$";
+
+    public static IReadOnlyList<ArchModule> ForProductionModules(String appRootNamespace) =>
+    [
+        .. ProductionModules.Names.Select(moduleName => CreateProductionModule(appRootNamespace, moduleName)),
+    ];
 
     internal IEnumerable<Type> GetTypesIn(String layer) => Types.Where(type => Contains(type, layer));
 
@@ -66,6 +72,16 @@ public sealed class ArchModule
 
     internal String BuildLayerPattern(params IEnumerable<String> layers) =>
         $"^{Regex.Escape(RootNamespace)}\\.({String.Join('|', layers.Select(Regex.Escape))})(\\..+)?$";
+
+    private static ArchModule CreateProductionModule(String appRootNamespace, String moduleName)
+    {
+        var rootNamespace = ModuleLayout.BuildRootNamespace(appRootNamespace, moduleName);
+
+        return new ArchModule(
+            moduleName,
+            rootNamespace,
+            () => [Assembly.Load(rootNamespace), Assembly.Load(ModuleLayout.BuildContractsName(rootNamespace))]);
+    }
 
     private static Boolean IsHandler(Type type) =>
         HandlerInterfaces.Any(handlerInterfaceType => type.Implements(handlerInterfaceType));

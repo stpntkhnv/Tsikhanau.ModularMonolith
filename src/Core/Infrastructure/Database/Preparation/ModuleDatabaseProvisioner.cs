@@ -16,13 +16,12 @@ internal sealed class ModuleDatabaseProvisioner
         "Module roles are named after the database: if it was renamed, give it back the name it was prepared under; "
         + "if this is a development database (the Aspire data volume), you can also drop it and start again.";
 
-    private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
-
     private const String CannotCreateRoles =
-        $"The login in {ConnectionStringSetting} must be a superuser or have CREATEROLE to create module logins";
+        $"The login in {DatabaseConnectionStrings.Setting} must be a superuser or have CREATEROLE "
+        + "to create module logins";
 
     private const String CannotCreateSchemas =
-        $"The login in {ConnectionStringSetting} needs CREATE on the database to create module schemas";
+        $"The login in {DatabaseConnectionStrings.Setting} needs CREATE on the database to create module schemas";
 
     private const String CanCreateRolesSql =
         "SELECT rolsuper OR rolcreaterole FROM pg_roles WHERE rolname = current_user";
@@ -189,7 +188,7 @@ internal sealed class ModuleDatabaseProvisioner
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.InsufficientPrivilege)
         {
             throw new InvalidOperationException(
-                $"The login in {ConnectionStringSetting} cannot manage {login.Name}: "
+                $"The login in {DatabaseConnectionStrings.Setting} cannot manage {login.Name}: "
                 + $"it needs the ADMIN option on {login.Name} and {_group} (it has it on roles it created). "
                 + exception.MessageText,
                 exception);

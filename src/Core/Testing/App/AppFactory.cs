@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Tsikhanau.Monolith.Testing.App;
 
-public abstract class AppFactory<TEntryPoint>(TimeProvider timeProvider, String environmentName)
+public class AppFactory<TEntryPoint>(TimeProvider timeProvider, String environmentName)
     : WebApplicationFactory<TEntryPoint>
     where TEntryPoint : class
 {

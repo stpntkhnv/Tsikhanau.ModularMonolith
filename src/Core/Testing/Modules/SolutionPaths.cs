@@ -4,7 +4,7 @@ public static class SolutionPaths
 {
     public static readonly String Root = LocateRoot(new DirectoryInfo(AppContext.BaseDirectory));
 
-    public static readonly String Modules = Path.Combine(Root, "src", "Modules");
+    public static readonly String Modules = ModuleLayout.GetModulesFolder(Root);
 
     private static String LocateRoot(DirectoryInfo directory) =>
         File.Exists(Path.Combine(directory.FullName, "global.json"))

@@ -11,8 +11,6 @@ internal sealed partial class ModuleLoginNames
 
     private const Int32 MaxRoleNameLength = 63;
 
-    private const String ConnectionStringSetting = $"ConnectionStrings:{DatabaseConnectionStrings.Name}";
-
     private const String DatabaseNameRule =
         $"cannot name the module roles <database>{Separator}<schema>: it must be groups of a-z and 0-9 joined by "
         + "single underscores, and be neither pg nor start with pg_, which PostgreSQL reserves for its own roles";
@@ -52,7 +50,7 @@ internal sealed partial class ModuleLoginNames
         DatabaseNamePattern.IsMatch(databaseName)
             ? databaseName
             : throw new InvalidOperationException(
-                $"The database name '{databaseName}' in {ConnectionStringSetting} {DatabaseNameRule}");
+                $"The database name '{databaseName}' in {DatabaseConnectionStrings.Setting} {DatabaseNameRule}");
 
     private String BuildRoleName(String name) => $"{_databaseName}{Separator}{name}";
 

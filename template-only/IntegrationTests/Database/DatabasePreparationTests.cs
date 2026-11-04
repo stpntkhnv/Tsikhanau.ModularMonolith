@@ -12,6 +12,7 @@ using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.IntegrationTests.Hosts.InProcess;
 using Tsikhanau.Monolith.IntegrationTests.Logging;
 using Tsikhanau.Monolith.IntegrationTests.Postgres;
+using Tsikhanau.Monolith.Testing.Assertions;
 using Tsikhanau.Monolith.Testing.Database;
 using Tsikhanau.Monolith.TestModules.Pings;
 
@@ -60,7 +61,9 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken);
         await lockHolder.UnlockAsync(CancellationToken);
 
-        await Should.NotThrowAsync(() => preparation.WaitAsync(RealTimeLimit, CancellationToken));
+        await preparation
+            .WaitAsync(RealTimeLimit, CancellationToken)
+            .ShouldRunToCompletionAsync();
     }
 
     [Fact]
@@ -104,7 +107,9 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         var nextPreparation = PrepareAsync(connectionString);
 
         timeoutException.Message.ShouldStartWith(TimeoutMessage);
-        await Should.NotThrowAsync(() => nextPreparation.WaitAsync(RealTimeLimit, CancellationToken));
+        await nextPreparation
+            .WaitAsync(RealTimeLimit, CancellationToken)
+            .ShouldRunToCompletionAsync();
     }
 
     [Fact]
@@ -131,8 +136,9 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
             connectionString,
             builder => builder.Configuration["App:Database:PrepareTimeout"] = "00:20:00");
 
-        await Should.NotThrowAsync(
-            () => host.Services.PrepareModuleDatabasesAsync(CancellationToken));
+        var preparation = host.Services.PrepareModuleDatabasesAsync(CancellationToken);
+
+        await preparation.ShouldRunToCompletionAsync();
     }
 
     [Fact]
@@ -196,7 +202,9 @@ public sealed class DatabasePreparationTests(PostgresFixture postgresFixture)
         await Task.Delay(ConnectionLifetimeOverrun, CancellationToken);
         await migrationHistoryHolder.DisposeAsync();
 
-        await Should.NotThrowAsync(() => preparation.WaitAsync(RealTimeLimit, CancellationToken));
+        await preparation
+            .WaitAsync(RealTimeLimit, CancellationToken)
+            .ShouldRunToCompletionAsync();
 
         databaseProxy.ConnectionCount.ShouldBe(AdminConnectionCount + moduleCount);
     }

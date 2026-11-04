@@ -1,6 +1,5 @@
 using Tsikhanau.Monolith.Infrastructure.Cleanup;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
-using Tsikhanau.Monolith.Infrastructure.Platform;
 using Tsikhanau.Monolith.Infrastructure.Queues;
 
 namespace Tsikhanau.Monolith.Testing.App;
@@ -8,9 +7,6 @@ namespace Tsikhanau.Monolith.Testing.App;
 public static class TestSettings
 {
     public const String LoginKey = "dHNpa2hhbmF1LW1vbm9saXRoLXRlc3QtbG9naW5rZXk=";
-
-    private const String ConnectionStringSetting =
-        $"ConnectionStrings:{PlatformServiceCollectionExtensions.ConnectionName}";
 
     private const String QueuesInBackgroundSetting =
         $"{QueueSettings.Section}:{nameof(QueueSettings.RunInBackground)}";
@@ -21,7 +17,7 @@ public static class TestSettings
     public static IReadOnlyDictionary<String, String> CreateEnvironmentVariables(String connectionString) =>
         new Dictionary<String, String>
         {
-            [BuildEnvironmentVariableName(ConnectionStringSetting)] = connectionString,
+            [BuildEnvironmentVariableName(DatabaseConnectionStrings.Setting)] = connectionString,
             [BuildEnvironmentVariableName(DatabaseSettings.LoginKeySetting)] = LoginKey,
             [BuildEnvironmentVariableName(QueuesInBackgroundSetting)] = "false",
             [BuildEnvironmentVariableName(CleanupInBackgroundSetting)] = "false",

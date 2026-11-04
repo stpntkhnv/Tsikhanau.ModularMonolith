@@ -61,7 +61,7 @@ internal static class PerfHost
         PerfHostSettings settings)
     {
         var configuration = builder.Configuration;
-        configuration[$"ConnectionStrings:{PlatformServiceCollectionExtensions.ConnectionName}"] = connectionString;
+        configuration[DatabaseConnectionStrings.Setting] = connectionString;
         configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.RunInBackground)}"] =
             settings.RunInBackground.ToString();
 

@@ -1,4 +1,5 @@
 using System.Reflection;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace Tsikhanau.Monolith.ArchRules.Inputs;
 
@@ -8,7 +9,7 @@ public interface IArchRuleInputs
 
     static abstract String RootNamespace { get; }
 
-    static abstract String SolutionRoot { get; }
+    static virtual String SolutionRoot => SolutionPaths.Root;
 
     static virtual EmptySubject EmptySubject => EmptySubject.Skip;
 

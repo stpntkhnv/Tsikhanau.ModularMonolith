@@ -315,8 +315,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
             builder.Logging.ClearProviders();
         }
 
-        builder.Configuration[$"ConnectionStrings:{PlatformServiceCollectionExtensions.ConnectionName}"] =
-            connectionString;
+        builder.Configuration[DatabaseConnectionStrings.Setting] = connectionString;
 
         builder.Configuration[$"{QueueSettings.Section}:{nameof(QueueSettings.RunInBackground)}"] =
             runInBackground.ToString();

@@ -132,7 +132,8 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
         await _postgreSqlContainer.DisposeAsync();
     }
 
-    protected abstract AppFactory<TEntryPoint> CreateFactory(TimeProvider timeProvider, String environmentName);
+    protected virtual AppFactory<TEntryPoint> CreateFactory(TimeProvider timeProvider, String environmentName) =>
+        new(timeProvider, environmentName);
 
     private AppFactory<TEntryPoint> CreateFactoryWithSetups(String environmentName)
     {

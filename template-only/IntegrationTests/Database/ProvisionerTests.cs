@@ -3,6 +3,7 @@ using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.IntegrationTests.Postgres;
 using Tsikhanau.Monolith.Testing.App;
+using Tsikhanau.Monolith.Testing.Assertions;
 using Tsikhanau.Monolith.Testing.Database;
 
 namespace Tsikhanau.Monolith.IntegrationTests.Database;
@@ -146,11 +147,12 @@ public sealed class ProvisionerTests(PostgresFixture postgresFixture)
             Pooling = false,
         }.ConnectionString;
 
-        await Should.NotThrowAsync(
-            () => ProvisionAsync(
-                adminConnectionString,
-                [CreateLogin(connectionString, "budget_exact_a"), CreateLogin(connectionString, "budget_exact_b")],
-                maxConnections: 4));
+        var provisioning = ProvisionAsync(
+            adminConnectionString,
+            [CreateLogin(connectionString, "budget_exact_a"), CreateLogin(connectionString, "budget_exact_b")],
+            maxConnections: 4);
+
+        await provisioning.ShouldRunToCompletionAsync();
     }
 
     private static ModuleLoginNames CreateLoginNames(String connectionString) =>

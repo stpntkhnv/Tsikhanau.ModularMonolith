@@ -1,3 +1,5 @@
+using Tsikhanau.Monolith.Testing.Modules;
+
 namespace Tsikhanau.Monolith.ArchRules.Inputs;
 
 public sealed class ArchSolution
@@ -18,7 +20,7 @@ public sealed class ArchSolution
 
     internal String AspireFolder => Path.Combine(Root, "src", "Aspire");
 
-    internal String ModulesFolder => Path.Combine(Root, "src", "Modules");
+    internal String ModulesFolder => ModuleLayout.GetModulesFolder(Root);
 
     internal IReadOnlyList<String> PackageVersionPaths =>
     [
@@ -33,7 +35,7 @@ public sealed class ArchSolution
             .Append(Path.Combine(Root, "template-only", "Template.slnx"))
             .Where(File.Exists);
 
-    internal String ModuleProjectPrefix => $"{RootNamespace}.Modules.";
+    internal String ModuleProjectPrefix => ModuleLayout.BuildRootNamespacePrefix(RootNamespace);
 
     internal String GetModuleFolder(ArchModule module) => Path.Combine(ModulesFolder, module.Name);
 
