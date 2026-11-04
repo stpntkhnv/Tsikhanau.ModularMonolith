@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Api.Modules;
@@ -65,13 +64,10 @@ internal sealed class StartupScenario : IScenario
         using var scope = serviceProvider.CreateScope();
         foreach (var module in serviceProvider.GetRequiredService<ModuleRegistry>().Modules)
         {
-            _ = ResolveDbContext(scope.ServiceProvider, module).Model;
+            _ = scope.ServiceProvider.ResolveDbContext(module).Model;
             stepTimer.Mark($"{module.Name}: EF model build");
         }
     }
-
-    private static DbContext ResolveDbContext(IServiceProvider serviceProvider, ModuleDescriptor module) =>
-        (DbContext)serviceProvider.GetRequiredService(module.DbContextType);
 
     private static async Task SendFirstRequestsAsync(
         IPingsModule pingsModule,

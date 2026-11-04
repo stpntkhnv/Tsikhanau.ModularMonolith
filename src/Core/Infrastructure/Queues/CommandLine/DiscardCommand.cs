@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using Dapper;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Infrastructure.Queues.Retries;
 using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
@@ -28,7 +29,11 @@ internal sealed class DiscardCommand(MessageAddress message) : IQueuesCommand
         CancellationToken cancellationToken)
     {
         var secretRowRule = serviceProvider.ResolveSecretRowRule(message.Module, message.Queue);
-        await using var connection = await message.OpenConnectionAsync(serviceProvider, cancellationToken);
+        await using var connection = await ModuleConnection.OpenAsync(
+            serviceProvider,
+            message.Module,
+            cancellationToken);
+
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         return await DeleteAsync(connection, transaction, secretRowRule, cancellationToken)
             .MatchAsync(

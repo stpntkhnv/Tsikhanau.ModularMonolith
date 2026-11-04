@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Xunit;
@@ -24,8 +23,10 @@ public static class UnsettledMessages
         IServiceProvider serviceProvider,
         ModuleDescriptor module)
     {
-        var dataSource = serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key);
-        await using var connection = await dataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
+        await using var connection = await serviceProvider
+            .ResolveDataSource(module)
+            .OpenConnectionAsync(TestContext.Current.CancellationToken);
+
         return await connection.QueryAsync<UnsettledMessage>(
             new CommandDefinition(
                 BuildSql(module),

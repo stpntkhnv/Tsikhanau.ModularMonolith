@@ -1,9 +1,7 @@
 using Dapper;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Shared.Collections;
@@ -104,7 +102,7 @@ internal sealed class QueueSampler(
         CancellationToken cancellationToken)
     {
         await using var connection = await serviceProvider
-            .GetRequiredKeyedService<NpgsqlDataSource>(module.Key)
+            .ResolveDataSource(module)
             .OpenConnectionAsync(cancellationToken);
 
         var samples = new List<QueueSample>(QueueTables.Names.Count);

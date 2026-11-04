@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Infrastructure.Modules;
@@ -9,18 +8,14 @@ namespace Tsikhanau.Monolith.Infrastructure.Database.Verification;
 internal static class PreparedModuleVerifier
 {
     public static async Task VerifyAsync(
+        IServiceProvider serviceProvider,
         ModuleDescriptor module,
-        NpgsqlDataSource moduleNpgsqlDataSource,
-        DbContext dbContext,
         Int32 maxConnections,
         Int32 moduleCount,
         CancellationToken cancellationToken)
     {
-        await using var connection = await ModuleConnection.OpenAsync(
-            module,
-            moduleNpgsqlDataSource,
-            cancellationToken);
-
+        var dbContext = serviceProvider.ResolveDbContext(module);
+        await using var connection = await ModuleConnection.OpenAsync(serviceProvider, module, cancellationToken);
         await DatabaseServerVerifier.VerifyAsync(connection, maxConnections, moduleCount, cancellationToken);
         await EnsureNoPendingMigrationsAsync(module, dbContext, cancellationToken);
         EnsureNoModelChanges(module, dbContext);

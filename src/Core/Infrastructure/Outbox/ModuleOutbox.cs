@@ -4,7 +4,6 @@ using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 namespace Tsikhanau.Monolith.Infrastructure.Outbox;
 
@@ -17,18 +16,14 @@ public sealed class ModuleOutbox<TModule>(
 {
     public void Add(IntegrationEvent integrationEvent)
     {
-        var eventType = integrationEvent.GetType();
+        var outboxMessage = OutboxMessage.Create(
+            integrationEvent,
+            integrationEventRegistry,
+            timeProvider.GetUtcNow(),
+            Activity.Current?.Id);
+
         moduleContext.DbContext
             .Set<OutboxMessage>()
-            .Add(new OutboxMessage
-            {
-                Id = integrationEvent.Id,
-                Type = integrationEventRegistry.GetName(eventType),
-                Payload = MessageSerializer.Serialize(integrationEvent),
-                ContainsSecrets = integrationEventRegistry.ContainsSecrets(eventType),
-                TraceParent = Activity.Current?.Id,
-                NextAttemptOn = timeProvider.GetUtcNow(),
-                OccurredOn = integrationEvent.OccurredOn,
-            });
+            .Add(outboxMessage);
     }
 }

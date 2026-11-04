@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Logins;
 using Tsikhanau.Monolith.Infrastructure.Database.Preparation;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
@@ -73,9 +72,8 @@ public static class ModuleDatabaseExtensions
         foreach (var module in modules)
         {
             await PreparedModuleVerifier.VerifyAsync(
+                scope.ServiceProvider,
                 module,
-                serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key),
-                ResolveDbContext(module, scope.ServiceProvider),
                 settings.MaxConnections,
                 modules.Count,
                 cancellationToken);
@@ -163,7 +161,7 @@ public static class ModuleDatabaseExtensions
                 connectionString,
                 cancellationToken);
 
-            var dbContext = ResolveDbContext(module, scope.ServiceProvider);
+            var dbContext = scope.ServiceProvider.ResolveDbContext(module);
             dbContext.Database.SetDbConnection(preparationConnection.Connection);
             try
             {
@@ -195,7 +193,4 @@ public static class ModuleDatabaseExtensions
         GRANT USAGE ON SCHEMA "{schema}" TO "{group}";
         GRANT INSERT, SELECT (id) ON "{schema}".{InboxMessage.Table} TO "{group}";
         """;
-
-    private static DbContext ResolveDbContext(ModuleDescriptor module, IServiceProvider serviceProvider) =>
-        (DbContext)serviceProvider.GetRequiredService(module.DbContextType);
 }

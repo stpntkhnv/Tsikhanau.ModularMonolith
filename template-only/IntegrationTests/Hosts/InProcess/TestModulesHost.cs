@@ -10,7 +10,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using Npgsql;
 using Tsikhanau.Monolith.Api.Callers;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Hosting;
@@ -219,7 +218,7 @@ internal sealed class TestModulesHost : IAsyncDisposable
     public void ClearModulePools() =>
         Services
             .GetRequiredService<ModuleRegistry>().Modules
-            .Select(module => Services.GetRequiredKeyedService<NpgsqlDataSource>(module.Key))
+            .Select(module => Services.ResolveDataSource(module))
             .ForEach(npgsqlDataSource => npgsqlDataSource.Clear());
 
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);

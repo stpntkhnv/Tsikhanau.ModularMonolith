@@ -3,9 +3,6 @@ using Tsikhanau.Monolith.Contracts.IntegrationEvents;
 using Tsikhanau.Monolith.Infrastructure.EventBus;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
-using Tsikhanau.Monolith.Infrastructure.Persistence;
-using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 using Xunit;
 
 namespace Tsikhanau.Monolith.Testing.Queues;
@@ -16,27 +13,23 @@ internal static class IntegrationEventPublisher
 
     public static async Task PublishAsync(IServiceProvider serviceProvider, IntegrationEvent integrationEvent)
     {
-        var eventType = integrationEvent.GetType();
         var integrationEventRegistry = serviceProvider.GetRequiredService<IntegrationEventRegistry>();
-        var eventName = integrationEventRegistry.GetName(eventType);
+        var subscriber = GetFirstSubscriber(serviceProvider, integrationEventRegistry, integrationEvent.GetType());
+        var outboxMessage = OutboxMessage.Create(
+            integrationEvent,
+            integrationEventRegistry,
+            integrationEvent.OccurredOn,
+            traceParent: null);
 
-        var subscriber = GetFirstSubscriber(serviceProvider, eventName, eventType);
-        await using var scope = serviceProvider.CreateAsyncScope();
-        var message = CreateMessage(integrationEvent, eventName, integrationEventRegistry.ContainsSecrets(eventType));
-        await scope.ServiceProvider
-            .GetRequiredService<IEventBus>()
-            .DeliverAsync(
-                message,
-                message.ContainsSecrets,
-                ResolveDbContext(scope.ServiceProvider, subscriber),
-                CancellationToken);
+        await DeliverAsync(serviceProvider, outboxMessage, subscriber);
     }
 
     private static ModuleDescriptor GetFirstSubscriber(
         IServiceProvider serviceProvider,
-        String eventName,
+        IntegrationEventRegistry integrationEventRegistry,
         Type eventType)
     {
+        var eventName = integrationEventRegistry.GetName(eventType);
         var subscribers = serviceProvider
             .GetRequiredService<SubscriptionRegistry>()
             .GetSubscribers(eventName);
@@ -48,20 +41,18 @@ internal static class IntegrationEventPublisher
             : subscribers[0];
     }
 
-    private static OutboxMessage CreateMessage(
-        IntegrationEvent integrationEvent,
-        String eventName,
-        Boolean containsSecrets) =>
-        new()
-        {
-            Id = integrationEvent.Id,
-            Type = eventName,
-            Payload = MessageSerializer.Serialize(integrationEvent),
-            ContainsSecrets = containsSecrets,
-            NextAttemptOn = integrationEvent.OccurredOn,
-            OccurredOn = integrationEvent.OccurredOn,
-        };
-
-    private static ModuleDbContext ResolveDbContext(IServiceProvider serviceProvider, ModuleDescriptor module) =>
-        (ModuleDbContext)serviceProvider.GetRequiredService(module.DbContextType);
+    private static async Task DeliverAsync(
+        IServiceProvider serviceProvider,
+        OutboxMessage outboxMessage,
+        ModuleDescriptor subscriber)
+    {
+        await using var scope = serviceProvider.CreateAsyncScope();
+        await scope.ServiceProvider
+            .GetRequiredService<IEventBus>()
+            .DeliverAsync(
+                outboxMessage,
+                outboxMessage.ContainsSecrets,
+                scope.ServiceProvider.ResolveDbContext(subscriber),
+                CancellationToken);
+    }
 }

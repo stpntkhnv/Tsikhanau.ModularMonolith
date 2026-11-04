@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Database.Connections;
 using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Railway;
 
@@ -17,7 +18,11 @@ internal sealed class RetryCommand(MessageAddress message) : IQueuesCommand
             .GetRequiredService<TimeProvider>()
             .GetUtcNow();
 
-        await using var connection = await message.OpenConnectionAsync(serviceProvider, cancellationToken);
+        await using var connection = await ModuleConnection.OpenAsync(
+            serviceProvider,
+            message.Module,
+            cancellationToken);
+
         var retriedCount = await connection.ExecuteAsync(
             new CommandDefinition(
                 BuildRetrySql(),

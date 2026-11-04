@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Npgsql;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Modules;
@@ -192,14 +191,11 @@ public static class ModuleServiceCollectionExtensions
                     new ModuleContext<TModule>(serviceProvider.GetRequiredService<TDbContext>(), descriptor))
             .AddScoped<IUnitOfWork<TModule>, UnitOfWork<TModule>>()
             .AddSingleton<ISqlConnectionFactory<TModule>>(
-                serviceProvider => new SqlConnectionFactory<TModule>(ResolveDataSource(serviceProvider, descriptor)))
+                serviceProvider => new SqlConnectionFactory<TModule>(serviceProvider.ResolveDataSource(descriptor)))
             .AddKeyedSingleton(
                 descriptor.Key,
-                (serviceProvider, _) => new ModuleDatabaseHealthCheck(ResolveDataSource(serviceProvider, descriptor)))
+                (serviceProvider, _) => new ModuleDatabaseHealthCheck(serviceProvider.ResolveDataSource(descriptor)))
             .AddDatabaseHealth(descriptor);
-
-    private static NpgsqlDataSource ResolveDataSource(IServiceProvider serviceProvider, ModuleDescriptor descriptor) =>
-        serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(descriptor.Key);
 
     private static void ConfigureDbContext(
         IServiceProvider serviceProvider,
@@ -207,7 +203,7 @@ public static class ModuleServiceCollectionExtensions
         ModuleDescriptor descriptor) =>
         ModuleDbContextOptions.Configure(
             dbContextOptionsBuilder,
-            ResolveDataSource(serviceProvider, descriptor),
+            serviceProvider.ResolveDataSource(descriptor),
             descriptor.Schema);
 
     private static IServiceCollection AddDatabaseHealth(

@@ -62,11 +62,17 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
     public String GetModuleLoginName(String moduleName) =>
         ModuleLogins.GetLoginName(Services, GetModule(moduleName).Schema);
 
+    public NpgsqlDataSource ResolveDataSource(String moduleName) => Services.ResolveDataSource(GetModule(moduleName));
+
     public Task<UncommittedUpdate> ExecuteUncommittedAsync(String moduleName, String sql) =>
-        UncommittedUpdate.ExecuteAsync(GetDataSource(moduleName), sql);
+        UncommittedUpdate.ExecuteAsync(ResolveDataSource(moduleName), sql);
 
     public Task RedeliverInboxAsync(String moduleName, Guid messageId) =>
-        InboxRedelivery.RedeliverAsync(GetDataSource(moduleName), GetModule(moduleName), messageId, Time.GetUtcNow());
+        InboxRedelivery.RedeliverAsync(
+            ResolveDataSource(moduleName),
+            GetModule(moduleName),
+            messageId,
+            Time.GetUtcNow());
 
     public Task PublishAsync(IntegrationEvent integrationEvent) =>
         IntegrationEventPublisher.PublishAsync(Services, integrationEvent);
@@ -141,9 +147,6 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
         Time.SetLocalTimeZone(TimeZoneInfo.Utc);
         Time.AdjustTime(TestStartedOn);
     }
-
-    private NpgsqlDataSource GetDataSource(String moduleName) =>
-        Services.GetRequiredKeyedService<NpgsqlDataSource>(GetModule(moduleName).Key);
 
     private void Start(AppFactory<TEntryPoint> appFactory, IReadOnlyDictionary<String, String> overrides)
     {

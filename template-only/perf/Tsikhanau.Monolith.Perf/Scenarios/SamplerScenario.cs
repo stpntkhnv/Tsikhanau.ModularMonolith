@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Modules;
 using Tsikhanau.Monolith.Infrastructure.Queues.Metrics;
 using Tsikhanau.Monolith.Perf.Database;
@@ -127,7 +126,7 @@ internal sealed class SamplerScenario : IScenario
     private static void ClearModulePools(IServiceProvider serviceProvider) =>
         serviceProvider
             .GetRequiredService<ModuleRegistry>().Modules
-            .Select(module => serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key))
+            .Select(module => serviceProvider.ResolveDataSource(module))
             .ForEach(npgsqlDataSource => npgsqlDataSource.Clear());
 
     private static String BuildScanLine(

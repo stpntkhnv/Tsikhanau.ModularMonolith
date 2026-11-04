@@ -7,10 +7,11 @@ namespace Tsikhanau.Monolith.Infrastructure.Database.Connections;
 internal static class ModuleConnection
 {
     public static async Task<NpgsqlConnection> OpenAsync(
+        IServiceProvider serviceProvider,
         ModuleDescriptor module,
-        NpgsqlDataSource moduleNpgsqlDataSource,
         CancellationToken cancellationToken)
     {
+        var moduleNpgsqlDataSource = serviceProvider.ResolveDataSource(module);
         try
         {
             return await moduleNpgsqlDataSource.OpenConnectionAsync(cancellationToken);

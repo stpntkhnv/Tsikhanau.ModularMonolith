@@ -1,24 +1,20 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Monolith.Application.Modules;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Api.Modules;
 
-public abstract partial class Module : IModule
+public abstract class Module : IModule
 {
-    private const String ModuleGroup = "Module";
-
-    private const String NameProblem = "must be named <Module>Module, like NotesModule";
-
     private Optional<IConfigurationSection> _settingsSection;
 
-    public String Name => GetName(GetType());
+    public String Name => ModuleName.FromModuleClass(GetType());
 
     void IModule.Register(IServiceCollection services, IConfigurationSection settingsSection)
     {
@@ -50,17 +46,6 @@ public abstract partial class Module : IModule
 
     private String RoutePrefix => $"/{JsonNamingPolicy.KebabCaseLower.ConvertName(Name)}";
 
-    private static String GetName(Type moduleType)
-    {
-        var moduleNamePattern = ModuleNamePattern();
-        return moduleNamePattern.Match(moduleType.Name) is { Success: true } moduleName
-            ? moduleName.Groups[ModuleGroup].Value
-            : throw new InvalidOperationException($"Module class {moduleType.FullName} {NameProblem}");
-    }
-
     private IConfigurationSection ThrowSettingsOutsideRegister() =>
         throw new InvalidOperationException($"Module {Name} adds settings outside Register");
-
-    [GeneratedRegex($@"\A(?<{ModuleGroup}>\w+)Module\z")]
-    private static partial Regex ModuleNamePattern();
 }
