@@ -93,17 +93,14 @@ public abstract class MessagePump<TModule, TMessage>(
     {
         using var activity = StartActivity(message);
         using var logScope = PumpLog.BeginMessageScope(logger, ModuleName, Table, message.Id, message.Type);
-        await ProcessAsync(message, activity, cancellationToken);
-    }
+        if (RetryPolicy.HasRunOut(message.Attempts))
+        {
+            await RecordFailureAsync(message, HandlingFailure.Abandoned(message.Attempts), activity);
+            return;
+        }
 
-    internal async Task GiveBackUnstartedAsync(IReadOnlyCollection<TMessage> messages, String reason)
-    {
-        await GiveBackAsync(messages);
-        PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, messages.Count);
+        await HandleAndRecordAsync(message, activity, cancellationToken);
     }
-
-    internal void LogClaimingOneAtATime(String reason) =>
-        PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, givenBackCount: 0);
 
     internal Task GiveBackOnExitAsync(IReadOnlyCollection<TMessage> messages) =>
         WarnIfGiveBackFailsAsync(() => GiveBackAsync(messages), messages.Count);
@@ -118,6 +115,9 @@ public abstract class MessagePump<TModule, TMessage>(
 
         QueueInstruments.CountGivenBack(givenBackCount);
     }
+
+    internal void LogClaimsOneAtATime(String reason, Int32 givenBackCount) =>
+        PumpLog.ClaimsOneAtATime(logger, ModuleName, Table, reason, givenBackCount);
 
     protected abstract Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,
@@ -142,22 +142,14 @@ public abstract class MessagePump<TModule, TMessage>(
 
     protected Boolean IsSecret(TMessage message) => IsSecret(message.Type, message.ContainsSecrets);
 
-    protected void EraseSecretsOf(TMessage message)
+    protected void MarkProcessed(TMessage message, DateTimeOffset processedOn)
     {
-        if (IsSecret(message))
-        {
-            message.EraseSecrets();
-        }
+        message.ProcessedOn = processedOn;
+        EraseSecretsOf(message);
     }
 
-    private async Task ProcessAsync(TMessage message, Activity? activity, CancellationToken cancellationToken)
+    private async Task HandleAndRecordAsync(TMessage message, Activity? activity, CancellationToken cancellationToken)
     {
-        if (RetryPolicy.HasRunOut(message.Attempts))
-        {
-            await RecordFailureAsync(message, HandlingFailure.Abandoned(message.Attempts), activity);
-            return;
-        }
-
         try
         {
             var failure = await HandleWithinDeadlineAsync(message, cancellationToken);
@@ -246,12 +238,21 @@ public abstract class MessagePump<TModule, TMessage>(
             }
         }
 
-        await MarkProcessedAsync(message, timeProvider.GetUtcNow());
+        EraseSecretsOf(message);
+        await RecordProcessedAsync(message, timeProvider.GetUtcNow());
         OnCommitted(message);
         return Optional<HandlingFailure>.None();
     }
 
     private Boolean IsSecret(String type, Boolean containsSecrets) => containsSecrets || IsSecretType(type);
+
+    private void EraseSecretsOf(TMessage message)
+    {
+        if (IsSecret(message))
+        {
+            message.EraseSecrets();
+        }
+    }
 
     private String BuildClaimSql(String schema) =>
         $$"""
@@ -343,7 +344,7 @@ public abstract class MessagePump<TModule, TMessage>(
         QueueInstruments.CountRetried(recordedCount);
     }
 
-    private async Task MarkProcessedAsync(TMessage message, DateTimeOffset processedOn)
+    private async Task RecordProcessedAsync(TMessage message, DateTimeOffset processedOn)
     {
         var processedCount = await UpdateClaimedRowsAsync(
             UntouchedSince(message),

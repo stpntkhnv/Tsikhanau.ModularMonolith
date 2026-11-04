@@ -46,8 +46,7 @@ public sealed class InboxPump<TModule>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
         DispatchAsync(serviceProvider, message, cancellationToken)
-            .TapAsync(_ => message.ProcessedOn = processedOn)
-            .TapAsync(_ => EraseSecretsOf(message))
+            .TapAsync(_ => MarkProcessed(message, processedOn))
             .BindAsync(_ => CommitAsync(serviceProvider, cancellationToken));
 
     protected override Boolean IsSecretType(String type) => integrationEventRegistry.ContainsSecrets(type);
@@ -59,8 +58,7 @@ public sealed class InboxPump<TModule>(
         IServiceProvider serviceProvider,
         InboxMessage message,
         CancellationToken cancellationToken) =>
-        DispatchAsync(serviceProvider, message, cancellationToken)
-            .TapAsync(_ => EraseSecretsOf(message));
+        DispatchAsync(serviceProvider, message, cancellationToken);
 
     private Task<Result<Unit>> DispatchAsync(
         IServiceProvider serviceProvider,

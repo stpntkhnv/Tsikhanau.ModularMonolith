@@ -46,22 +46,27 @@ public sealed class OutboxPump<TModule>(
         OutboxMessage message,
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
-        integrationEventRegistry
-            .FindType(message.Type)
-            .ToResult(() => MessagingErrors.UnknownType(message.Type))
-            .BindAsync(_ => DeliverAsync(dbContext, message, processedOn, cancellationToken));
+        FindKnownType(message)
+            .BindAsync(_ => DeliverAndMarkProcessedAsync(dbContext, message, processedOn, cancellationToken));
 
     protected override Boolean IsSecretType(String type) => integrationEventRegistry.ContainsSecrets(type);
 
-    private async Task<Result<Unit>> DeliverAsync(
+    private Result<Type> FindKnownType(OutboxMessage message)
+    {
+        var knownType = integrationEventRegistry.FindType(message.Type);
+        return knownType.HasValue
+            ? knownType.Value
+            : MessagingErrors.UnknownType(message.Type);
+    }
+
+    private async Task<Result<Unit>> DeliverAndMarkProcessedAsync(
         ModuleDbContext dbContext,
         OutboxMessage message,
         DateTimeOffset processedOn,
         CancellationToken cancellationToken)
     {
         await eventBus.DeliverAsync(message, IsSecret(message), dbContext, cancellationToken);
-        EraseSecretsOf(message);
-        message.ProcessedOn = processedOn;
+        MarkProcessed(message, processedOn);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }

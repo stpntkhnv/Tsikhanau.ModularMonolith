@@ -32,7 +32,7 @@ internal abstract class MessageBuffer : IAsyncDisposable
 
     protected abstract Task ClaimAsync(CancellationToken cancellationToken);
 
-    protected abstract Task<Boolean> TryProcessNextAsync(CancellationToken cancellationToken);
+    protected abstract Task<Boolean> TryStartNextAsync(CancellationToken cancellationToken);
 
     private static async Task<Int32> ProcessRoundAsync(
         IReadOnlyList<MessageBuffer> messageBuffers,
@@ -60,7 +60,7 @@ internal abstract class MessageBuffer : IAsyncDisposable
             await ClaimAsync(cancellationToken);
         }
 
-        var isProcessed = HasMessages && await TryProcessNextAsync(cancellationToken);
+        var isProcessed = HasMessages && await TryStartNextAsync(cancellationToken);
         IsInRound = HasMessages;
         return isProcessed;
     }
@@ -110,7 +110,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
         claimedMessages.ForEach(_messages.Enqueue);
     }
 
-    protected override async Task<Boolean> TryProcessNextAsync(CancellationToken cancellationToken)
+    protected override async Task<Boolean> TryStartNextAsync(CancellationToken cancellationToken)
     {
         if (messagePump.IsStopping(cancellationToken))
         {
@@ -122,8 +122,7 @@ internal sealed class MessageBuffer<TModule, TMessage>(
         var startedOn = timeProvider.GetUtcNow();
         if (!CanStart(nextMessage, startedOn))
         {
-            ClaimOneAtATimeForAPollInterval();
-            await messagePump.GiveBackUnstartedAsync(TakeAll(), BuildReasonNotToStart(nextMessage, startedOn));
+            await SwitchToOneAtATimeAsync(BuildReasonNotToStart(nextMessage, startedOn));
             return false;
         }
 
@@ -132,18 +131,26 @@ internal sealed class MessageBuffer<TModule, TMessage>(
         var finishedOn = timeProvider.GetUtcNow();
         if (!CanStart(message, finishedOn))
         {
-            ClaimOneAtATimeForAPollInterval();
-            LogSwitchWithNothingToGiveBack(message, finishedOn);
+            RenewOneAtATime(BuildReasonNotToStart(message, finishedOn));
         }
 
         return true;
     }
 
-    private void LogSwitchWithNothingToGiveBack(TMessage message, DateTimeOffset finishedOn)
+    private async Task SwitchToOneAtATimeAsync(String reason)
     {
+        ClaimOneAtATimeForAPollInterval();
+        var unstarted = TakeAll();
+        await messagePump.GiveBackAsync(unstarted);
+        messagePump.LogClaimsOneAtATime(reason, unstarted.Count);
+    }
+
+    private void RenewOneAtATime(String reason)
+    {
+        ClaimOneAtATimeForAPollInterval();
         if (!_claimsOneAtATime && !HasMessages)
         {
-            messagePump.LogClaimingOneAtATime(BuildReasonNotToStart(message, finishedOn));
+            messagePump.LogClaimsOneAtATime(reason, givenBackCount: 0);
         }
     }
 
