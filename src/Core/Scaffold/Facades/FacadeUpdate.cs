@@ -11,16 +11,16 @@ internal sealed class FacadeUpdate(ScaffoldedModule module, IFileSystem fileSyst
     private readonly FacadeTemplate _facadeTemplate = new(module);
 
     private String CannotAddCommands =>
-        $"so scaffold cannot add ExecuteCommandAsync over {module.CommandMarker} to it; restore it, "
-        + $"or add {module.CommandMarker} and ExecuteCommandAsync by hand and run scaffold again";
+        $"so scaffold cannot add {EmittedNames.ExecuteCommandAsync} over {module.CommandMarker} to it; restore it, "
+        + $"or add {module.CommandMarker} and {EmittedNames.ExecuteCommandAsync} by hand and run scaffold again";
 
     private String CannotAddQueries =>
-        $"so scaffold cannot add ExecuteQueryAsync over {module.QueryMarker} to it; restore it, "
-        + $"or add {module.QueryMarker}, {module.QueryFacade} and ExecuteQueryAsync by hand and run scaffold again";
+        $"so scaffold cannot add {EmittedNames.ExecuteQueryAsync} over {module.QueryMarker} to it; restore it, "
+        + $"or add {module.QueryMarker}, {module.QueryFacade} and {EmittedNames.ExecuteQueryAsync} by hand "
+        + "and run scaffold again";
 
-    private String HalfQueryShape =>
-        $"{module.Projects.ContractsFolder} must hold both {module.QueryMarker}.cs and {module.QueryFacade}.cs "
-        + "or neither of them";
+    private String BothQueryFilesOrNeither =>
+        $"both {module.QueryMarker}.cs and {module.QueryFacade}.cs or neither of them";
 
     public Result<FacadeChange> Plan(Func<FacadeShape, FacadeShape> require) =>
         ReadShape()
@@ -33,7 +33,7 @@ internal sealed class FacadeUpdate(ScaffoldedModule module, IFileSystem fileSyst
 
         return hasQueryMarker == hasQueryFacade
             ? new FacadeShape(fileSystem.FileExists(_facadeTemplate.CommandMarkerPath), hasQueryMarker)
-            : Error.Failure("scaffold.anchor", HalfQueryShape);
+            : TextFile.MissingAnchor(module.Projects.ContractsFolder, BothQueryFilesOrNeither);
     }
 
     private Result<FacadeChange> PlanChange(FacadeShape shape, FacadeShape requiredShape) =>

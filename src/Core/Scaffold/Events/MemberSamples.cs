@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Sources;
+using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Events;
@@ -16,8 +17,6 @@ internal sealed class MemberSamples(SourceProject project)
     private const String Clock = "App.Time.GetUtcNow()";
 
     private const String FactoryNamespace = "Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion";
-
-    private const String RailwayNamespace = "Tsikhanau.Railway";
 
     private const String EmptyCollection = "[]";
 
@@ -64,7 +63,9 @@ internal sealed class MemberSamples(SourceProject project)
 
     private Optional<MemberSample> BuildNone(TypeSyntax valueType) =>
         FindValueTypeUsings(valueType)
-            .Map(usings => MemberSample.Of($"Optional<{valueType}>.None()", [RailwayNamespace, .. usings]));
+            .Map(usings => MemberSample.Of(
+                $"Optional<{valueType}>.None()",
+                [EmittedNames.RailwayNamespace, .. usings]));
 
     private Optional<String[]> FindValueTypeUsings(TypeSyntax valueType) =>
         valueType switch

@@ -2,6 +2,7 @@ using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Facades;
 using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Monolith.Scaffold.Names;
+using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Features;
@@ -72,7 +73,7 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String HandlerResult => IsQuery ? Dto : "Unit";
 
-    public String FacadeMethod => IsQuery ? "ExecuteQueryAsync" : "ExecuteCommandAsync";
+    public String FacadeMethod => IsQuery ? EmittedNames.ExecuteQueryAsync : EmittedNames.ExecuteCommandAsync;
 
     public String RequestRecord => $"{Name}Request";
 

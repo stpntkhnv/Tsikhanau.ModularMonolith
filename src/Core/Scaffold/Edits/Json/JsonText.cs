@@ -1,3 +1,5 @@
+using Tsikhanau.Monolith.Scaffold.Files;
+
 namespace Tsikhanau.Monolith.Scaffold.Edits.Json;
 
 internal sealed record JsonText(String Text, String NewLine)

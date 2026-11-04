@@ -30,6 +30,8 @@ public sealed class ScaffoldToolTests : IDisposable
 
     private const String TagsFilePath = "src/Modules/Tags/TagsModule.cs";
 
+    private const String NextStep = "next, run ./gate.sh and commit";
+
     private const String LockedOut =
         "scaffold: cannot take the scaffold lock src/Core/Scaffold/obj/scaffold.lock, which another scaffold "
         + "command in this app holds while it runs; run this one when that one ends: ";
@@ -243,6 +245,28 @@ public sealed class ScaffoldToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Second_command_is_refused_while_the_first_reads_the_app()
+    {
+        using var contenderError = new StringWriter();
+        var contenderRuns = new List<Task<Int32>>();
+        var fileSystem = new CallbackFileSystem(_app.Root)
+        {
+            OnFirstRead = () => contenderRuns.Add(RunContenderAsync(contenderError)),
+        };
+
+        var tool = new ScaffoldTool(fileSystem, _processRunner, _output, _error);
+
+        var exitCode = await tool.ScaffoldAsync(new PlannedScaffold(PlanNewModule), CancellationToken);
+
+        var contenderExitCodes = await Task.WhenAll(contenderRuns);
+        var contenderMessage = contenderError.ToString();
+
+        exitCode.ShouldBe(0, _error.ToString());
+        contenderExitCodes.ShouldBe([1]);
+        contenderMessage.ShouldStartWith(LockedOut, Case.Sensitive);
+    }
+
+    [Fact]
     public async Task Second_command_is_refused_while_the_first_plans()
     {
         using var contenderError = new StringWriter();
@@ -268,7 +292,11 @@ public sealed class ScaffoldToolTests : IDisposable
     {
         using var contenderError = new StringWriter();
         var contenderRuns = new List<Task<Int32>>();
-        var fileSystem = new CallbackFileSystem(_app.Root, () => contenderRuns.Add(RunContenderAsync(contenderError)));
+        var fileSystem = new CallbackFileSystem(_app.Root)
+        {
+            OnDeleteFile = () => contenderRuns.Add(RunContenderAsync(contenderError)),
+        };
+
         var tool = new ScaffoldTool(fileSystem, FailingProcessRunner, _output, _error);
 
         var exitCode = await tool.ScaffoldAsync(new PlannedScaffold(PlanNewModule), CancellationToken);
@@ -425,7 +453,7 @@ public sealed class ScaffoldToolTests : IDisposable
 
     private Task<Int32> RunContenderAsync(TextWriter errorTextWriter) =>
         new ScaffoldTool(_app.FileSystem, FakeProcessRunner.Succeeding(), TextWriter.Null, errorTextWriter)
-            .ScaffoldAsync(new PlannedScaffold(_ => new ScaffoldPlan([], [], [])), CancellationToken);
+            .ScaffoldAsync(new PlannedScaffold(_ => new ScaffoldPlan([], [], [], NextStep)), CancellationToken);
 
     private static Result<ScaffoldPlan> PlanNewModule(AppLayout app) =>
         app.Program
@@ -433,10 +461,11 @@ public sealed class ScaffoldToolTests : IDisposable
             .Map(programEdit => new ScaffoldPlan(
                 [new NewFile(NewFilePath, "sealed class NotesModule;\n")],
                 [programEdit],
-                [new ExternalStep("bash", ["scripts/add-migration.sh", "Notes", "Initial"])]));
+                [new ExternalStep("bash", ["scripts/add-migration.sh", "Notes", "Initial"])],
+                NextStep));
 
     private static Result<ScaffoldPlan> PlanTagsModule() =>
-        new ScaffoldPlan([new NewFile(TagsFilePath, "sealed class TagsModule;\n")], [], []);
+        new ScaffoldPlan([new NewFile(TagsFilePath, "sealed class TagsModule;\n")], [], [], NextStep);
 
     private sealed class PlannedScaffold(Func<AppLayout, Result<ScaffoldPlan>> plan) : IScaffold
     {
@@ -459,9 +488,15 @@ public sealed class ScaffoldToolTests : IDisposable
         }
     }
 
-    private sealed class CallbackFileSystem(String root, Action onDeleteFile) : IFileSystem
+    private sealed class CallbackFileSystem(String root) : IFileSystem
     {
         private readonly PhysicalFileSystem _fileSystem = new(root);
+
+        private Boolean _isRead;
+
+        public Action OnFirstRead { get; init; } = () => { };
+
+        public Action OnDeleteFile { get; init; } = () => { };
 
         public Boolean FileExists(String path) => _fileSystem.FileExists(path);
 
@@ -473,7 +508,16 @@ public sealed class ScaffoldToolTests : IDisposable
         public IReadOnlyList<String> GetDirectories(String folder, String searchPattern) =>
             _fileSystem.GetDirectories(folder, searchPattern);
 
-        public Byte[] ReadAllBytes(String path) => _fileSystem.ReadAllBytes(path);
+        public Byte[] ReadAllBytes(String path)
+        {
+            if (!_isRead)
+            {
+                _isRead = true;
+                OnFirstRead();
+            }
+
+            return _fileSystem.ReadAllBytes(path);
+        }
 
         public void CreateDirectory(String path) => _fileSystem.CreateDirectory(path);
 
@@ -481,7 +525,7 @@ public sealed class ScaffoldToolTests : IDisposable
 
         public void DeleteFile(String path)
         {
-            onDeleteFile();
+            OnDeleteFile();
             _fileSystem.DeleteFile(path);
         }
 

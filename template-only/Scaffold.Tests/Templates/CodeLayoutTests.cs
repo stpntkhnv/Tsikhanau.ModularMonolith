@@ -6,6 +6,8 @@ namespace Tsikhanau.Monolith.Scaffold.Tests.Templates;
 
 public sealed class CodeLayoutTests
 {
+    private const String Body = "internal sealed record Sample;";
+
     private static readonly String LineOf120Characters = new('x', 120);
 
     private static readonly String LineOf121Characters = new('x', 121);
@@ -13,16 +15,20 @@ public sealed class CodeLayoutTests
     [Fact]
     public void Usings_put_system_first_and_the_rest_in_order_ignoring_case()
     {
-        var usings = CodeLayout.Usings(
-            "Zeta.Modules",
-            "System.Net",
-            "Tsikhanau.Railway",
-            "Microsoft.Extensions",
-            "System",
-            "trip_own.Modules.Notes",
-            "Acme.Shop");
+        var codeFile = CodeLayout.CodeFile(
+            "Samples",
+            [
+                "Zeta.Modules",
+                "System.Net",
+                "Tsikhanau.Railway",
+                "Microsoft.Extensions",
+                "System",
+                "trip_own.Modules.Notes",
+                "Acme.Shop",
+            ],
+            Body);
 
-        usings.ShouldBe(
+        codeFile.ShouldBe(
             """
             using System;
             using System.Net;
@@ -31,19 +37,48 @@ public sealed class CodeLayoutTests
             using trip_own.Modules.Notes;
             using Tsikhanau.Railway;
             using Zeta.Modules;
+
+            namespace Samples;
+
+            internal sealed record Sample;
+
             """);
     }
 
     [Fact]
     public void Usings_name_each_namespace_once()
     {
-        var usings = CodeLayout.Usings("Tsikhanau.Railway", "Acme.Shop", "System", "Tsikhanau.Railway", "System");
+        var codeFile = CodeLayout.CodeFile(
+            "Samples",
+            ["Tsikhanau.Railway", "Acme.Shop", "System", "Tsikhanau.Railway", "System"],
+            Body);
 
-        usings.ShouldBe(
+        codeFile.ShouldBe(
             """
             using System;
             using Acme.Shop;
             using Tsikhanau.Railway;
+
+            namespace Samples;
+
+            internal sealed record Sample;
+
+            """);
+    }
+
+    [Fact]
+    public void Code_file_keeps_a_using_of_a_namespace_that_encloses_its_own()
+    {
+        var codeFile = CodeLayout.CodeFile("Tsikhanau.Railway.Modules.Notes", ["Tsikhanau.Railway"], Body);
+
+        codeFile.ShouldBe(
+            """
+            using Tsikhanau.Railway;
+
+            namespace Tsikhanau.Railway.Modules.Notes;
+
+            internal sealed record Sample;
+
             """);
     }
 

@@ -7,11 +7,9 @@ namespace Tsikhanau.Monolith.Scaffold.Templates;
 
 internal sealed class FacadeTemplate(ScaffoldedModule module)
 {
-    private const String RailwayNamespace = "Tsikhanau.Railway";
+    private const String ExecuteCommandHead = $"Task<Result<TResult>> {EmittedNames.ExecuteCommandAsync}<TResult>";
 
-    private const String ExecuteCommandAsync = "Task<Result<TResult>> ExecuteCommandAsync<TResult>";
-
-    private const String ExecuteQueryAsync = "Task<Result<TResult>> ExecuteQueryAsync<TResult>";
+    private const String ExecuteQueryHead = $"Task<Result<TResult>> {EmittedNames.ExecuteQueryAsync}<TResult>";
 
     private const String SendCommand = " =>\n        SendAsync(command, cancellationToken);";
 
@@ -34,91 +32,77 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
     public NewFile CommandMarkerFile =>
         new(
             CommandMarkerPath,
-            $$"""
-            {{Usings("Tsikhanau.Monolith.Application.Commands")}}
-
-            namespace {{module.Namespace}};
-
-            internal interface {{module.CommandMarker}}<TResult> : ICommand<TResult>
-                where TResult : notnull;
-
-            """);
+            CodeFile(
+                module.Namespace,
+                ["Tsikhanau.Monolith.Application.Commands"],
+                $"""
+                 internal interface {module.CommandMarker}<TResult> : ICommand<TResult>
+                     where TResult : notnull;
+                 """));
 
     public NewFile QueryMarkerFile =>
         new(
             QueryMarkerPath,
-            $$"""
-            {{Usings("Tsikhanau.Monolith.Contracts.Queries")}}
-
-            namespace {{module.ContractsNamespace}};
-
-            public interface {{module.QueryMarker}}<TResult> : IQuery<TResult>
-                where TResult : notnull;
-
-            """);
+            CodeFile(
+                module.ContractsNamespace,
+                ["Tsikhanau.Monolith.Contracts.Queries"],
+                $"""
+                 public interface {module.QueryMarker}<TResult> : IQuery<TResult>
+                     where TResult : notnull;
+                 """));
 
     public NewFile QueryFacadeFile =>
         new(
             QueryFacadePath,
-            $$"""
-            {{Usings("Tsikhanau.Monolith.Contracts.Modules", RailwayNamespace)}}
-
-            namespace {{module.ContractsNamespace}};
-
-            public interface {{module.QueryFacade}} : IModuleQueryFacade
-            {
-            {{ExecuteQueryDeclaration}}
-            }
-
-            """);
+            CodeFile(
+                module.ContractsNamespace,
+                ["Tsikhanau.Monolith.Contracts.Modules", EmittedNames.RailwayNamespace],
+                $$"""
+                public interface {{module.QueryFacade}} : IModuleQueryFacade
+                {
+                {{ExecuteQueryDeclaration}}
+                }
+                """));
 
     private String CommandParameter => $"{module.CommandMarker}<TResult> command";
 
     private String QueryParameter => $"{module.QueryMarker}<TResult> query";
 
-    private String ExecuteCommandDeclaration => GenericMethod(ExecuteCommandAsync, CommandParameter, ";");
+    private String ExecuteCommandDeclaration => GenericMethod(ExecuteCommandHead, CommandParameter, ";");
 
-    private String ExecuteQueryDeclaration => GenericMethod(ExecuteQueryAsync, QueryParameter, ";");
+    private String ExecuteQueryDeclaration => GenericMethod(ExecuteQueryHead, QueryParameter, ";");
 
     private String ExecuteCommandImplementation =>
-        GenericMethod($"public {ExecuteCommandAsync}", CommandParameter, SendCommand);
+        GenericMethod($"public {ExecuteCommandHead}", CommandParameter, SendCommand);
 
     private String ExecuteQueryImplementation =>
-        GenericMethod($"public {ExecuteQueryAsync}", QueryParameter, SendQuery);
+        GenericMethod($"public {ExecuteQueryHead}", QueryParameter, SendQuery);
 
     public String RenderFacadeContract(FacadeShape shape) =>
-        $$"""
-        {{Usings(FacadeContractUsings(shape))}}
-
-        namespace {{module.Namespace}};
-
-        {{Declare(end => FacadeContractHead(shape, end), FacadeContractMembers(shape))}}
-
-        """;
+        CodeFile(
+            module.Namespace,
+            FacadeContractUsings(shape),
+            Declare(end => FacadeContractHead(shape, end), FacadeContractMembers(shape)));
 
     public String RenderFacadeClass(FacadeShape shape) =>
-        $$"""
-        {{Usings(FacadeClassUsings(shape))}}
+        CodeFile(
+            $"{module.Namespace}.Infrastructure",
+            FacadeClassUsings(shape),
+            Declare(FacadeClassHead, FacadeClassMembers(shape)));
 
-        namespace {{module.Namespace}}.Infrastructure;
-
-        {{Declare(FacadeClassHead, FacadeClassMembers(shape))}}
-
-        """;
-
-    private IEnumerable<String> FacadeContractUsings(FacadeShape shape) =>
+    private IReadOnlyList<String> FacadeContractUsings(FacadeShape shape) =>
     [
         "Tsikhanau.Monolith.Application.Modules",
         .. IncludeIf(shape.HasQueries, module.ContractsNamespace),
-        .. IncludeIf(shape.HasCommands, RailwayNamespace),
+        .. IncludeIf(shape.HasCommands, EmittedNames.RailwayNamespace),
     ];
 
-    private IEnumerable<String> FacadeClassUsings(FacadeShape shape) =>
+    private IReadOnlyList<String> FacadeClassUsings(FacadeShape shape) =>
     [
         "Microsoft.Extensions.DependencyInjection",
         "Tsikhanau.Monolith.Infrastructure.Dispatching",
         .. IncludeIf(shape.HasQueries, module.ContractsNamespace),
-        .. IncludeIf(shape.HasCommands || shape.HasQueries, RailwayNamespace),
+        .. IncludeIf(shape.HasCommands || shape.HasQueries, EmittedNames.RailwayNamespace),
     ];
 
     private IReadOnlyList<String> FacadeContractMembers(FacadeShape shape) =>

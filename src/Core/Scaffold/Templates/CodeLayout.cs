@@ -22,13 +22,8 @@ internal static class CodeLayout
     public static String FirstThatFits(params IReadOnlyList<String> candidates) =>
         candidates.FirstOrDefault(Fits) ?? candidates[^1];
 
-    public static String Usings(params IEnumerable<String> namespaces) =>
-        String.Join(
-            '\n',
-            namespaces
-                .Distinct(StringComparer.Ordinal)
-                .Order(NamespaceOrder)
-                .Select(name => $"using {name};"));
+    public static String CodeFile(String codeNamespace, IReadOnlyList<String> usings, String body) =>
+        $"{UsingBlock(usings)}namespace {codeNamespace};\n\n{body}\n";
 
     public static Result<IReadOnlyList<NewFile>> EnsureLinesFit(
         IReadOnlyList<NewFile> newFiles,
@@ -53,6 +48,17 @@ internal static class CodeLayout
             .Select((line, index) => (Length: line.Length, Number: index + 1))
             .Where(line => line.Length > MaxLineLength)
             .Select(line => $"{newFile.Path}:{line.Number} {line.Length} characters long");
+
+    private static String UsingBlock(IReadOnlyList<String> usings) =>
+        usings.Count == 0 ? String.Empty : $"{Usings(usings)}\n\n";
+
+    private static String Usings(IEnumerable<String> namespaces) =>
+        String.Join(
+            '\n',
+            namespaces
+                .Distinct(StringComparer.Ordinal)
+                .Order(NamespaceOrder)
+                .Select(name => $"using {name};"));
 
     private static Int32 CompareNamespaces(String first, String second) =>
         IsSystem(first) == IsSystem(second)

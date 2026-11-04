@@ -33,7 +33,8 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
         return (candidates, fullNames) switch
         {
             ([], _) => BuildNotFoundError(moduleName, eventType, name),
-            ([var candidate], _) => EnsureHandledBy(candidate, moduleName)
+            ([var candidate], _) => EnsureIsEvent(candidate)
+                .Bind(kind => EnsureHandledBy(candidate, kind, moduleName))
                 .Bind(EnsureConcrete)
                 .Bind(BuildDeclaration),
             (_, [var fullName]) => BuildError(
@@ -72,10 +73,8 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
             _ => Optional<EventKind>.None(),
         };
 
-    private static Result<EventCandidate> EnsureHandledBy(EventCandidate candidate, String moduleName) =>
-        candidate.Kind.Match(
-            kind => EnsureHandledBy(candidate, kind, moduleName),
-            () => BuildNotAnEventError(candidate));
+    private static Result<EventKind> EnsureIsEvent(EventCandidate candidate) =>
+        candidate.Kind.ToResult(() => BuildNotAnEventError(candidate));
 
     private static Error BuildNotAnEventError(EventCandidate candidate)
     {

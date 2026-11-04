@@ -26,6 +26,8 @@ public sealed class TransactionTests : IDisposable
 
     private const String NotesCall = "    builder.AddModule<NotesModule>();\n";
 
+    private const String NextStep = "next, run ./gate.sh and commit";
+
     private const Int32 FirstNewFile = 1;
 
     private const Int32 NewFileInAnExistingFolder = 4;
@@ -316,7 +318,8 @@ public sealed class TransactionTests : IDisposable
                 PlanEdit(program, "using Tsikhanau.Monolith.Hosting;\n", "using Acme.Shop.Modules.Notes;\n"),
                 PlanEdit(program, AddServicesBody, NotesCall),
             ],
-            [MigrationStep]);
+            [MigrationStep],
+            NextStep);
 
         var before = _app.TakeSnapshot();
         var processRunner = FakeProcessRunner.Succeeding();
@@ -338,7 +341,8 @@ public sealed class TransactionTests : IDisposable
         var plan = new ScaffoldPlan(
             [.. NewFiles, new NewFile(SampleApp.ProgramPath, "var app = 1;\n")],
             [PlanEdit(program, AddServicesBody, NotesCall)],
-            [MigrationStep]);
+            [MigrationStep],
+            NextStep);
 
         var before = _app.TakeSnapshot();
         var processRunner = FakeProcessRunner.Succeeding();
@@ -361,7 +365,8 @@ public sealed class TransactionTests : IDisposable
         var plan = new ScaffoldPlan(
             [.. NewFiles, new NewFile(secondPath, "partial class NotesModule;\n")],
             [],
-            [MigrationStep]);
+            [MigrationStep],
+            NextStep);
 
         var before = _app.TakeSnapshot();
         var processRunner = FakeProcessRunner.Succeeding();
@@ -401,7 +406,8 @@ public sealed class TransactionTests : IDisposable
                 PlanEdit(app.Program, AddServicesBody, NotesCall),
                 PlanEdit(app.AppSettings, "\"MaxConnections\": 20", ",\n      \"Notes\": true"),
             ],
-            [MigrationStep]);
+            [MigrationStep],
+            NextStep);
     }
 
     private static FileEdit PlanEdit(TextFile file, String anchor, String addition) =>

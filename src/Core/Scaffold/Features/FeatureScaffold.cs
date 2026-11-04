@@ -56,42 +56,52 @@ internal sealed class FeatureScaffold(FeatureRequest request) : IScaffold
 
     private static Result<ScaffoldPlan> PlanFeature(ScaffoldedFeature feature, IFileSystem fileSystem)
     {
-        var testTemplate = new FeatureTestTemplate(feature);
-        IReadOnlyList<NewFile> featureFiles =
-        [
-            .. new FeatureTemplate(feature).CreateFiles(),
-            testTemplate.CreateFile(),
-        ];
+        var files = CreateFiles(feature);
 
         return Result
-            .Collect(EnsureNoSuchFeature(feature, featureFiles, fileSystem))
-            .And(VerifyRoute(feature, fileSystem))
-            .And(VerifyInternalCommandName(feature, fileSystem))
-            .And(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
-            .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
-            .Bind((_, _, nameNote, facadeChange, referenceEdits) =>
-                CombinePlan(
-                    feature,
-                    facadeChange,
-                    referenceEdits,
-                    featureFiles,
-                    BuildNextStep(feature, testTemplate),
-                    nameNote));
+            .Collect(CheckFeatureIsNew(feature, files, fileSystem))
+            .And(PlanModuleChanges(feature, fileSystem))
+            .Bind((note, moduleChanges) => BuildPlan(feature, files, moduleChanges, note));
     }
 
-    private static Result<ScaffoldPlan> CombinePlan(
+    private static FeatureFiles CreateFiles(ScaffoldedFeature feature)
+    {
+        var testTemplate = new FeatureTestTemplate(feature);
+
+        return new FeatureFiles(
+            [.. new FeatureTemplate(feature).CreateFiles(), testTemplate.CreateFile()],
+            testTemplate.TestMethod);
+    }
+
+    private static Result<Optional<String>> CheckFeatureIsNew(
         ScaffoldedFeature feature,
-        FacadeChange facadeChange,
-        IReadOnlyList<FileEdit> referenceEdits,
-        IReadOnlyList<NewFile> featureFiles,
-        String nextStep,
-        Optional<String> nameNote) =>
+        FeatureFiles files,
+        IFileSystem fileSystem) =>
+        Result
+            .Collect(EnsureNoSuchFeature(feature, files.NewFiles, fileSystem))
+            .And(VerifyRoute(feature, fileSystem))
+            .And(VerifyInternalCommandName(feature, fileSystem))
+            .Map((_, _, note) => note);
+
+    private static Result<ModuleChanges> PlanModuleChanges(ScaffoldedFeature feature, IFileSystem fileSystem) =>
+        Result
+            .Collect(new FacadeUpdate(feature.Module, fileSystem).Plan(feature.GetRequiredShape))
+            .And(new NeighbourReferenceUpdate(feature.Module, fileSystem).Plan(feature.Neighbour))
+            .Map((facadeChange, referenceEdits) =>
+                new ModuleChanges(facadeChange.NewFiles, [.. facadeChange.FileEdits, .. referenceEdits]));
+
+    private static Result<ScaffoldPlan> BuildPlan(
+        ScaffoldedFeature feature,
+        FeatureFiles files,
+        ModuleChanges moduleChanges,
+        Optional<String> note) =>
         CodeLayout
-            .EnsureLinesFit([.. facadeChange.NewFiles, .. featureFiles], feature.ChosenNames, feature.ShorterChoice)
-            .Map(newFiles => new ScaffoldPlan(newFiles, [.. facadeChange.FileEdits, .. referenceEdits], [], nextStep)
-            {
-                Note = nameNote,
-            });
+            .EnsureLinesFit([.. moduleChanges.NewFiles, .. files.NewFiles], feature.ChosenNames, feature.ShorterChoice)
+            .Map(newFiles =>
+                new ScaffoldPlan(newFiles, moduleChanges.FileEdits, [], BuildNextStep(feature, files.TestMethod))
+                {
+                    Note = note,
+                });
 
     private static Result<Unit> EnsureNoSuchFeature(
         ScaffoldedFeature feature,
@@ -135,7 +145,7 @@ internal sealed class FeatureScaffold(FeatureRequest request) : IScaffold
                 .GetFileName(folder)
                 .Equals(feature.Name, StringComparison.OrdinalIgnoreCase));
 
-    private static String BuildNextStep(ScaffoldedFeature feature, FeatureTestTemplate testTemplate) =>
-        $"the new test {feature.TestClass}.{testTemplate.TestMethod} fails with "
+    private static String BuildNextStep(ScaffoldedFeature feature, String testMethod) =>
+        $"the new test {feature.TestClass}.{testMethod} fails with "
         + $"\"{feature.NotImplementedMessage}\" until the handler does its work; next, run ./gate.sh";
 }

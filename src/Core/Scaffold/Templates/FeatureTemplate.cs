@@ -7,8 +7,6 @@ namespace Tsikhanau.Monolith.Scaffold.Templates;
 
 internal sealed class FeatureTemplate(ScaffoldedFeature feature)
 {
-    private const String RailwayNamespace = "Tsikhanau.Railway";
-
     private const String CommandsNamespace = "Tsikhanau.Monolith.Application.Commands";
 
     private const String NotImplementedDeclaration = "    private static readonly Error NotImplemented =";
@@ -36,15 +34,15 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
     private NewFile CommandFile =>
         new(
             feature.InFeature($"{feature.Command}.cs"),
-            CodeFile(
+            CodeFileWithoutEnclosingUsings(
                 feature.Namespace,
-                [RailwayNamespace],
+                [EmittedNames.RailwayNamespace],
                 RecordDeclaration("internal", feature.Command, $"{feature.Module.CommandMarker}<Unit>")));
 
     private NewFile InternalCommandFile =>
         new(
             feature.InFeature($"{feature.InternalCommand}.cs"),
-            CodeFile(
+            CodeFileWithoutEnclosingUsings(
                 feature.Namespace,
                 [CommandsNamespace],
                 $"""
@@ -55,7 +53,7 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
     private NewFile QueryFile =>
         new(
             feature.InFeature($"{feature.Query}.cs"),
-            CodeFile(
+            CodeFileWithoutEnclosingUsings(
                 feature.Namespace,
                 [feature.Module.ContractsNamespace],
                 RecordDeclaration("internal", feature.Query, QueryBaseType)));
@@ -63,26 +61,29 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
     private NewFile DtoFile =>
         new(
             feature.InFeature($"{feature.Dto}.cs"),
-            CodeFile(feature.Namespace, [], RecordDeclaration("internal", feature.Dto)));
+            CodeFileWithoutEnclosingUsings(feature.Namespace, [], RecordDeclaration("internal", feature.Dto)));
 
     private NewFile PublicQueryFile =>
         new(
             feature.InPublicQuery($"{feature.Query}.cs"),
-            CodeFile(feature.PublicQueryNamespace, [], RecordDeclaration("public", feature.Query, QueryBaseType)));
+            CodeFileWithoutEnclosingUsings(
+                feature.PublicQueryNamespace,
+                [],
+                RecordDeclaration("public", feature.Query, QueryBaseType)));
 
     private NewFile PublicDtoFile =>
         new(
             feature.InPublicQuery($"{feature.Dto}.cs"),
-            CodeFile(feature.PublicQueryNamespace, [], RecordDeclaration("public", feature.Dto)));
+            CodeFileWithoutEnclosingUsings(feature.PublicQueryNamespace, [], RecordDeclaration("public", feature.Dto)));
 
     private String QueryBaseType => $"{feature.Module.QueryMarker}<{feature.Dto}>";
 
     private NewFile HandlerFile =>
         new(
             feature.InFeature($"{feature.Handler}.cs"),
-            CodeFile(
+            CodeFileWithoutEnclosingUsings(
                 feature.Namespace,
-                [.. HandlerUsings, RailwayNamespace],
+                [.. HandlerUsings, EmittedNames.RailwayNamespace],
                 $$"""
                 {{HandlerDeclaration}}
                 {
@@ -127,12 +128,15 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
     private NewFile RequestFile =>
         new(
             feature.InFeature($"{feature.RequestRecord}.cs"),
-            CodeFile(feature.Namespace, [], RecordDeclaration("internal", feature.RequestRecord)));
+            CodeFileWithoutEnclosingUsings(
+                feature.Namespace,
+                [],
+                RecordDeclaration("internal", feature.RequestRecord)));
 
     private NewFile EndpointFile =>
         new(
             feature.InFeature($"{feature.Endpoint}.cs"),
-            CodeFile(
+            CodeFileWithoutEnclosingUsings(
                 feature.Namespace,
                 [
                     "Microsoft.AspNetCore.Builder",
@@ -284,13 +288,12 @@ internal sealed class FeatureTemplate(ScaffoldedFeature feature)
                  : {baseType};
              """);
 
-    private static String CodeFile(String codeNamespace, IReadOnlyList<String> usings, String body) =>
-        $"{UsingBlock([.. usings.Where(usedNamespace => !Encloses(usedNamespace, codeNamespace))])}"
-        + $"namespace {codeNamespace};\n\n{body}\n";
+    private static String CodeFileWithoutEnclosingUsings(
+        String codeNamespace,
+        IReadOnlyList<String> usings,
+        String body) =>
+        CodeFile(codeNamespace, [.. usings.Where(usedNamespace => !Encloses(usedNamespace, codeNamespace))], body);
 
     private static Boolean Encloses(String outerNamespace, String codeNamespace) =>
         codeNamespace == outerNamespace || codeNamespace.StartsWith($"{outerNamespace}.", StringComparison.Ordinal);
-
-    private static String UsingBlock(IReadOnlyList<String> usings) =>
-        usings.Count == 0 ? String.Empty : $"{Usings(usings)}\n\n";
 }

@@ -12,6 +12,8 @@ internal sealed class ModuleScaffold(String name, Boolean hasSettings) : IScaffo
 {
     private const String MigrationName = "Initial";
 
+    private const String NextStep = "next, run ./gate.sh and commit";
+
     public Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem) =>
         ScaffoldedModule
             .Parse(app, name)
@@ -20,11 +22,11 @@ internal sealed class ModuleScaffold(String name, Boolean hasSettings) : IScaffo
 
     private static Result<ScaffoldedModule> EnsureNoSuchModule(ScaffoldedModule module, IFileSystem fileSystem)
     {
-        Optional<String> existingName = ModuleFolders
+        Optional<String> foundFolderName = ModuleFolders
             .ReadNames(fileSystem)
             .FirstOrDefault(folderName => folderName.Equals(module.Name, StringComparison.OrdinalIgnoreCase));
 
-        return existingName.Match(
+        return foundFolderName.Match(
             folderName => Error.Failure("scaffold.exists", $"{ModuleFolders.InRoot(folderName)} already exists"),
             () => Result.Success(module));
     }
@@ -33,7 +35,8 @@ internal sealed class ModuleScaffold(String name, Boolean hasSettings) : IScaffo
         Result
             .Collect(CreateFiles(module))
             .And(PlanEdits(module))
-            .Map((newFiles, fileEdits) => new ScaffoldPlan(newFiles, fileEdits, [CreateMigrationStep(module)]));
+            .Map((newFiles, fileEdits) =>
+                new ScaffoldPlan(newFiles, fileEdits, [CreateMigrationStep(module)], NextStep));
 
     private Result<IReadOnlyList<NewFile>> CreateFiles(ScaffoldedModule module) =>
         CodeLayout.EnsureLinesFit(

@@ -652,6 +652,31 @@ public sealed class FeatureScaffoldTests : IAsyncLifetime
         after.ShouldBe(before);
     }
 
+    [Fact]
+    public async Task Query_that_exists_on_a_mapped_route_with_half_a_query_facade_is_refused_with_each_problem()
+    {
+        await RunAndCommitAsync("feature Notes NoteSummary --kind query --endpoint get");
+        _app.Write($"{GetNoteSummaryFolder}/readme.md", "summary");
+        _app.Delete(NotesQueryFacade);
+        _app.Commit();
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync("feature Notes GetNoteSummary --kind query --endpoint get");
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: feature GetNoteSummary of Notes already exists: {GetNoteSummaryFolder}; "
+            + "feature GetNoteSummary of Notes would answer GET /notes/note-summary, which "
+            + $"{NotesProject}/Features/NoteSummary/NoteSummaryEndpoint.cs:12 maps already; "
+            + "choose another feature name; "
+            + $"{NotesContracts} must hold both INotesQuery.cs and INotesQueryFacade.cs or neither of them\n");
+
+        after.ShouldBe(before);
+    }
+
     [Theory]
     [InlineData(NotesFacadeContract)]
     [InlineData(NotesFacadeClass)]

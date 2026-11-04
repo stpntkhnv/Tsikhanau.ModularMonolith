@@ -368,6 +368,27 @@ public sealed class EventHandlerScaffoldTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Neighbour_handler_with_half_a_query_facade_and_no_own_contracts_reference_is_refused_with_both()
+    {
+        _app.Write($"{TagsContracts}/ITagsQuery.cs", "namespace Acme.Shop.Modules.Tags.Contracts;\n");
+        ReplaceInTagsProject($"{OwnContractsReference}\n", String.Empty);
+        var before = _app.TakeSnapshot();
+
+        var exitCode = await RunAsync(NeighbourEventCommand);
+
+        var after = _app.TakeSnapshot();
+        var error = _error.ToString();
+
+        exitCode.ShouldBe(1);
+        error.ShouldBe(
+            $"scaffold: {TagsContracts} must hold both ITagsQuery.cs and ITagsQueryFacade.cs or neither of them; "
+            + $@"{TagsProjectFile} must hold the reference to ..\Acme.Shop.Modules.Tags.Contracts\"
+            + "Acme.Shop.Modules.Tags.Contracts.csproj\n");
+
+        after.ShouldBe(before);
+    }
+
+    [Fact]
     public async Task Line_too_long_because_of_the_event_is_refused_with_the_feature_and_the_event()
     {
         const String LongId = "InventoryReservationAdjustmentLineIdentifierOfTheQuarter";

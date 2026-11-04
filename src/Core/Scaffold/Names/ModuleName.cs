@@ -5,8 +5,6 @@ namespace Tsikhanau.Monolith.Scaffold.Names;
 
 internal sealed partial record ModuleName
 {
-    private const String PascalCaseRule = "must be PascalCase: an ASCII capital letter, then letters and digits";
-
     private const String TestsSuffixRule = "must not end in Tests: the build turns such a project into a test project";
 
     private const String ModuleSuffixRule = "must not end in Module: scaffold adds the suffix itself";
@@ -29,16 +27,13 @@ internal sealed partial record ModuleName
 
     public String Route => Name.ToKebabCase();
 
-    [GeneratedRegex(@"\A[A-Z][A-Za-z0-9]*\z")]
-    private static partial Regex PascalCasePattern { get; }
-
     [GeneratedRegex(@"\A(?!pg(_|\z))[a-z][a-z0-9_]*\z")]
     private static partial Regex SchemaPattern { get; }
 
     public static Result<ModuleName> Parse(String name, String databaseName) =>
         Result
             .Success(name)
-            .Ensure(IsPascalCase, BuildNameError(name, PascalCaseRule))
+            .Ensure(PascalCase.Matches, BuildNameError(name, PascalCase.Rule))
             .Ensure(IsNotTestProjectName, BuildNameError(name, TestsSuffixRule))
             .Ensure(HasNoModuleSuffix, BuildNameError(name, ModuleSuffixRule))
             .Map(validName => new ModuleName(validName))
@@ -48,8 +43,6 @@ internal sealed partial record ModuleName
             .Ensure(
                 moduleName => FitsRoleNameLength(moduleName, databaseName),
                 moduleName => BuildRoleNameLengthError(moduleName, databaseName));
-
-    private static Boolean IsPascalCase(String name) => PascalCasePattern.IsMatch(name);
 
     private static Boolean IsNotTestProjectName(String name) => !name.EndsWith("Tests", StringComparison.Ordinal);
 

@@ -8,13 +8,9 @@ internal sealed record ModuleProjects(String ProjectPrefix, String ModuleName)
 
     public String Folder => ModuleFolders.InRoot(ModuleName);
 
-    public String ProjectName => $"{ProjectPrefix}.Modules.{ModuleName}";
-
     public String ProjectFolder => $"{Folder}/{ProjectName}";
 
     public String ProjectPath => InProject($"{ProjectName}.csproj");
-
-    public String ContractsProjectName => $"{ProjectName}{ContractsSuffix}";
 
     public String ContractsFolder => $"{Folder}/{ContractsProjectName}";
 
@@ -28,6 +24,10 @@ internal sealed record ModuleProjects(String ProjectPrefix, String ModuleName)
         $@"..\..\{ModuleName}\{ContractsProjectName}\{ContractsProjectName}.csproj";
 
     public String ProjectIncludeFromHost => $@"..\..\Modules\{ModuleName}\{ProjectName}\{ProjectName}.csproj";
+
+    private String ProjectName => $"{ProjectPrefix}.Modules.{ModuleName}";
+
+    private String ContractsProjectName => $"{ProjectName}{ContractsSuffix}";
 
     public String InProject(String path) => $"{ProjectFolder}/{path}";
 

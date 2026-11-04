@@ -10,8 +10,6 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
 {
     private const String Indentation = "        ";
 
-    private const String RailwayNamespace = "Tsikhanau.Railway";
-
     private const String DependencyInjectionNamespace = "Microsoft.Extensions.DependencyInjection";
 
     private const String InboxNamespace = "Tsikhanau.Monolith.Infrastructure.Inbox";
@@ -43,7 +41,7 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private FeatureTest FacadeTest =>
         new(
             $"{Sentence}_succeeds_through_the_facade",
-            [feature.Module.Namespace, feature.Namespace, DependencyInjectionNamespace, RailwayNamespace],
+            [feature.Module.Namespace, feature.Namespace, DependencyInjectionNamespace, EmittedNames.RailwayNamespace],
             UsesCancellationToken: true,
             CallThroughFacade(feature.FacadeParameter, feature.Module.FacadeContract));
 
@@ -54,7 +52,7 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
                 feature.Module.ContractsNamespace,
                 feature.PublicQueryNamespace,
                 DependencyInjectionNamespace,
-                RailwayNamespace,
+                EmittedNames.RailwayNamespace,
             ],
             UsesCancellationToken: true,
             CallThroughFacade(feature.QueryFacadeParameter, feature.Module.QueryFacade));
@@ -96,7 +94,7 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private FeatureTest DomainEventTest =>
         new(
             $"{ToSentence(HandledEvent.Name)}_is_handled",
-            [feature.Module.Namespace, .. HandledEvent.Usings, RailwayNamespace],
+            [feature.Module.Namespace, .. HandledEvent.Usings, EmittedNames.RailwayNamespace],
             UsesCancellationToken: false,
             Lines(
             [
@@ -174,21 +172,19 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
              """);
 
     private String Render(FeatureTest test) =>
-        $$"""
-        {{Usings([.. test.Usings, $"{feature.Module.App.RootNamespace}.Testing.App"])}}
-
-        namespace {{feature.TestNamespace}};
-
-        {{TestClassDeclaration}}
-        {
-        {{DeclareCancellationToken(test)}}    [Fact]
-            public async Task {{test.Method}}()
+        CodeFile(
+            feature.TestNamespace,
+            [.. test.Usings, $"{feature.Module.App.RootNamespace}.Testing.App"],
+            $$"""
+            {{TestClassDeclaration}}
             {
-        {{test.Body}}
+            {{DeclareCancellationToken(test)}}    [Fact]
+                public async Task {{test.Method}}()
+                {
+            {{test.Body}}
+                }
             }
-        }
-
-        """;
+            """);
 
     private static String DeclareCancellationToken(FeatureTest test) =>
         test.UsesCancellationToken ? CancellationTokenProperty : String.Empty;

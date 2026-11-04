@@ -22,14 +22,13 @@ internal sealed class ModuleReader(IFileSystem fileSystem)
     private Result<ScaffoldedModule> EnsureProjects(ScaffoldedModule module) =>
         FindMissingProject(module.Projects)
             .Match(
-                projectPath => BuildMissingProjectError(module.Projects, projectPath),
+                projectPath => Error.Failure(
+                    "scaffold.module",
+                    $"{module.Projects.Folder} holds no project {projectPath}"),
                 () => Result.Success(module));
 
     private Optional<String> FindMissingProject(ModuleProjects projects) =>
         projects.ProjectPaths.FirstOrDefault(projectPath => !fileSystem.FileExists(projectPath));
-
-    private static Result<ScaffoldedModule> BuildMissingProjectError(ModuleProjects projects, String projectPath) =>
-        Error.Failure("scaffold.module", $"{projects.Folder} holds no project {projectPath}");
 
     private static String BuildNameList(IReadOnlyList<String> names) =>
         names.Count == 0 ? "none" : String.Join(", ", names);

@@ -1,27 +1,19 @@
-using System.Text.RegularExpressions;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Names;
 
-internal static partial class FeatureName
+internal static class FeatureName
 {
-    private const String PascalCaseRule = "must be PascalCase: an ASCII capital letter, then letters and digits";
-
     private const String AddedSuffixRule = "scaffold adds the suffix of each type itself";
 
     private static readonly String[] AddedSuffixes =
         ["Command", "Handler", "Request", "Endpoint", "Tests", "Query", "Dto", "Event"];
 
-    [GeneratedRegex(@"\A[A-Z][A-Za-z0-9]*\z")]
-    private static partial Regex PascalCasePattern { get; }
-
     public static Result<String> Validate(String name) =>
         Result
             .Success(name)
-            .Ensure(IsPascalCase, BuildError(name, PascalCaseRule))
+            .Ensure(PascalCase.Matches, BuildError(name, PascalCase.Rule))
             .Bind(EnsureNoAddedSuffix);
-
-    private static Boolean IsPascalCase(String name) => PascalCasePattern.IsMatch(name);
 
     private static Result<String> EnsureNoAddedSuffix(String name) =>
         FindAddedSuffix(name)

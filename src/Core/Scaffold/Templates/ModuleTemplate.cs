@@ -12,6 +12,10 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
 
     private String Namespace => module.Namespace;
 
+    private String PersistenceNamespace => $"{Namespace}.Infrastructure.Persistence";
+
+    private String SettingsNamespace => $"{Namespace}.Settings";
+
     private ModuleProjects Projects => module.Projects;
 
     public IReadOnlyList<NewFile> CreateFiles() =>
@@ -61,29 +65,27 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
         """;
 
     private String ModuleClass =>
-        $$"""
-        {{Usings(ModuleClassUsings)}}
+        CodeFile(
+            Namespace,
+            ModuleClassUsings,
+            $$"""
+            public sealed class {{module.ModuleClass}} : Module
+            {
+            {{AddServices}}
+            }
+            """);
 
-        namespace {{Namespace}};
-
-        public sealed class {{module.ModuleClass}} : Module
-        {
-        {{AddServices}}
-        }
-
-        """;
-
-    private IEnumerable<String> ModuleClassUsings =>
+    private IReadOnlyList<String> ModuleClassUsings =>
     [
         "Microsoft.Extensions.DependencyInjection",
         $"{Namespace}.Infrastructure",
-        $"{Namespace}.Infrastructure.Persistence",
+        PersistenceNamespace,
         "Tsikhanau.Monolith.Api.Modules",
         "Tsikhanau.Monolith.Infrastructure.Modules",
         .. SettingsUsings,
     ];
 
-    private IEnumerable<String> SettingsUsings => hasSettings ? [$"{Namespace}.Settings"] : [];
+    private IEnumerable<String> SettingsUsings => hasSettings ? [SettingsNamespace] : [];
 
     private String AddServices => hasSettings ? AddServicesWithSettings : AddServicesWithoutSettings;
 
@@ -114,17 +116,15 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
              """);
 
     private String DbContext =>
-        $$"""
-        {{Usings("Microsoft.EntityFrameworkCore", "Tsikhanau.Monolith.Infrastructure.Persistence")}}
-
-        namespace {{Namespace}}.Infrastructure.Persistence;
-
-        {{DbContextDeclaration}}
-        {
-            public const String SchemaName = "{{module.Schema}}";
-        }
-
-        """;
+        CodeFile(
+            PersistenceNamespace,
+            ["Microsoft.EntityFrameworkCore", "Tsikhanau.Monolith.Infrastructure.Persistence"],
+            $$"""
+            {{DbContextDeclaration}}
+            {
+                public const String SchemaName = "{{module.Schema}}";
+            }
+            """);
 
     private String DbContextDeclaration =>
         FirstThatFits(
@@ -139,14 +139,7 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
              """);
 
     private String DesignTimeFactory =>
-        $$"""
-        {{Usings("Tsikhanau.Monolith.Infrastructure.Persistence")}}
-
-        namespace {{Namespace}}.Infrastructure.Persistence;
-
-        {{DesignTimeFactoryDeclaration}}
-
-        """;
+        CodeFile(PersistenceNamespace, ["Tsikhanau.Monolith.Infrastructure.Persistence"], DesignTimeFactoryDeclaration);
 
     private String DesignTimeFactoryDeclaration =>
         FirstThatFits(
@@ -158,13 +151,7 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
 
     private String DesignTimeFactoryName => $"{module.DbContext}DesignTimeFactory";
 
-    private String SettingsRecord =>
-        $$"""
-        namespace {{Namespace}}.Settings;
-
-        internal sealed record {{SettingsName}};
-
-        """;
+    private String SettingsRecord => CodeFile(SettingsNamespace, [], $"internal sealed record {SettingsName};");
 
     private String SettingsName => $"{module.Name}Settings";
 

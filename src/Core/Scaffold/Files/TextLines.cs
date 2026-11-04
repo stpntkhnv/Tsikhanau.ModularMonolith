@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Scaffold.Edits;
+namespace Tsikhanau.Monolith.Scaffold.Files;
 
 internal sealed record TextLines(IReadOnlyList<String> Lines, String NewLine)
 {
