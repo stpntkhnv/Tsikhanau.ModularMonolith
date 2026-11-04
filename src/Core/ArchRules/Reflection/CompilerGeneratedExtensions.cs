@@ -7,15 +7,22 @@ namespace Tsikhanau.Monolith.ArchRules.Reflection;
 
 internal static partial class CompilerGeneratedExtensions
 {
+    private const String EmbeddedAttributeName = "Microsoft.CodeAnalysis.EmbeddedAttribute";
+
     [GeneratedRegex("^<[^>]+>F[0-9A-F]+__")]
     private static partial Regex FileLocalTypeName { get; }
 
     extension(Type type)
     {
         public Boolean IsCompilerGenerated =>
-            HasCompilerName(type.Name)
+            HasNameOfAGeneratedType(type.Name)
                 || type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)
                 || type.DeclaringType is { IsCompilerGenerated: true };
+
+        public Boolean IsGeneratedOrFileLocal =>
+            HasCompilerName(type.Name)
+                || IsEmbeddedByGenerator(type)
+                || type.DeclaringType is { IsGeneratedOrFileLocal: true };
 
         public Type TopLevelType => type.DeclaringType is { } declaringType ? declaringType.TopLevelType : type;
 
@@ -32,7 +39,7 @@ internal static partial class CompilerGeneratedExtensions
     extension(TypeDefinition type)
     {
         public Boolean IsCompilerGenerated =>
-            HasCompilerName(type.Name)
+            HasNameOfAGeneratedType(type.Name)
                 || type.CustomAttributes.Any(IsCompilerGeneratedAttribute)
                 || type.DeclaringType is { IsCompilerGenerated: true };
     }
@@ -40,11 +47,24 @@ internal static partial class CompilerGeneratedExtensions
     extension(MemberInfo member)
     {
         public Boolean IsCompilerGenerated =>
-            member.Name.StartsWith('<') || member.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false);
+            HasCompilerName(member.Name) || member.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false);
     }
 
-    private static Boolean HasCompilerName(String typeName) =>
-        typeName.StartsWith('<') && !FileLocalTypeName.IsMatch(typeName);
+    extension(Assembly assembly)
+    {
+        public IEnumerable<Type> HandwrittenTypes =>
+            assembly
+                .GetTypes()
+                .Where(type => !type.IsGeneratedOrFileLocal);
+    }
+
+    private static Boolean HasCompilerName(String name) => name.StartsWith('<');
+
+    private static Boolean HasNameOfAGeneratedType(String typeName) =>
+        HasCompilerName(typeName) && !FileLocalTypeName.IsMatch(typeName);
+
+    private static Boolean IsEmbeddedByGenerator(Type type) =>
+        type.CustomAttributes.Any(attribute => attribute.AttributeType.FullName == EmbeddedAttributeName);
 
     private static Boolean IsCompilerGeneratedAttribute(CustomAttribute attribute) =>
         attribute.AttributeType.FullName == typeof(CompilerGeneratedAttribute).FullName;

@@ -16,10 +16,7 @@ public static class StaticStateRules
             .CollectViolations(GetStaticMutableMembers);
 
     public static RuleEvaluation DomainTypesHaveNoPublicFields(ArchModule module) =>
-        module
-            .GetTypesIn("Domain")
-            .Where(type => !type.IsCompilerGenerated)
-            .CollectViolations(GetPublicFields);
+        DomainRules.DomainTypesHaveNoPublicFields(module);
 
     private static IEnumerable<String> GetStaticMutableMembers(Type type)
     {
@@ -39,10 +36,4 @@ public static class StaticStateRules
 
         return [.. fields, .. properties, .. events];
     }
-
-    private static IEnumerable<String> GetPublicFields(Type type) =>
-        type
-            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Where(field => !field.IsSpecialName)
-            .Select(field => $"{field.DeclaringType!.FullName}.{field.Name}");
 }

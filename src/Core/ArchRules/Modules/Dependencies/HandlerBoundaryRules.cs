@@ -18,10 +18,6 @@ public static class HandlerBoundaryRules
     private const BindingFlags InstanceConstructors =
         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-    private const BindingFlags AllDeclaredMembers =
-        BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-        | BindingFlags.DeclaredOnly;
-
     public static RuleEvaluation ModuleTakesNoHandlerInAConstructor(ArchModule module) =>
         module.Types.CollectViolations(GetHandlerParameters);
 
@@ -92,35 +88,10 @@ public static class HandlerBoundaryRules
         subjectType.WithCompilerGeneratedNestedTypes
             .SelectMany(GetTypeUses)
             .Where(typeUse => IsOrWraps(typeUse.Type, isForbidden))
-            .Select(typeUse => $"{subjectType.FullName} {typeUse.Description}");
+            .Select(typeUse => $"{subjectType.FullName} {typeUse.Verb} {typeUse.Type.Name} {typeUse.Name}");
 
-    private static IEnumerable<TypeUse> GetTypeUses(Type type)
-    {
-        var methods = type
-            .GetConstructors(AllDeclaredMembers)
-            .Concat<MethodBase>(type.GetMethods(AllDeclaredMembers))
-            .ToList();
-
-        var parameters = methods
-            .SelectMany(method => method.GetParameters())
-            .Select(parameter => new TypeUse(parameter.ParameterType, "takes", parameter.Name));
-
-        var locals = methods.SelectMany(GetLocalUses);
-
-        var fields = type
-            .GetFields(AllDeclaredMembers)
-            .Select(field => new TypeUse(field.FieldType, "holds", field.Name));
-
-        var properties = type
-            .GetProperties(AllDeclaredMembers)
-            .Select(property => new TypeUse(property.PropertyType, "holds", property.Name));
-
-        return [.. parameters, .. locals, .. fields, .. properties];
-    }
-
-    private static IEnumerable<TypeUse> GetLocalUses(MethodBase method) =>
-        (method.GetMethodBody()?.LocalVariables ?? [])
-            .Select(local => new TypeUse(local.LocalType, "uses", $"in {method.DeclaringType?.Name}.{method.Name}"));
+    private static IEnumerable<TypeUse> GetTypeUses(Type type) =>
+        [.. type.ParameterUses, .. type.LocalUses, .. type.FieldUses, .. type.PropertyUses];
 
     private static Boolean IsOrWraps(Type type, Func<Type, Boolean> isForbidden) =>
         type.WithWrappedTypes
@@ -145,9 +116,4 @@ public static class HandlerBoundaryRules
 
     private static Boolean IsQueryMarker(Type type) =>
         type is { IsInterface: true, IsGenericTypeDefinition: true } && type.Implements(typeof(IQuery<>));
-
-    private sealed record TypeUse(Type Type, String Verb, String? Name)
-    {
-        public String Description => $"{Verb} {Type.Name} {Name}";
-    }
 }

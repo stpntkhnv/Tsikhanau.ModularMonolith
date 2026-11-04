@@ -11,6 +11,12 @@ internal static class Mutability
             .Where(property => IsWritable(property, allowInit: true))
             .Select(property => $"{type.FullName}.{property.Name}");
 
+    public static IEnumerable<String> GetPublicFields(Type type) =>
+        type
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(field => !field.IsSpecialName)
+            .Select(field => $"{field.DeclaringType!.FullName}.{field.Name}");
+
     public static IEnumerable<String> GetMutableMembers(Type type, Boolean allowInit) =>
         [.. GetWritableProperties(type, allowInit), .. GetWritableFields(type)];
 

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Mono.Cecil;
 using Tsikhanau.Monolith.Api.Modules;
+using Tsikhanau.Monolith.ArchRules.Cecil;
 using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Reflection;
@@ -39,18 +40,13 @@ public static class HostRules
         return [.. missingModules, .. strayNames, .. repeatedNames];
     }
 
-    private static IReadOnlyList<String> ReadModulesAddedBy(Assembly hostAssembly)
-    {
-        using var assembly = AssemblyDefinition.ReadAssembly(hostAssembly.Location);
-        return assembly.MainModule
-            .GetTypes()
-            .SelectMany(type => type.Methods)
-            .Where(method => method.HasBody)
-            .SelectMany(method => method.Body.Instructions)
+    private static IReadOnlyList<String> ReadModulesAddedBy(Assembly hostAssembly) =>
+        CecilAssemblies.Read([hostAssembly], _ => true, ReadModulesAddedIn);
+
+    private static IEnumerable<String> ReadModulesAddedIn(TypeDefinition type) =>
+        type.BodyInstructions
             .Select(instruction => instruction.Operand)
             .OfType<GenericInstanceMethod>()
             .Where(calledMethod => calledMethod.Name == nameof(ModuleHostExtensions.AddModule))
-            .Select(calledMethod => calledMethod.GenericArguments.Single().FullName)
-            .ToList();
-    }
+            .Select(calledMethod => calledMethod.GenericArguments.Single().FullName);
 }

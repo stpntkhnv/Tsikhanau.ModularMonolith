@@ -15,12 +15,4 @@ public abstract class StaticStateTests<TInputs> : ArchRuleTests<TInputs>
             StaticStateRules.ModuleTypesHoldNoStaticMutableState(GetModule(name)),
             $"{name} has no types",
             "Keep state in instances that DI owns; static state leaks between requests and tests");
-
-    [Theory]
-    [EveryModule]
-    public void Domain_types_have_no_public_fields(String name) =>
-        Check(
-            StaticStateRules.DomainTypesHaveNoPublicFields(GetModule(name)),
-            $"{name} has no types in Domain",
-            "Expose domain state through read-only properties");
 }

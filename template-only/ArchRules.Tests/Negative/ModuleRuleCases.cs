@@ -43,6 +43,8 @@ internal static class ModuleRuleCases
     private const String RenameCrateHandlerTypeName =
         $"{CommandHandlerTypeName}[{RenameCrateCommandTypeName},{UnitTypeName}]";
 
+    private const String TallyCountFieldName = $"{BadRoot}.Domain.Tallies.Tally.Count";
+
     private const String StampTypeName = $"{BadRoot}.Domain.Stamps.Stamp";
 
     private const String StampClockTypeName = $"{BadRoot}.Domain.Stamps.IStampClock";
@@ -52,6 +54,17 @@ internal static class ModuleRuleCases
     private const String StampDialTypeName = $"{BadRoot}.Domain.Stamps.StampDial";
 
     private const String StampLedgerTypeName = $"{BadRoot}.Domain.Stamps.StampLedger";
+
+    private const String StampScheduleLambdaName = $"{BadRoot}.Domain.Stamps.StampSchedule/<>c::<Plan>b__0_0";
+
+    private const String StampWaitStateMachineName =
+        $"{BadRoot}.Domain.Stamps.StampWait/<ReadLaterAsync>d__0::MoveNext";
+
+    private const String WeighCratesHandlerName = $"{BadRoot}.Features.WeighCrates.WeighCratesQueryHandler";
+
+    private const String AuditCratesHandlerName = $"{BadRoot}.Features.AuditCrates.AuditCratesQueryHandler";
+
+    private const String IndexCratesHandlerName = $"{BadRoot}.Features.IndexCrates.IndexCratesQueryHandler";
 
     public static IEnumerable<RuleCase> All =>
     [
@@ -75,6 +88,12 @@ internal static class ModuleRuleCases
             () => DomainRules.DomainTypesHaveNoPublicSetters(Bad),
             [$"{BadRoot}.Domain.Ledgers.Ledger.Count"],
             () => DomainRules.DomainTypesHaveNoPublicSetters(Good)),
+        new(
+            typeof(DomainRules),
+            nameof(DomainRules.DomainTypesHaveNoPublicFields),
+            () => DomainRules.DomainTypesHaveNoPublicFields(Bad),
+            [TallyCountFieldName],
+            () => DomainRules.DomainTypesHaveNoPublicFields(Good)),
         new(
             typeof(DomainRules),
             nameof(DomainRules.ValueObjectsCannotBeChangedEvenThroughInit),
@@ -126,6 +145,8 @@ internal static class ModuleRuleCases
                 $"{StampDialTypeName}::Read takes Acme.SharedKernel.SystemClock",
                 $"{StampLedgerTypeName}::Item takes System.TimeProvider",
                 $"{StampLedgerTypeName}::op_Addition takes System.TimeProvider",
+                $"{StampScheduleLambdaName} calls System.DateTime::get_UtcNow/0",
+                $"{StampWaitStateMachineName} calls System.DateTimeOffset::get_Now/0",
             ],
             () => DomainRules.DomainNeverReadsTheClockOrCreatesRandomIds(Good)),
     ];
@@ -142,7 +163,7 @@ internal static class ModuleRuleCases
             typeof(StaticStateRules),
             nameof(StaticStateRules.DomainTypesHaveNoPublicFields),
             () => StaticStateRules.DomainTypesHaveNoPublicFields(Bad),
-            [$"{BadRoot}.Domain.Tallies.Tally.Count"],
+            [TallyCountFieldName],
             () => StaticStateRules.DomainTypesHaveNoPublicFields(Good)),
     ];
 
@@ -321,6 +342,9 @@ internal static class ModuleRuleCases
             [
                 $"{BadRoot}.Features.CountCrates.CountCratesQueryHandler takes IOutbox`1 outbox",
                 $"{BadRoot}.Features.CountCrates.CountCratesQueryHandler holds IOutbox`1 <outbox>P",
+                $"{WeighCratesHandlerName} uses IOutbox`1 in WeighCratesQueryHandler.Handle",
+                $"{AuditCratesHandlerName} holds IOutbox`1 <outbox>5__2",
+                $"{IndexCratesHandlerName} takes IOutbox`1 outbox",
             ],
             () => HandlerBoundaryRules.QueryHandlersTakeNoWriteSideDependencies(Good)),
         new(

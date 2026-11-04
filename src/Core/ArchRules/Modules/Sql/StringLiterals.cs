@@ -1,5 +1,6 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Tsikhanau.Monolith.ArchRules.Cecil;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Reflection;
 
@@ -13,21 +14,7 @@ internal static class StringLiterals
             .Select(type => type.FullName)
             .ToHashSet();
 
-        return module.Assemblies
-            .Select(assembly => assembly.Location)
-            .Distinct()
-            .SelectMany(location => ReadFrom(location, typeNames))
-            .ToList();
-    }
-
-    private static List<(String TypeName, String Literal)> ReadFrom(String location, HashSet<String?> typeNames)
-    {
-        using var assembly = AssemblyDefinition.ReadAssembly(location);
-        return assembly.MainModule
-            .GetTypes()
-            .Where(type => typeNames.Contains(GetOwnerName(type)))
-            .SelectMany(ReadLiteralsOf)
-            .ToList();
+        return CecilAssemblies.Read(module.Assemblies, type => typeNames.Contains(GetOwnerName(type)), ReadLiteralsOf);
     }
 
     private static IEnumerable<(String TypeName, String Literal)> ReadLiteralsOf(TypeDefinition type)
@@ -41,9 +28,7 @@ internal static class StringLiterals
         [.. GetInstructionLiterals(type), .. GetConstantLiterals(type)];
 
     private static IEnumerable<String> GetInstructionLiterals(TypeDefinition type) =>
-        type.Methods
-            .Where(method => method.HasBody)
-            .SelectMany(method => method.Body.Instructions)
+        type.BodyInstructions
             .Where(instruction => instruction.OpCode == OpCodes.Ldstr)
             .Select(instruction => (String)instruction.Operand);
 

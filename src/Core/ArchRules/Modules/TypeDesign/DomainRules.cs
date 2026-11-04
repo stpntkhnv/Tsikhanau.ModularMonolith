@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Mono.Cecil;
 using Tsikhanau.Monolith.Application.Commands;
+using Tsikhanau.Monolith.ArchRules.Cecil;
 using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Reflection;
@@ -44,6 +45,12 @@ public static class DomainRules
         module
             .GetTypesIn("Domain")
             .CollectViolations(Mutability.GetPublicSetters);
+
+    public static RuleEvaluation DomainTypesHaveNoPublicFields(ArchModule module) =>
+        module
+            .GetTypesIn("Domain")
+            .Where(type => !type.IsCompilerGenerated)
+            .CollectViolations(Mutability.GetPublicFields);
 
     public static RuleEvaluation ValueObjectsCannotBeChangedEvenThroughInit(ArchModule module) =>
         module.Types
@@ -127,29 +134,22 @@ public static class DomainRules
             .SelectMany(GetClockTypedMembers),
     ];
 
-    private static IEnumerable<String> ReadForbiddenReferences(ArchModule module, IReadOnlyList<Type> domainTypes)
+    private static IReadOnlyList<String> ReadForbiddenReferences(ArchModule module, IReadOnlyList<Type> domainTypes)
     {
         var domainTypeNames = domainTypes
             .Select(type => type.FullName)
             .ToHashSet();
 
-        return module.Assemblies
-            .Select(assembly => assembly.Location)
-            .Distinct()
-            .SelectMany(location => ReadForbiddenReferencesIn(location, domainTypeNames));
+        return CecilAssemblies.Read(
+            module.Assemblies,
+            type => domainTypeNames.Contains(type.TopLevelType.FullName),
+            ReadForbiddenReferencesOf);
     }
 
-    private static List<String> ReadForbiddenReferencesIn(String location, HashSet<String?> domainTypeNames)
-    {
-        using var assembly = AssemblyDefinition.ReadAssembly(location);
-        return assembly.MainModule
-            .GetTypes()
-            .Where(type => domainTypeNames.Contains(GetTopLevelType(type).FullName))
-            .SelectMany(type => type.Methods)
+    private static IEnumerable<String> ReadForbiddenReferencesOf(TypeDefinition type) =>
+        type.Methods
             .Where(method => method.HasBody)
-            .SelectMany(GetForbiddenReferencesFrom)
-            .ToList();
-    }
+            .SelectMany(GetForbiddenReferencesFrom);
 
     private static IEnumerable<String> GetForbiddenReferencesFrom(MethodDefinition method)
     {
@@ -175,57 +175,36 @@ public static class DomainRules
     private static Boolean IsClockType(TypeReference type) => ClockTypeNames.Contains(type.FullName);
 
     private static IEnumerable<String> GetClockTypedMembers(Type type) =>
-        GetSignatureTypes(type)
-            .Where(signatureType => IsClockOrDerived(signatureType.Type))
-            .Select(signatureType => signatureType.Describe(type));
+        GetSignatureUses(type)
+            .Where(typeUse => IsClockOrDerived(typeUse.Type))
+            .Select(typeUse => $"{type.FullName}::{typeUse.Member.Name} {typeUse.Verb} {typeUse.Type.FullName}");
 
     private static Boolean IsClockOrDerived(Type type) => ClockTypes.Any(type.IsAssignableTo);
 
-    private static IEnumerable<SignatureType> GetSignatureTypes(Type type)
+    private static IEnumerable<TypeUse> GetSignatureUses(Type type)
     {
-        IReadOnlyList<PropertyInfo> properties = type.GetProperties(DeclaredMembers);
-        HashSet<MethodInfo> accessors = [.. properties.SelectMany(property => property.GetAccessors(nonPublic: true))];
-        IReadOnlyList<MethodBase> methods =
+        var accessors = GetAccessors(type);
+        IEnumerable<TypeUse> methodUses = [.. type.ParameterUses, .. type.ReturnUses];
+
+        return
         [
-            .. type.GetConstructors(DeclaredMembers),
-            .. type
-                .GetMethods(DeclaredMembers)
-                .Where(method => !accessors.Contains(method) && !method.IsCompilerGenerated),
+            .. methodUses.Where(typeUse => !IsAccessorOrGeneratedMethod(typeUse.Member, accessors)),
+            .. type.FieldUses.Where(typeUse => !typeUse.Member.IsCompilerGenerated),
+            .. type.PropertyUses,
+            .. type.IndexParameterUses,
         ];
-
-        var parameters = methods
-            .SelectMany(method => method.GetParameters())
-            .Select(parameter => new SignatureType(parameter.Member, "takes", parameter.ParameterType));
-
-        var returns = methods
-            .OfType<MethodInfo>()
-            .Select(method => new SignatureType(method, "returns", method.ReturnType));
-
-        var fields = type
-            .GetFields(DeclaredMembers)
-            .Where(field => !field.IsCompilerGenerated)
-            .Select(field => new SignatureType(field, "holds", field.FieldType));
-
-        var propertyTypes = properties.Select(property => new SignatureType(property, "holds", property.PropertyType));
-
-        var indexParameters = properties.SelectMany(GetIndexParameterTypes);
-
-        return [.. parameters, .. returns, .. fields, .. propertyTypes, .. indexParameters];
     }
 
-    private static IEnumerable<SignatureType> GetIndexParameterTypes(PropertyInfo property) =>
-        property
-            .GetIndexParameters()
-            .Select(parameter => new SignatureType(property, "takes", parameter.ParameterType));
+    private static HashSet<MethodInfo> GetAccessors(Type type) =>
+    [
+        .. type
+            .GetProperties(DeclaredMembers)
+            .SelectMany(property => property.GetAccessors(nonPublic: true)),
+    ];
+
+    private static Boolean IsAccessorOrGeneratedMethod(MemberInfo member, HashSet<MethodInfo> accessors) =>
+        member is MethodInfo method && (accessors.Contains(method) || method.IsCompilerGenerated);
 
     private static String BuildSignature(MethodReference method) =>
         $"{method.DeclaringType.FullName}::{method.Name}/{method.Parameters.Count}";
-
-    private static TypeDefinition GetTopLevelType(TypeDefinition type) =>
-        type.DeclaringType is null ? type : GetTopLevelType(type.DeclaringType);
-
-    private sealed record SignatureType(MemberInfo Member, String Use, Type Type)
-    {
-        public String Describe(Type owner) => $"{owner.FullName}::{Member.Name} {Use} {Type.FullName}";
-    }
 }

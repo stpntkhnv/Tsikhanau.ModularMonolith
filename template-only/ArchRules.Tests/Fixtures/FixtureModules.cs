@@ -21,6 +21,8 @@ internal static class FixtureModules
 
     public static Assembly Host => FixtureAssemblies.Get($"{RootNamespace}.Bootstrapper");
 
+    public static Assembly RepeatingHost => FixtureAssemblies.Get($"{RootNamespace}.RepeatingBootstrapper");
+
     private static ArchModule Create(String name)
     {
         var rootNamespace = $"{RootNamespace}.Modules.{name}";

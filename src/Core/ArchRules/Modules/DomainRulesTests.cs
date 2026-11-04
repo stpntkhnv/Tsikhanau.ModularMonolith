@@ -18,6 +18,14 @@ public abstract class DomainRulesTests<TInputs> : ArchRuleTests<TInputs>
 
     [Theory]
     [EveryModule]
+    public void Domain_types_have_no_public_fields(String name) =>
+        Check(
+            DomainRules.DomainTypesHaveNoPublicFields(GetModule(name)),
+            $"{name} has no types in Domain",
+            "Expose domain state through read-only properties");
+
+    [Theory]
+    [EveryModule]
     public void Value_objects_cannot_be_changed_even_through_init(String name) =>
         Check(
             DomainRules.ValueObjectsCannotBeChangedEvenThroughInit(GetModule(name)),

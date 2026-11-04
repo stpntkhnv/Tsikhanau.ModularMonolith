@@ -35,6 +35,7 @@ internal static class FixtureAssemblies
                 "Acme.SharedKernel",
             ]),
         new("Acme.Bootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
+        new("Acme.RepeatingBootstrapper", ["Acme.Modules.Good", "Acme.Modules.Peer"]),
         new("Tsikhanau.Monolith.Shared.Fixture", ["Acme.SharedKernel"]),
     ];
 
