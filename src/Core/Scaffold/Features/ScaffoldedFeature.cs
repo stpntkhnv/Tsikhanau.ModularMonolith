@@ -2,7 +2,6 @@ using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Facades;
 using Tsikhanau.Monolith.Scaffold.Modules;
 using Tsikhanau.Monolith.Scaffold.Names;
-using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Features;

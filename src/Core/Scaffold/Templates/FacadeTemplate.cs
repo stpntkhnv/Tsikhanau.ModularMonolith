@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Scaffold.Facades;
 using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using static Tsikhanau.Monolith.Scaffold.Templates.CodeLayout;
 
@@ -86,7 +87,7 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
     public String RenderFacadeClass(FacadeShape shape) =>
         CodeFile(
-            $"{module.Namespace}.Infrastructure",
+            module.InfrastructureNamespace,
             FacadeClassUsings(shape),
             Declare(FacadeClassHead, FacadeClassMembers(shape)));
 

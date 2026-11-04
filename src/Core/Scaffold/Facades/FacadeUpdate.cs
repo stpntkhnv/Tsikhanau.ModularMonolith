@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Scaffold.Files;
 using Tsikhanau.Monolith.Scaffold.Modules;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;

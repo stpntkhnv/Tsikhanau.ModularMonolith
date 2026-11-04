@@ -12,11 +12,15 @@ public sealed class RailwayRootNamespaceTests : IAsyncLifetime
 
     private const String NotesProject = "src/Modules/Notes/Acme.Shop.Modules.Notes";
 
+    private const String NotesContracts = "src/Modules/Notes/Acme.Shop.Modules.Notes.Contracts";
+
     private const String NotesTests = "src/Tests/IntegrationTests/Modules/Notes";
 
     private const String NotesFacadeContract = $"{NotesProject}/INotesModule.cs";
 
     private const String NotesFacadeClass = $"{NotesProject}/Infrastructure/NotesModuleFacade.cs";
+
+    private const String NotesQueryFacade = $"{NotesContracts}/INotesQueryFacade.cs";
 
     private const String FacadeContractWithCommands =
         """
@@ -135,10 +139,12 @@ public sealed class RailwayRootNamespaceTests : IAsyncLifetime
 
         var facadeContract = _app.Read(NotesFacadeContract);
         var facadeClass = _app.Read(NotesFacadeClass);
+        var queryFacade = _app.Read(NotesQueryFacade);
 
         exitCode.ShouldBe(0, _error.ToString());
         facadeContract.ShouldBe(FacadeContractWithCommandsAndQueries);
         facadeClass.ShouldBe(FacadeClassWithCommandsAndQueries);
+        queryFacade.ShouldContain(RailwayUsing, Case.Sensitive);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Tsikhanau.Monolith.Scaffold.Events;
 using Tsikhanau.Monolith.Scaffold.Features;
+using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using static Tsikhanau.Monolith.Scaffold.Templates.CodeLayout;
 

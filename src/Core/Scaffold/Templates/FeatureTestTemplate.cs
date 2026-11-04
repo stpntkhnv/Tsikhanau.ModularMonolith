@@ -110,7 +110,7 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private FeatureTest IntegrationEventTest =>
         new(
             $"{ToSentence(HandledEvent.Name)}_is_handled_through_the_inbox",
-            [.. HandledEvent.Usings, PersistenceNamespace, InboxNamespace],
+            [.. HandledEvent.Usings, feature.Module.PersistenceNamespace, InboxNamespace],
             UsesCancellationToken: false,
             Lines(
                 BuildEvent,
@@ -124,7 +124,12 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
     private FeatureTest InternalCommandTest =>
         new(
             $"{Sentence}_runs_when_the_queues_run",
-            [feature.Module.Namespace, feature.Namespace, PersistenceNamespace, InternalCommandsNamespace],
+            [
+                feature.Module.Namespace,
+                feature.Namespace,
+                feature.Module.PersistenceNamespace,
+                InternalCommandsNamespace,
+            ],
             UsesCancellationToken: false,
             Lines(
                 Construct("internalCommand", feature.InternalCommand, [MessageIdFromTheClock]),
@@ -134,8 +139,6 @@ internal sealed class FeatureTestTemplate(ScaffoldedFeature feature)
                 ReadQueueRows("internalCommandRows", "InternalCommandMessage.Table"),
                 String.Empty,
                 AssertOnlyRowIsProcessed("internalCommandRows", "internalCommandRow", "internalCommand")));
-
-    private String PersistenceNamespace => $"{feature.Module.Namespace}.Infrastructure.Persistence";
 
     private String BuildEvent =>
         Construct(

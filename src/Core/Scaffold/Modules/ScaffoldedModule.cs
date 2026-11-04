@@ -18,6 +18,10 @@ internal sealed record ScaffoldedModule(AppLayout App, ModuleName ModuleName)
 
     public String ContractsNamespace => $"{Namespace}.Contracts";
 
+    public String InfrastructureNamespace => $"{Namespace}.Infrastructure";
+
+    public String PersistenceNamespace => $"{InfrastructureNamespace}.Persistence";
+
     public String UnitTestsAssembly => $"{App.ProjectPrefix}.UnitTests";
 
     public String IntegrationTestsAssembly => $"{App.ProjectPrefix}.IntegrationTests";

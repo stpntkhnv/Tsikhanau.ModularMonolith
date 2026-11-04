@@ -93,14 +93,14 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
                 + $"through the declarations of {role}");
     }
 
-    private static Result<EventCandidate> EnsureHandledBy(EventCandidate candidate, EventKind kind, String moduleName)
+    private static Result<EventOfKind> EnsureHandledBy(EventCandidate candidate, EventKind kind, String moduleName)
     {
         var project = candidate.Project;
         var owner = project.ModuleName;
 
         return (kind, project.IsContracts, owner == moduleName) switch
         {
-            (EventKind.Domain, false, true) or (EventKind.Integration, true, false) => candidate,
+            (EventKind.Domain, false, true) or (EventKind.Integration, true, false) => new EventOfKind(candidate, kind),
             (EventKind.Domain, false, false) => BuildError(
                 $"{candidate.FullName} is a domain event of {owner}: a domain event never leaves its module; "
                 + $"handle the integration event that {owner} publishes for it"),
@@ -111,15 +111,16 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
         };
     }
 
-    private static Result<EventCandidate> EnsureConcrete(EventCandidate candidate) =>
-        candidate.Declaration.IsAbstract
+    private static Result<EventOfKind> EnsureConcrete(EventOfKind eventOfKind) =>
+        eventOfKind.Candidate.Declaration.IsAbstract
             ? BuildError(
-                $"{candidate.FullName} is abstract, and the generated test builds the event it handles; "
+                $"{eventOfKind.Candidate.FullName} is abstract, and the generated test builds the event it handles; "
                 + "pass a concrete event")
-            : candidate;
+            : eventOfKind;
 
-    private static Result<EventDeclaration> BuildDeclaration(EventCandidate candidate)
+    private static Result<EventDeclaration> BuildDeclaration(EventOfKind eventOfKind)
     {
+        var (candidate, kind) = eventOfKind;
         var declaration = candidate.Declaration;
         var memberSamples = new MemberSamples(candidate.Project);
         var samples = declaration.PositionalParameters
@@ -139,7 +140,7 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
             (_, 0) => new EventDeclaration(
                 declaration.Name,
                 declaration.Namespace,
-                candidate.Kind.Value,
+                kind,
                 candidate.Project.ModuleName,
                 [.. samples.Select(member => member.Sample.Value)]),
             _ => BuildError(
@@ -211,4 +212,6 @@ internal sealed class EventReader(IReadOnlyList<SourceProject> projects)
                 ? !Project.IsContracts && Project.ModuleName == moduleName
                 : Project.IsContracts && Project.ModuleName != moduleName;
     }
+
+    private sealed record EventOfKind(EventCandidate Candidate, EventKind Kind);
 }

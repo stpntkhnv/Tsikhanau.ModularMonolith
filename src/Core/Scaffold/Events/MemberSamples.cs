@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Sources;
-using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Events;

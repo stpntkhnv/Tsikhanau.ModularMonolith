@@ -1,4 +1,4 @@
-namespace Tsikhanau.Monolith.Scaffold.Templates;
+namespace Tsikhanau.Monolith.Scaffold.Names;
 
 internal static class EmittedNames
 {

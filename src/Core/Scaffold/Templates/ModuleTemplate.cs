@@ -12,8 +12,6 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
 
     private String Namespace => module.Namespace;
 
-    private String PersistenceNamespace => $"{Namespace}.Infrastructure.Persistence";
-
     private String SettingsNamespace => $"{Namespace}.Settings";
 
     private ModuleProjects Projects => module.Projects;
@@ -78,8 +76,8 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
     private IReadOnlyList<String> ModuleClassUsings =>
     [
         "Microsoft.Extensions.DependencyInjection",
-        $"{Namespace}.Infrastructure",
-        PersistenceNamespace,
+        module.InfrastructureNamespace,
+        module.PersistenceNamespace,
         "Tsikhanau.Monolith.Api.Modules",
         "Tsikhanau.Monolith.Infrastructure.Modules",
         .. SettingsUsings,
@@ -117,7 +115,7 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
 
     private String DbContext =>
         CodeFile(
-            PersistenceNamespace,
+            module.PersistenceNamespace,
             ["Microsoft.EntityFrameworkCore", "Tsikhanau.Monolith.Infrastructure.Persistence"],
             $$"""
             {{DbContextDeclaration}}
@@ -139,7 +137,10 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
              """);
 
     private String DesignTimeFactory =>
-        CodeFile(PersistenceNamespace, ["Tsikhanau.Monolith.Infrastructure.Persistence"], DesignTimeFactoryDeclaration);
+        CodeFile(
+            module.PersistenceNamespace,
+            ["Tsikhanau.Monolith.Infrastructure.Persistence"],
+            DesignTimeFactoryDeclaration);
 
     private String DesignTimeFactoryDeclaration =>
         FirstThatFits(
