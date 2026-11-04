@@ -36,25 +36,48 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
         }
 
         var file = Path.GetFileName(context.Tree.FilePath);
-        var fileStem = file.Split('.')[0];
+        var fileStem = GetFileStem(file);
+
+        foreach (var type in FindTypesOutOfPlace(ReadTopLevelTypes(context), fileStem))
+        {
+            ReportTypeOutOfPlace(context, type, file, fileStem);
+        }
+    }
+
+    private static String GetFileStem(String file) => file.Split('.')[0];
+
+    private static IReadOnlyList<TopLevelType> ReadTopLevelTypes(SyntaxTreeAnalysisContext context)
+    {
         var members = context.Tree
             .GetRoot(context.CancellationToken)
             .ChildNodes();
 
-        var types = CollectTypes(members, String.Empty)
+        return CollectTypes(members, String.Empty)
             .ToList();
+    }
 
-        var ownFamily = types
+    private static IEnumerable<TopLevelType> FindTypesOutOfPlace(IReadOnlyList<TopLevelType> types, String fileStem)
+    {
+        var ownNamespace = types
             .Where(type => type.Name == fileStem)
             .Select(type => type.Namespace)
             .FirstOrDefault();
 
-        foreach (var type in types.Where(type => type.Name != fileStem || type.Namespace != ownFamily))
-        {
-            var place = type.Name == fileStem ? DescribeOwnFile(type) : $"{type.Name}.cs";
-            context.ReportDiagnostic(Diagnostic.Create(Rule, type.Identifier.GetLocation(), type.Name, file, place));
-        }
+        return types.Where(type => type.Name != fileStem || type.Namespace != ownNamespace);
     }
+
+    private static void ReportTypeOutOfPlace(
+        SyntaxTreeAnalysisContext context,
+        TopLevelType type,
+        String file,
+        String fileStem)
+    {
+        var place = DescribePlace(type, fileStem);
+        context.ReportDiagnostic(Diagnostic.Create(Rule, type.Identifier.GetLocation(), type.Name, file, place));
+    }
+
+    private static String DescribePlace(TopLevelType type, String fileStem) =>
+        type.Name == fileStem ? DescribeOwnFile(type) : $"{type.Name}.cs";
 
     private static String DescribeOwnFile(TopLevelType type) =>
         type.Namespace.Length == 0

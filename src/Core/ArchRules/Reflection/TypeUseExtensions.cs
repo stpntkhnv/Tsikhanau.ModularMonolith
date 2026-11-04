@@ -4,7 +4,7 @@ namespace Tsikhanau.Monolith.ArchRules.Reflection;
 
 internal static class TypeUseExtensions
 {
-    private const BindingFlags DeclaredMembers =
+    public const BindingFlags DeclaredMembers =
         BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
         | BindingFlags.DeclaredOnly;
 

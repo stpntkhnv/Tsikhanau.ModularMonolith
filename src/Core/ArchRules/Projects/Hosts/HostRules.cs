@@ -41,9 +41,9 @@ public static class HostRules
     }
 
     private static IReadOnlyList<String> ReadModulesAddedBy(Assembly hostAssembly) =>
-        CecilAssemblies.Read([hostAssembly], _ => true, ReadModulesAddedIn);
+        CecilAssemblies.Read([hostAssembly], _ => true, ReadAddModuleTypeArguments);
 
-    private static IEnumerable<String> ReadModulesAddedIn(TypeDefinition type) =>
+    private static IEnumerable<String> ReadAddModuleTypeArguments(TypeDefinition type) =>
         type.BodyInstructions
             .Select(instruction => instruction.Operand)
             .OfType<GenericInstanceMethod>()

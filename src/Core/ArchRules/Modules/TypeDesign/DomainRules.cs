@@ -20,10 +20,6 @@ public static class DomainRules
 {
     private const BindingFlags InstanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-    private const BindingFlags DeclaredMembers =
-        BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-        | BindingFlags.DeclaredOnly;
-
     private static readonly HashSet<Type> ClockTypes = [typeof(TimeProvider), typeof(Stopwatch)];
 
     private static readonly HashSet<String> ClockTypeNames = [.. ClockTypes.Select(type => type.FullNameOrName)];
@@ -143,15 +139,15 @@ public static class DomainRules
         return CecilAssemblies.Read(
             module.Assemblies,
             type => domainTypeNames.Contains(type.TopLevelType.FullName),
-            ReadForbiddenReferencesOf);
+            ReadMethodBodies);
     }
 
-    private static IEnumerable<String> ReadForbiddenReferencesOf(TypeDefinition type) =>
+    private static IEnumerable<String> ReadMethodBodies(TypeDefinition type) =>
         type.Methods
             .Where(method => method.HasBody)
-            .SelectMany(GetForbiddenReferencesFrom);
+            .SelectMany(GetForbiddenCallsAndClockReads);
 
-    private static IEnumerable<String> GetForbiddenReferencesFrom(MethodDefinition method)
+    private static IEnumerable<String> GetForbiddenCallsAndClockReads(MethodDefinition method)
     {
         var methodName = $"{method.DeclaringType.FullName}::{method.Name}";
         IReadOnlyList<Object> operands = [.. method.Body.Instructions.Select(instruction => instruction.Operand)];
@@ -198,7 +194,7 @@ public static class DomainRules
     private static HashSet<MethodInfo> GetAccessors(Type type) =>
     [
         .. type
-            .GetProperties(DeclaredMembers)
+            .GetProperties(TypeUseExtensions.DeclaredMembers)
             .SelectMany(property => property.GetAccessors(nonPublic: true)),
     ];
 

@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Tsikhanau.Monolith.Analyzers.Tests.Running;
 
@@ -38,6 +39,19 @@ internal static class AnalyzerRunner
 
         return diagnostics
             .Select(diagnostic => diagnostic.GetMessage(CultureInfo.InvariantCulture))
+            .ToList();
+    }
+
+    public static async Task<IReadOnlyList<String>> GetReportedDiagnosticsAsync(
+        DiagnosticAnalyzer analyzer,
+        String source,
+        String path = "")
+    {
+        var diagnostics = await GetDiagnosticsAsync(analyzer, source, path);
+
+        return diagnostics
+            .OrderBy(diagnostic => diagnostic.Location.SourceSpan.Start)
+            .Select(DescribeDiagnostic)
             .ToList();
     }
 
@@ -104,6 +118,17 @@ internal static class AnalyzerRunner
 
     private static String DescribeError(Diagnostic diagnostic) =>
         $"line {GetLineNumber(diagnostic)}: {diagnostic.Id} {diagnostic.GetMessage(CultureInfo.InvariantCulture)}";
+
+    private static String DescribeDiagnostic(Diagnostic diagnostic)
+    {
+        var span = DescribeSpan(diagnostic.Location.GetLineSpan());
+        return $"{diagnostic.Id} {span} {diagnostic.GetMessage(CultureInfo.InvariantCulture)}";
+    }
+
+    private static String DescribeSpan(FileLinePositionSpan span) =>
+        $"{DescribePosition(span.StartLinePosition)}-{DescribePosition(span.EndLinePosition)}";
+
+    private static String DescribePosition(LinePosition position) => $"{position.Line + 1}:{position.Character + 1}";
 
     private static Int32 GetLineNumber(Diagnostic diagnostic) =>
         diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1;

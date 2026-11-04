@@ -31,15 +31,17 @@ public sealed class StatementSpacingAnalyzer : DiagnosticAnalyzer
     }
 
     private static void AnalyzeBlock(SyntaxNodeAnalysisContext context) =>
-        Analyze(context, ((BlockSyntax)context.Node).Statements);
+        ReportCrowdedStatements(context, ((BlockSyntax)context.Node).Statements);
 
     private static void AnalyzeSwitchSection(SyntaxNodeAnalysisContext context) =>
-        Analyze(context, ((SwitchSectionSyntax)context.Node).Statements);
+        ReportCrowdedStatements(context, ((SwitchSectionSyntax)context.Node).Statements);
 
     private static void AnalyzeGlobalStatements(SyntaxNodeAnalysisContext context) =>
-        Analyze(context, GetGlobalStatements((CompilationUnitSyntax)context.Node));
+        ReportCrowdedStatements(context, GetGlobalStatements((CompilationUnitSyntax)context.Node));
 
-    private static void Analyze(SyntaxNodeAnalysisContext context, IReadOnlyList<StatementSyntax> statements)
+    private static void ReportCrowdedStatements(
+        SyntaxNodeAnalysisContext context,
+        IReadOnlyList<StatementSyntax> statements)
     {
         var crowdedPairs = statements
             .Zip(statements.Skip(1), (current, next) => (Current: current, Next: next))

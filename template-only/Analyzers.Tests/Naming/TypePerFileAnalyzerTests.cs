@@ -17,6 +17,18 @@ public sealed class TypePerFileAnalyzerTests
         "Type Foo does not belong in Foo.cs: one type per file, named after the type, so move it to a Foo.cs of its "
         + $"own in the folder of namespace Two. {RuleLine}";
 
+    private const String MoveBarMessage =
+        "Type Bar does not belong in Foo.Part.cs: one type per file, named after the type, so move it to Bar.cs. "
+        + RuleLine;
+
+    private const String MoveFooToItsNamespaceMessage =
+        "Type Foo does not belong in Foo.Part.cs: one type per file, named after the type, so move it to a Foo.cs of "
+        + $"its own in the folder of namespace Two.Deep. {RuleLine}";
+
+    private const String MoveFooToTheGlobalNamespaceMessage =
+        "Type Foo does not belong in Foo.Part.cs: one type per file, named after the type, so move it to a Foo.cs of "
+        + $"its own in the folder of the global namespace. {RuleLine}";
+
     public static TheoryData<String> SecondTypes =>
     [
         "public sealed class Bar;",
@@ -97,6 +109,38 @@ public sealed class TypePerFileAnalyzerTests
             "src/Foo.cs");
 
         messages.ShouldBe([SameNameMessage]);
+    }
+
+    [Fact]
+    public async Task Diagnostic_carries_its_id_the_span_of_the_type_name_and_the_place_the_type_belongs()
+    {
+        var diagnostics = await AnalyzerRunner.GetReportedDiagnosticsAsync(
+            new TypePerFileAnalyzer(),
+            """
+            namespace One
+            {
+                public sealed class Foo;
+                public sealed class Bar;
+            }
+
+            namespace Two
+            {
+                namespace Deep
+                {
+                    public sealed class Foo<T>;
+                }
+            }
+
+            public delegate void Foo();
+            """,
+            "src/Foo.Part.cs");
+
+        diagnostics.ShouldBe(
+        [
+            $"TS0009 4:25-4:28 {MoveBarMessage}",
+            $"TS0009 11:29-11:32 {MoveFooToItsNamespaceMessage}",
+            $"TS0009 15:22-15:25 {MoveFooToTheGlobalNamespaceMessage}",
+        ]);
     }
 
     [Fact]
