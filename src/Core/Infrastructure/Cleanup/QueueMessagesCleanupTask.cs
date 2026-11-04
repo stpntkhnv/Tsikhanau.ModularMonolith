@@ -1,10 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tsikhanau.Monolith.Application.Modules;
-using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Outbox;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
 namespace Tsikhanau.Monolith.Infrastructure.Cleanup;
 
@@ -21,18 +19,11 @@ public sealed class QueueMessagesCleanupTask<TModule>(
 
     private const String FailedOn = "failed_on";
 
-    private static readonly String[] Tables =
-    [
-        OutboxMessage.Table,
-        InboxMessage.Table,
-        InternalCommandMessage.Table,
-    ];
-
     public async Task<Int32> DeleteExpiredAsync(DateTimeOffset deleteBefore, CancellationToken cancellationToken)
     {
         var deleteFailedBefore = timeProvider.GetUtcNow() - options.Value.KeepFailedFor;
         var deletedCount = 0;
-        foreach (var table in Tables)
+        foreach (var table in QueueTables.Names)
         {
             deletedCount += await DeleteFromAsync(table, ProcessedOn, deleteBefore, cancellationToken);
             deletedCount += await DeleteFromAsync(table, FailedOn, deleteFailedBefore, cancellationToken);

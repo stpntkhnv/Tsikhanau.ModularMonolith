@@ -10,6 +10,7 @@ using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Outbox;
 using Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 using Tsikhanau.Monolith.Infrastructure.Persistence.ValueConversion;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Tsikhanau.Monolith.Shared.Reflection;
 
 namespace Tsikhanau.Monolith.Infrastructure.Persistence;
@@ -26,9 +27,7 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
-        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
-        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
-        modelBuilder.ApplyConfiguration(new InternalCommandMessageConfiguration());
+        MapQueueTables(modelBuilder);
         ConfigureModule(modelBuilder);
         ConfigureAggregates(modelBuilder);
         NeverGenerateEntityKeys(modelBuilder);
@@ -68,6 +67,16 @@ public abstract class ModuleDbContext(DbContextOptions dbContextOptions) : DbCon
         type
             .GetInterfacesBuiltFrom(typeof(IValueObject<,>))
             .Select(contract => (type, contract.GenericTypeArguments[1]));
+
+    private static void MapQueueTables(ModelBuilder modelBuilder)
+    {
+        QueueMessageMapping.Map<OutboxMessage>(modelBuilder, OutboxMessage.Table, OutboxMessage.OrderProperty);
+        QueueMessageMapping.Map<InboxMessage>(modelBuilder, InboxMessage.Table, InboxMessage.OrderProperty);
+        QueueMessageMapping.Map<InternalCommandMessage>(
+            modelBuilder,
+            InternalCommandMessage.Table,
+            InternalCommandMessage.OrderProperty);
+    }
 
     private static void ConfigureAggregates(ModelBuilder modelBuilder) =>
         modelBuilder.Model

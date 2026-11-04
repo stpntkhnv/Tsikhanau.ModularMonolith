@@ -37,7 +37,7 @@ public sealed class InboxPump<TModule>(
 {
     protected override String Table => InboxMessage.Table;
 
-    protected override String OrderColumn => "occurred_on";
+    protected override String OrderColumn => InboxMessage.OrderColumn;
 
     protected override Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,

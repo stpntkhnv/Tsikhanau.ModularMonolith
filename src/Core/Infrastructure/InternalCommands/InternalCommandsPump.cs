@@ -34,7 +34,7 @@ public sealed class InternalCommandsPump<TModule>(
 {
     protected override String Table => InternalCommandMessage.Table;
 
-    protected override String OrderColumn => "enqueued_on";
+    protected override String OrderColumn => InternalCommandMessage.OrderColumn;
 
     protected override Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,

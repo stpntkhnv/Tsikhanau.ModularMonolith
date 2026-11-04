@@ -1,18 +1,14 @@
 using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Tsikhanau.Monolith.Infrastructure.Inbox;
-using Tsikhanau.Monolith.Infrastructure.InternalCommands;
 using Tsikhanau.Monolith.Infrastructure.Modules;
-using Tsikhanau.Monolith.Infrastructure.Outbox;
+using Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 using Xunit;
 
 namespace Tsikhanau.Monolith.Testing.Queues;
 
 public static class UnsettledMessages
 {
-    private static readonly String[] Tables = [OutboxMessage.Table, InboxMessage.Table, InternalCommandMessage.Table];
-
     public static async Task<IReadOnlyList<UnsettledMessage>> ReadAsync(IServiceProvider serviceProvider)
     {
         var unsettledMessages = new List<UnsettledMessage>();
@@ -39,7 +35,7 @@ public static class UnsettledMessages
     private static String BuildSql(ModuleDescriptor module) =>
         String.Join(
             "\nUNION ALL\n",
-            Tables.Select(table => $"""
+            QueueTables.Names.Select(table => $"""
                 SELECT '{module.Name}' AS "Module", '{table}' AS "Table", type AS "Type",
                        attempts AS "Attempts", coalesce(last_error, '') AS "LastError"
                 FROM "{module.Schema}".{table}

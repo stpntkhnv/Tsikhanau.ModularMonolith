@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Tsikhanau.Monolith.Infrastructure.Persistence.Naming;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Infrastructure.Persistence;
@@ -18,7 +19,7 @@ public static class OptionalPropertyExtensions
             builder.Ignore(propertyName);
             return builder
                 .Property<TValue?>(BuildFieldName(propertyName))
-                .HasColumnName(BuildColumnName(propertyName));
+                .HasColumnName(ColumnNames.Of(propertyName));
         }
     }
 
@@ -29,7 +30,4 @@ public static class OptionalPropertyExtensions
 
     private static String BuildFieldName(String propertyName) =>
         $"_{JsonNamingPolicy.CamelCase.ConvertName(propertyName)}";
-
-    private static String BuildColumnName(String propertyName) =>
-        JsonNamingPolicy.SnakeCaseLower.ConvertName(propertyName);
 }

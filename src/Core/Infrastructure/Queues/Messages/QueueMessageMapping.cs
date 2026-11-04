@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Tsikhanau.Monolith.Infrastructure.Queues.Secrets;
 
 namespace Tsikhanau.Monolith.Infrastructure.Queues.Messages;
 
@@ -11,9 +9,10 @@ internal static class QueueMessageMapping
     private const Double IgnoreTableSize = 0;
     private const Int32 DeadRowsBeforeVacuum = 10_000;
 
-    public static void Map<TMessage>(EntityTypeBuilder<TMessage> builder, String table, String orderProperty)
+    public static void Map<TMessage>(ModelBuilder modelBuilder, String table, String orderProperty)
         where TMessage : QueueMessage
     {
+        var builder = modelBuilder.Entity<TMessage>();
         builder.ToTable(table);
         builder.HasKey(message => message.Id);
 

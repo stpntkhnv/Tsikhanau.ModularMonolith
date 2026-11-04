@@ -38,7 +38,7 @@ public sealed class OutboxPump<TModule>(
 {
     protected override String Table => OutboxMessage.Table;
 
-    protected override String OrderColumn => "occurred_on";
+    protected override String OrderColumn => OutboxMessage.OrderColumn;
 
     protected override Task<Result<Unit>> HandleAsync(
         IServiceProvider serviceProvider,
