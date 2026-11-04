@@ -7,10 +7,10 @@ internal static class TypeDefinitionExtensions
 {
     extension(TypeDefinition type)
     {
+        public IEnumerable<MethodDefinition> MethodsWithBodies => type.Methods.Where(method => method.HasBody);
+
         public IEnumerable<Instruction> BodyInstructions =>
-            type.Methods
-                .Where(method => method.HasBody)
-                .SelectMany(method => method.Body.Instructions);
+            type.MethodsWithBodies.SelectMany(method => method.Body.Instructions);
 
         public TypeDefinition TopLevelType =>
             type.DeclaringType is { } declaringType ? declaringType.TopLevelType : type;

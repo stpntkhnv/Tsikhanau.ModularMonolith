@@ -38,7 +38,7 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
         var file = Path.GetFileName(context.Tree.FilePath);
         var fileStem = GetFileStem(file);
 
-        foreach (var type in FindTypesOutOfPlace(ReadTopLevelTypes(context), fileStem))
+        foreach (var type in GetTypesOutOfPlace(ReadTopLevelTypes(context), fileStem))
         {
             ReportTypeOutOfPlace(context, type, file, fileStem);
         }
@@ -56,7 +56,7 @@ public sealed class TypePerFileAnalyzer : DiagnosticAnalyzer
             .ToList();
     }
 
-    private static IEnumerable<TopLevelType> FindTypesOutOfPlace(IReadOnlyList<TopLevelType> types, String fileStem)
+    private static IEnumerable<TopLevelType> GetTypesOutOfPlace(IReadOnlyList<TopLevelType> types, String fileStem)
     {
         var ownNamespace = types
             .Where(type => type.Name == fileStem)

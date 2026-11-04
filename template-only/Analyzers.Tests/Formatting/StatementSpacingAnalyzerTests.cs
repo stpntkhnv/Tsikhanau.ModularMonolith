@@ -74,7 +74,7 @@ public sealed class StatementSpacingAnalyzerTests
     }
 
     [Fact]
-    public async Task Diagnostic_marks_the_first_token_of_the_crowded_statement_in_globals_blocks_and_switch_sections()
+    public async Task First_token_of_a_crowded_statement_is_marked_in_top_level_statements_blocks_and_switch_sections()
     {
         var diagnostics = await AnalyzerRunner.GetReportedDiagnosticsAsync(
             new StatementSpacingAnalyzer(),

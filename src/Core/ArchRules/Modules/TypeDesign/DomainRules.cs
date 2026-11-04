@@ -124,13 +124,15 @@ public static class DomainRules
 
     private static IEnumerable<String> ReadClockUses(ArchModule module, IReadOnlyList<Type> domainTypes) =>
     [
-        .. ReadForbiddenReferences(module, domainTypes),
+        .. ReadForbiddenCallsAndClockReads(module, domainTypes),
         .. domainTypes
             .Where(type => !type.IsCompilerGenerated)
             .SelectMany(GetClockTypedMembers),
     ];
 
-    private static IReadOnlyList<String> ReadForbiddenReferences(ArchModule module, IReadOnlyList<Type> domainTypes)
+    private static IReadOnlyList<String> ReadForbiddenCallsAndClockReads(
+        ArchModule module,
+        IReadOnlyList<Type> domainTypes)
     {
         var domainTypeNames = domainTypes
             .Select(type => type.FullName)
@@ -139,13 +141,8 @@ public static class DomainRules
         return CecilAssemblies.Read(
             module.Assemblies,
             type => domainTypeNames.Contains(type.TopLevelType.FullName),
-            ReadMethodBodies);
+            type => type.MethodsWithBodies.SelectMany(GetForbiddenCallsAndClockReads));
     }
-
-    private static IEnumerable<String> ReadMethodBodies(TypeDefinition type) =>
-        type.Methods
-            .Where(method => method.HasBody)
-            .SelectMany(GetForbiddenCallsAndClockReads);
 
     private static IEnumerable<String> GetForbiddenCallsAndClockReads(MethodDefinition method)
     {
