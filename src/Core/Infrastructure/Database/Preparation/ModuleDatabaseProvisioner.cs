@@ -136,6 +136,7 @@ internal sealed class ModuleDatabaseProvisioner
         foreach (var login in logins)
         {
             await provisioner.EnsureLoginAsync(login);
+            await provisioner.EnsureSchemaAsync(login);
             await provisioner.ValidateAsync(login);
         }
 
@@ -193,9 +194,10 @@ internal sealed class ModuleDatabaseProvisioner
                 + exception.MessageText,
                 exception);
         }
-
-        await ExecuteAsync($"CREATE SCHEMA IF NOT EXISTS \"{login.Schema}\" AUTHORIZATION \"{login.Name}\"");
     }
+
+    private Task EnsureSchemaAsync(ModuleLogin login) =>
+        ExecuteAsync($"CREATE SCHEMA IF NOT EXISTS \"{login.Schema}\" AUTHORIZATION \"{login.Name}\"");
 
     private async Task ValidateAsync(ModuleLogin login)
     {

@@ -42,7 +42,7 @@ public sealed class InternalCommandsPump<TModule>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
         internalCommandRegistry
-            .FindKnownType(message.Type)
+            .GetKnownType(message.Type)
             .Bind(type => MessageSerializer.Deserialize<InternalCommand>(message.Payload, type))
             .Tap(_ => MarkProcessed(message, processedOn))
             .BindAsync(command => SendAsync(command, serviceProvider, cancellationToken));

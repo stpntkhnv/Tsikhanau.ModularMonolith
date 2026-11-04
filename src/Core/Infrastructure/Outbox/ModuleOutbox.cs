@@ -18,7 +18,6 @@ public sealed class ModuleOutbox<TModule>(
     public void Add(IntegrationEvent integrationEvent)
     {
         var eventType = integrationEvent.GetType();
-        integrationEventRegistry.Register(eventType);
         moduleContext.DbContext
             .Set<OutboxMessage>()
             .Add(new OutboxMessage

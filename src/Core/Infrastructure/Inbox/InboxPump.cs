@@ -64,7 +64,7 @@ public sealed class InboxPump<TModule>(
         InboxMessage message,
         CancellationToken cancellationToken) =>
         integrationEventRegistry
-            .FindKnownType(message.Type)
+            .GetKnownType(message.Type)
             .Ensure(_ => IsSubscribed(message), _ => MessagingErrors.UnsubscribedType(message.Type))
             .Bind(type => MessageSerializer.Deserialize<IntegrationEvent>(message.Payload, type))
             .Ensure(

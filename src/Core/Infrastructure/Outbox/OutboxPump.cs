@@ -45,7 +45,7 @@ public sealed class OutboxPump<TModule>(
         DateTimeOffset processedOn,
         CancellationToken cancellationToken) =>
         integrationEventRegistry
-            .FindKnownType(message.Type)
+            .GetKnownType(message.Type)
             .BindAsync(_ => DeliverAndMarkProcessedAsync(dbContext, message, processedOn, cancellationToken));
 
     protected override Boolean IsSecretType(String type) => integrationEventRegistry.ContainsSecrets(type);

@@ -36,10 +36,23 @@ internal sealed class QueueSampler(
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await SampleAsync(stoppingToken);
-            await Task.Delay(SampleInterval, timeProvider, stoppingToken);
+            try
+            {
+                await SampleAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await WaitForNextSampleAsync(stoppingToken);
         }
     }
+
+    private async Task WaitForNextSampleAsync(CancellationToken stoppingToken) =>
+        await Task
+            .Delay(SampleInterval, timeProvider, stoppingToken)
+            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
     private static String BuildSampleSql(String schema, String queue) =>
         $"""

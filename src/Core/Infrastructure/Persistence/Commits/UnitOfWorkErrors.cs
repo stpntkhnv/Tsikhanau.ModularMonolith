@@ -12,4 +12,8 @@ public static class UnitOfWorkErrors
 
     public static Error EventLoop(Int32 roundCount) =>
         Error.Unexpected(EventLoopCode, $"Domain events did not settle after {roundCount} rounds");
+
+    public static Boolean IsConcurrencyConflict(Error error) => error == ConcurrencyConflict;
+
+    public static Boolean IsEventLoop(Error error) => error.Code == EventLoopCode;
 }

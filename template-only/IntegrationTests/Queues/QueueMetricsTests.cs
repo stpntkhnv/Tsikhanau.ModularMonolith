@@ -685,7 +685,7 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
     }
 
     [Fact]
-    public async Task Stop_of_the_sampler_during_a_blocked_sample_ends_it_without_a_warning()
+    public async Task Stop_of_the_sampler_during_a_blocked_sample_ends_its_loop_without_an_exception_or_a_warning()
     {
         var capturingLoggerProvider = new CapturingLoggerProvider();
         await using var testModulesHost = await TestModulesHost.StartAsync(
@@ -705,16 +705,19 @@ public sealed class QueueMetricsTests(PostgresFixture postgresFixture)
                 SampleInterval,
                 () => IsObserved(metricRecorder, FailedInstrument, Pings, Outbox, 1));
 
-            await testModulesHost.Services
+            var queueSampler = testModulesHost.Services
                 .GetServices<IHostedService>()
                 .OfType<QueueSampler>()
-                .Single()
-                .StopAsync(CancellationToken);
+                .Single();
 
+            await queueSampler.StopAsync(CancellationToken);
+
+            var executionStatus = queueSampler.ExecuteTask?.Status;
             var samplerWarnings = capturingLoggerProvider.Entries
                 .Where(entry => entry.Level >= LogLevel.Warning && entry.Category.EndsWith(nameof(QueueSampler)))
                 .ToList();
 
+            executionStatus.ShouldBe(TaskStatus.RanToCompletion);
             samplerWarnings.ShouldBeEmpty();
         }
         finally

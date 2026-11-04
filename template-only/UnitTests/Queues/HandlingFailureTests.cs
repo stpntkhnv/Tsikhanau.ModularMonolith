@@ -26,6 +26,18 @@ public sealed class HandlingFailureTests
     }
 
     [Fact]
+    public void Only_the_conflict_the_unit_of_work_returns_is_retried_not_one_a_handler_builds_with_its_code()
+    {
+        var handlerConflict = Error.Conflict(UnitOfWorkErrors.ConcurrencyConflict.Code, "The handler found a conflict");
+
+        var unitOfWorkConflictFailure = HandlingFailure.From(UnitOfWorkErrors.ConcurrencyConflict);
+        var handlerConflictFailure = HandlingFailure.From(handlerConflict);
+
+        unitOfWorkConflictFailure.IsPermanent.ShouldBeFalse();
+        handlerConflictFailure.IsPermanent.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Failed_result_is_recorded_under_its_error_code_with_its_message()
     {
         var failure = HandlingFailure.From(Error.Unexpected("Tests.Glitch", "Something went wrong"));

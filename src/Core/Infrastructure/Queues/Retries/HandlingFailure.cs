@@ -48,8 +48,8 @@ internal readonly partial record struct HandlingFailure(
             Exception: null);
 
     private static Boolean IsTransient(Error error) =>
-        (error.Kind == ErrorKind.Unexpected && error.Code != UnitOfWorkErrors.EventLoopCode)
-        || error.Code == UnitOfWorkErrors.ConcurrencyConflict.Code;
+        (error.Kind == ErrorKind.Unexpected && !UnitOfWorkErrors.IsEventLoop(error))
+        || UnitOfWorkErrors.IsConcurrencyConflict(error);
 
     [GeneratedRegex(@"\A[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)*\z")]
     private static partial Regex CodePattern { get; }

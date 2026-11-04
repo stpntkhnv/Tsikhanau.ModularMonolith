@@ -39,7 +39,7 @@ public sealed class IntegrationEventRegistry
     public Boolean ContainsSecrets(Type eventType) =>
         _secretTypes.GetOrAdd(eventType, static type => type.ContainsSecrets);
 
-    internal Result<Type> FindKnownType(String name)
+    internal Result<Type> GetKnownType(String name)
     {
         var knownType = FindType(name);
         return knownType.HasValue

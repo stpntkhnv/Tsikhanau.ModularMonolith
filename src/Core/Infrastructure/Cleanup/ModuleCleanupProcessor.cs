@@ -22,27 +22,28 @@ public sealed class ModuleCleanupProcessor<TModule>(
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try
-            {
-                await moduleCleanup.RunOnceAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                CleanupLog.Failed(logger, typeof(TModule).Name, exception);
-            }
-
-            try
-            {
-                await Task.Delay(options.Value.Interval, timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
+            await CleanOrLogFailureAsync(stoppingToken);
+            await WaitForNextRoundAsync(stoppingToken);
         }
     }
+
+    private async Task CleanOrLogFailureAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await moduleCleanup.RunOnceAsync(stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            CleanupLog.Failed(logger, typeof(TModule).Name, exception);
+        }
+    }
+
+    private async Task WaitForNextRoundAsync(CancellationToken stoppingToken) =>
+        await Task
+            .Delay(options.Value.Interval, timeProvider, stoppingToken)
+            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 }

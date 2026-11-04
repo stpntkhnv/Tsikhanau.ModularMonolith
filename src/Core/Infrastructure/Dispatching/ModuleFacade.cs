@@ -12,19 +12,13 @@ public abstract class ModuleFacade<TModule>(IServiceScopeFactory serviceScopeFac
 {
     private const Int32 AttemptsOnConflict = 3;
 
-    protected async Task<Result<TResult>> SendAsync<TResult>(
+    protected Task<Result<TResult>> SendAsync<TResult>(
         ICommand<TResult> command,
         CancellationToken cancellationToken)
-        where TResult : notnull
-    {
-        var result = await SendInFreshScopeAsync(command, cancellationToken);
-        for (var attempt = 1; attempt < GetMaxAttempts(command) && IsConcurrencyConflict(result); attempt++)
-        {
-            result = await SendInFreshScopeAsync(command, cancellationToken);
-        }
-
-        return result;
-    }
+        where TResult : notnull =>
+        command is IRetryOnConflict
+            ? SendRetryingOnConflictAsync(command, cancellationToken)
+            : SendInFreshScopeAsync(command, cancellationToken);
 
     protected async Task<Result<TResult>> QueryAsync<TResult>(
         IQuery<TResult> query,
@@ -35,6 +29,20 @@ public abstract class ModuleFacade<TModule>(IServiceScopeFactory serviceScopeFac
         return await scope.ServiceProvider
             .GetRequiredService<ModuleDispatcher<TModule>>()
             .QueryAsync(query, cancellationToken);
+    }
+
+    private async Task<Result<TResult>> SendRetryingOnConflictAsync<TResult>(
+        ICommand<TResult> command,
+        CancellationToken cancellationToken)
+        where TResult : notnull
+    {
+        var result = await SendInFreshScopeAsync(command, cancellationToken);
+        for (var attempt = 1; attempt < AttemptsOnConflict && IsConcurrencyConflict(result); attempt++)
+        {
+            result = await SendInFreshScopeAsync(command, cancellationToken);
+        }
+
+        return result;
     }
 
     private async Task<Result<TResult>> SendInFreshScopeAsync<TResult>(
@@ -48,11 +56,7 @@ public abstract class ModuleFacade<TModule>(IServiceScopeFactory serviceScopeFac
             .SendAsync(command, cancellationToken);
     }
 
-    private static Int32 GetMaxAttempts<TResult>(ICommand<TResult> command)
-        where TResult : notnull =>
-        command is IRetryOnConflict ? AttemptsOnConflict : 1;
-
     private static Boolean IsConcurrencyConflict<TResult>(Result<TResult> result)
         where TResult : notnull =>
-        result.IsFailure && result.Error == UnitOfWorkErrors.ConcurrencyConflict;
+        result.IsFailure && UnitOfWorkErrors.IsConcurrencyConflict(result.Error);
 }

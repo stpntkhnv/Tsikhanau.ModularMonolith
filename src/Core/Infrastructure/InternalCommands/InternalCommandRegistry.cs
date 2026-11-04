@@ -39,7 +39,7 @@ public sealed class InternalCommandRegistry<TModule>
 
     public Boolean ContainsSecrets(Type commandType) => _secretTypes.Contains(commandType);
 
-    internal Result<Type> FindKnownType(String name)
+    internal Result<Type> GetKnownType(String name)
     {
         var knownType = FindType(name);
         return knownType.HasValue
