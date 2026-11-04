@@ -41,6 +41,8 @@ public abstract class HostProcessTests<TEntryPoint, TAppFixture>(TAppFixture app
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
+    protected TAppFixture App { get; } = appFixture;
+
     [Fact]
     public async Task Failed_start_writes_a_critical_line_and_exits_with_an_error_code()
     {
@@ -81,7 +83,7 @@ public abstract class HostProcessTests<TEntryPoint, TAppFixture>(TAppFixture app
         using var takenPort = new TcpListener(IPAddress.Loopback, 0);
         takenPort.Start();
         var takenAddress = $"http://127.0.0.1:{((IPEndPoint)takenPort.LocalEndpoint).Port}";
-        var connectionString = new NpgsqlConnectionStringBuilder(appFixture.ConnectionString)
+        var connectionString = new NpgsqlConnectionStringBuilder(App.ConnectionString)
         {
             SslMode = SslMode.Disable,
         }.ConnectionString;
@@ -120,7 +122,7 @@ public abstract class HostProcessTests<TEntryPoint, TAppFixture>(TAppFixture app
         TestSettings
             .CreateEnvironmentVariables(
                 connectionString,
-                appFixture.ModuleSettings,
+                App.ModuleSettings,
                 CreateScenarioSettings(environmentName, urls, otlpEndpoint))
             .ForEach(variable => startInfo.Environment[variable.Key] = variable.Value);
 

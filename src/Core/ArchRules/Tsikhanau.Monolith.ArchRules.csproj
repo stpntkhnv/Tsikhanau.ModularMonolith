@@ -12,6 +12,7 @@
     <PackageReference Include="Mono.Cecil" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="TngTech.ArchUnitNET" />
+    <PackageReference Include="xunit.analyzers" PrivateAssets="all" />
     <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="xunit.v3.extensibility.core" />
   </ItemGroup>

@@ -3,6 +3,9 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Tsikhanau.Monolith.Infrastructure.Database.Settings;
+using Tsikhanau.Monolith.IntegrationTests.Modules.Pings;
+using Tsikhanau.Monolith.IntegrationTests.Modules.Pongs;
+using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 
@@ -12,11 +15,15 @@ internal static class TestHostEnvironment
 {
     public const String UrlsKey = "ASPNETCORE_URLS";
 
+    private static IEnumerable<KeyValuePair<String, String>> ModuleSettings =>
+        [.. new PingsTestSetup().Settings, .. new PongsTestSetup().Settings];
+
     public static Dictionary<String, String> Create(String connectionString) =>
         Create(connectionString, Environments.Production);
 
-    public static Dictionary<String, String> Create(String connectionString, String environmentName) =>
-        new()
+    public static Dictionary<String, String> Create(String connectionString, String environmentName)
+    {
+        var environment = new Dictionary<String, String>
         {
             ["ASPNETCORE_ENVIRONMENT"] = environmentName,
             ["DOTNET_ENVIRONMENT"] = environmentName,
@@ -27,9 +34,13 @@ internal static class TestHostEnvironment
             [TestSettings.BuildEnvironmentVariableName(DatabaseSettings.PrepareModeSetting)] = "OnStartup",
             [TestSettings.BuildEnvironmentVariableName(TestSettings.QueuesInBackgroundSetting)] = "true",
             [TestSettings.BuildEnvironmentVariableName(TestSettings.CleanupInBackgroundSetting)] = "true",
-            ["App__Modules__Pings__Limit"] = "10",
-            ["App__Modules__Pongs__Limit"] = "10",
         };
+
+        ModuleSettings.ForEach(
+            setting => environment[TestSettings.BuildEnvironmentVariableName(setting.Key)] = setting.Value);
+
+        return environment;
+    }
 
     public static async Task<String> CreateDatabaseAsync(String serverConnectionString, String prefix)
     {
