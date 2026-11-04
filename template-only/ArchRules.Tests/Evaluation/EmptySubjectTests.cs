@@ -49,8 +49,6 @@ public sealed class EmptySubjectTests
 
         public static String RootNamespace => "Acme";
 
-        public static String SolutionRoot => SolutionPaths.Root;
-
         public static Assembly HostAssembly => typeof(LegacyAppInputs).Assembly;
 
         public static EmptySubject EmptySubject => EmptySubject.Pass;
@@ -62,8 +60,6 @@ public sealed class EmptySubjectTests
 
         public static String RootNamespace => "Acme";
 
-        public static String SolutionRoot => SolutionPaths.Root;
-
         public static EmptySubject EmptySubject => EmptySubject.Pass;
     }
 
@@ -72,8 +68,6 @@ public sealed class EmptySubjectTests
         public static IReadOnlyList<ArchModule> Modules => [];
 
         public static String RootNamespace => "Acme";
-
-        public static String SolutionRoot => SolutionPaths.Root;
     }
 
     private sealed class LegacyAppEventNames : IntegrationEventNameTests<LegacyAppInputs>;

@@ -1,18 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <InternalsVisibleTo Include="Tsikhanau.Monolith.ArchRules" />
+    <InternalsVisibleTo Include="Tsikhanau.Monolith.IntegrationTests" />
     <InternalsVisibleTo Include="Tsikhanau.Monolith.UnitTests" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Api\Tsikhanau.Monolith.Api.csproj" />
     <ProjectReference Include="..\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="Respawn" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="xunit.v3.extensibility.core" />
   </ItemGroup>
 </Project>

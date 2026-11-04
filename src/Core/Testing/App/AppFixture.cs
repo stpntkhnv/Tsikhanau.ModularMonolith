@@ -42,6 +42,8 @@ public abstract class AppFixture<TEntryPoint> : IAsyncLifetime
 
     public String ModuleGroupName => ModuleLogins.GetGroupName(Services);
 
+    internal IEnumerable<KeyValuePair<String, String>> ModuleSettings => _moduleTestSetups.Settings;
+
     public HttpClient CreateClient() => _appFactory.Value.CreateClient();
 
     public Task ProcessQueuesAsync() => QueueDriver.ProcessAllAsync(Services);

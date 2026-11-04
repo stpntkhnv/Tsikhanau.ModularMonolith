@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using Tsikhanau.Monolith.Infrastructure.Database.Settings;
 using Tsikhanau.Monolith.Testing.App;
 using Tsikhanau.Monolith.Testing.Database;
 
@@ -21,11 +22,11 @@ internal static class TestHostEnvironment
             ["DOTNET_ENVIRONMENT"] = environmentName,
             [UrlsKey] = BuildUrl(GetFreePort()),
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = String.Empty,
-            ["ConnectionStrings__database"] = connectionString,
-            ["App__Database__LoginKey"] = TestSettings.LoginKey,
-            ["App__Database__PrepareMode"] = "OnStartup",
-            ["App__Queues__RunInBackground"] = "true",
-            ["App__Cleanup__RunInBackground"] = "true",
+            [TestSettings.ConnectionStringVariable] = connectionString,
+            [TestSettings.BuildEnvironmentVariableName(DatabaseSettings.LoginKeySetting)] = TestSettings.LoginKey,
+            [TestSettings.BuildEnvironmentVariableName(DatabaseSettings.PrepareModeSetting)] = "OnStartup",
+            [TestSettings.BuildEnvironmentVariableName(TestSettings.QueuesInBackgroundSetting)] = "true",
+            [TestSettings.BuildEnvironmentVariableName(TestSettings.CleanupInBackgroundSetting)] = "true",
             ["App__Modules__Pings__Limit"] = "10",
             ["App__Modules__Pongs__Limit"] = "10",
         };

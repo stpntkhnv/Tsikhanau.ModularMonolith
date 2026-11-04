@@ -6,7 +6,7 @@ public static class ProductionModules
 {
     public const String Placeholder = "(none)";
 
-    private const String NoModuleReason = "There are no production modules";
+    public const String NoModuleReason = "There are no production modules";
 
     private const String NoPairReason = "There are fewer than two production modules";
 

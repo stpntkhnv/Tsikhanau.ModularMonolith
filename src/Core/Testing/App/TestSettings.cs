@@ -8,16 +8,19 @@ public static class TestSettings
 {
     public const String LoginKey = "dHNpa2hhbmF1LW1vbm9saXRoLXRlc3QtbG9naW5rZXk=";
 
-    private const String QueuesInBackgroundSetting =
+    internal const String QueuesInBackgroundSetting =
         $"{QueueSettings.Section}:{nameof(QueueSettings.RunInBackground)}";
 
-    private const String CleanupInBackgroundSetting =
+    internal const String CleanupInBackgroundSetting =
         $"{CleanupSettings.Section}:{nameof(CleanupSettings.RunInBackground)}";
+
+    internal static String ConnectionStringVariable { get; } =
+        BuildEnvironmentVariableName(DatabaseConnectionStrings.Setting);
 
     public static IReadOnlyDictionary<String, String> CreateEnvironmentVariables(String connectionString) =>
         new Dictionary<String, String>
         {
-            [BuildEnvironmentVariableName(DatabaseConnectionStrings.Setting)] = connectionString,
+            [ConnectionStringVariable] = connectionString,
             [BuildEnvironmentVariableName(DatabaseSettings.LoginKeySetting)] = LoginKey,
             [BuildEnvironmentVariableName(QueuesInBackgroundSetting)] = "false",
             [BuildEnvironmentVariableName(CleanupInBackgroundSetting)] = "false",
@@ -37,5 +40,5 @@ public static class TestSettings
         return environmentVariables;
     }
 
-    private static String BuildEnvironmentVariableName(String key) => key.Replace(":", "__", StringComparison.Ordinal);
+    internal static String BuildEnvironmentVariableName(String key) => key.Replace(":", "__", StringComparison.Ordinal);
 }

@@ -26,6 +26,10 @@ noted_files=(
   src/Aspire/$name.AppHost/$name.AppHost.csproj
   src/Tests/IntegrationTests/Host/HostProcessTests.cs
   src/Tests/IntegrationTests/Host/TelemetrySourceTests.cs
+  src/Tests/IntegrationTests/Host/HostTests.cs
+  src/Tests/IntegrationTests/Host/TelemetryResourceTests.cs
+  src/Tests/IntegrationTests/Modules/ModuleSetupTests.cs
+  src/Tests/IntegrationTests/Modules/ModuleDatabaseAccessTests.cs
   src/Tests/ArchTests/Inputs/AppInputs.cs
   src/Tests/Testing.App/AppFixture.cs
 )

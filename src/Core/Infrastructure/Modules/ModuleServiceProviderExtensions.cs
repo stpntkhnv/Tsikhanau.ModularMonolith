@@ -6,12 +6,9 @@ namespace Tsikhanau.Monolith.Infrastructure.Modules;
 
 internal static class ModuleServiceProviderExtensions
 {
-    extension(IServiceProvider serviceProvider)
-    {
-        public NpgsqlDataSource ResolveDataSource(ModuleDescriptor module) =>
-            serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key);
+    public static NpgsqlDataSource ResolveDataSource(this IServiceProvider serviceProvider, ModuleDescriptor module) =>
+        serviceProvider.GetRequiredKeyedService<NpgsqlDataSource>(module.Key);
 
-        public ModuleDbContext ResolveDbContext(ModuleDescriptor module) =>
-            (ModuleDbContext)serviceProvider.GetRequiredService(module.DbContextType);
-    }
+    public static ModuleDbContext ResolveDbContext(this IServiceProvider serviceProvider, ModuleDescriptor module) =>
+        (ModuleDbContext)serviceProvider.GetRequiredService(module.DbContextType);
 }

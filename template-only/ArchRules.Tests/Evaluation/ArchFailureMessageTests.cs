@@ -4,7 +4,6 @@ using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Modules;
 using Tsikhanau.Monolith.ArchRules.Modules.TypeDesign;
 using Tsikhanau.Monolith.ArchRules.Tests.Fixtures;
-using Tsikhanau.Monolith.Testing.Modules;
 
 namespace Tsikhanau.Monolith.ArchRules.Tests.Evaluation;
 
@@ -83,8 +82,6 @@ public sealed class ArchFailureMessageTests : ArchRuleTests<FixtureInputs>
             [FixtureModules.Good, FixtureModules.Peer, FixtureModules.Bad];
 
         public static String RootNamespace => FixtureModules.RootNamespace;
-
-        public static String SolutionRoot => SolutionPaths.Root;
 
         public static EmptySubject EmptySubject => EmptySubject.Pass;
 
