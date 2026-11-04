@@ -36,12 +36,27 @@ internal static class TelemetryExtensions
     {
         if (HasOtlpEndpoint(builder.Configuration) && builder.Services.TryAddMarker<OtlpExporterMarker>())
         {
-            builder.Services
-                .AddOpenTelemetry()
-                .UseOtlpExporter();
+            builder.Services.UseOtlpExporterKeepingTheLoggerProviders();
         }
 
         return builder;
+    }
+
+    private static void UseOtlpExporterKeepingTheLoggerProviders(this IServiceCollection services)
+    {
+        var chosenLoggerProviders = services
+            .Where(IsLoggerProvider)
+            .ToList();
+
+        services
+            .AddOpenTelemetry()
+            .UseOtlpExporter();
+
+        services
+            .Where(IsLoggerProvider)
+            .Except(chosenLoggerProviders)
+            .ToList()
+            .ForEach(addedLoggerProvider => services.Remove(addedLoggerProvider));
     }
 
     private static void AddLogsMetricsAndTraces(this IHostApplicationBuilder builder)
@@ -86,6 +101,9 @@ internal static class TelemetryExtensions
 
     private static Boolean HasOtlpEndpoint(IConfiguration configuration) =>
         !String.IsNullOrWhiteSpace(configuration[OtlpEndpointKey]);
+
+    private static Boolean IsLoggerProvider(ServiceDescriptor descriptor) =>
+        descriptor.ServiceType == typeof(ILoggerProvider);
 }
 
 file sealed class TelemetryMarker;

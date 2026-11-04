@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Tsikhanau.Monolith.Api.Modules;
@@ -189,6 +190,29 @@ public sealed class MonolithHostTests(PostgresFixture postgresFixture)
         exitCode.ShouldBe(Done);
     }
 
+    [Fact]
+    public async Task Logging_providers_cleared_in_add_services_stay_cleared_when_the_otlp_endpoint_is_set()
+    {
+        using var environmentOverride = new EnvironmentOverride(
+            CreateEnvironment(ConnectionStringWithoutCredentials, Never, ClosedOtlpEndpoint));
+
+        var hostStarted = CreateHostStartedSource();
+
+        var hostRun = MonolithHost.RunAsync([], RecordingHostStart(ClearLoggingProviders, hostStarted));
+        var serviceProvider = await WaitUntilStartedAsync(hostRun, hostStarted.Task);
+        var loggerProviderNames = ReadLoggerProviderNames(serviceProvider);
+        var isCoreMeterExported = IsCoreMeterExported(serviceProvider);
+        StopApplication(serviceProvider);
+        var exitCode = await hostRun;
+
+        loggerProviderNames.ShouldBeEmpty();
+        isCoreMeterExported.ShouldBeTrue();
+        exitCode.ShouldBe(Done);
+    }
+
+    private static void ClearLoggingProviders(WebApplicationBuilder builder) =>
+        builder.Logging.ClearProviders();
+
     private static void AddServicesOfCore102Program(WebApplicationBuilder builder)
     {
         builder.AddServiceDefaults(AppDiagnostics.SourceName);
@@ -272,6 +296,12 @@ public sealed class MonolithHostTests(PostgresFixture postgresFixture)
         serviceProvider
             .GetServices<TService>()
             .Count();
+
+    private static IReadOnlyList<String> ReadLoggerProviderNames(IServiceProvider serviceProvider) =>
+        serviceProvider
+            .GetServices<ILoggerProvider>()
+            .Select(loggerProvider => loggerProvider.GetType().Name)
+            .ToList();
 
     private static Boolean IsCoreMeterExported(IServiceProvider serviceProvider) =>
         serviceProvider

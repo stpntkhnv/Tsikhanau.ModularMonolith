@@ -61,6 +61,21 @@ public sealed class ProgramEditTests
         edited.ShouldContain($"{AddServicesBody}{BuildCall(earlier)}{BuildCall(later)}}}\n", Case.Sensitive);
     }
 
+    [Theory]
+    [InlineData("    builder.Services.AddCors();\n")]
+    [InlineData("\n")]
+    public void Module_call_goes_right_after_the_brace_when_the_body_opens_with_another_line(String firstLine)
+    {
+        var tags = SampleModules.Create("Tags");
+        var program = CreateProgram(Insert(FrozenPrograms.Core103, AddServicesBody, firstLine + BuildCall("Notes")));
+
+        var edited = ReadText(ProgramEdit.AddModule(program, tags));
+
+        edited.ShouldContain(
+            $"{AddServicesBody}{BuildCall("Tags")}{firstLine}{BuildCall("Notes")}}}\n",
+            Case.Sensitive);
+    }
+
     [Fact]
     public void Program_of_core_102_gets_the_module_call_after_its_platform_call()
     {
