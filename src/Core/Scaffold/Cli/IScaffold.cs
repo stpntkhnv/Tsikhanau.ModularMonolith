@@ -5,7 +5,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Cli;
 
-internal interface IScaffoldCommand
+internal interface IScaffold
 {
     Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem);
 }

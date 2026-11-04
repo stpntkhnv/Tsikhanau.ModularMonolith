@@ -9,7 +9,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Modules;
 
-internal sealed class ModuleCommand(String name, Boolean hasSettings) : IScaffoldCommand
+internal sealed class ModuleScaffold(String name, Boolean hasSettings) : IScaffold
 {
     private const String MigrationName = "Initial";
 

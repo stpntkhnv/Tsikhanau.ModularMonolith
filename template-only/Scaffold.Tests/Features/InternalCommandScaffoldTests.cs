@@ -6,7 +6,7 @@ using Tsikhanau.Monolith.Scaffold.Tests.Samples;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Features;
 
-public sealed class InternalCommandCommandTests : IAsyncLifetime
+public sealed class InternalCommandScaffoldTests : IAsyncLifetime
 {
     private const String RolledBack = "files scaffold created are deleted, files it changed are back as they were";
 

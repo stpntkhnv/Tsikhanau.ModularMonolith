@@ -44,21 +44,21 @@ internal static class FeatureCommandLine
         ["delete"] = EndpointMethod.Delete,
     };
 
-    public static Result<IScaffoldCommand> Parse(IReadOnlyList<String> arguments) =>
+    public static Result<IScaffold> Parse(IReadOnlyList<String> arguments) =>
         ParseNamesAndOptions(arguments)
             .MapError(error => Error.Failure(error.Code, $"{error.Message}; usage: {Synopsis}"));
 
-    private static Result<IScaffoldCommand> ParseNamesAndOptions(IReadOnlyList<String> arguments) =>
+    private static Result<IScaffold> ParseNamesAndOptions(IReadOnlyList<String> arguments) =>
         arguments switch
         {
             [var moduleName, var featureName, ..] when AreNames(moduleName, featureName) =>
                 ParseOptions(ImmutableDictionary<String, String>.Empty, [.. arguments.Skip(2)])
-                    .Bind(options => CreateCommand(moduleName, featureName, options)),
-            _ => BuildUsageError("feature takes a module name and a feature name, then its options"),
+                    .Bind(options => CreateScaffold(moduleName, featureName, options)),
+            _ => CommandLineWords.BuildUsageError("feature takes a module name and a feature name, then its options"),
         };
 
     private static Boolean AreNames(String moduleName, String featureName) =>
-        ScaffoldCommandLine.IsName(moduleName) && ScaffoldCommandLine.IsName(featureName);
+        CommandLineWords.IsName(moduleName) && CommandLineWords.IsName(featureName);
 
     private static Result<ImmutableDictionary<String, String>> ParseOptions(
         ImmutableDictionary<String, String> options,
@@ -66,14 +66,16 @@ internal static class FeatureCommandLine
         arguments switch
         {
             [] => options,
-            [var option, ..] when !Options.Contains(option) => BuildUsageError($"feature does not know '{option}'"),
-            [var option, ..] when options.ContainsKey(option) => BuildUsageError($"{option} is given twice"),
-            [var option, var value, ..] when ScaffoldCommandLine.IsName(value) =>
+            [var option, ..] when !Options.Contains(option) =>
+                CommandLineWords.BuildUsageError($"feature does not know '{option}'"),
+            [var option, ..] when options.ContainsKey(option) =>
+                CommandLineWords.BuildUsageError($"{option} is given twice"),
+            [var option, var value, ..] when CommandLineWords.IsName(value) =>
                 ParseOptions(options.Add(option, value), [.. arguments.Skip(2)]),
-            [var option, ..] => BuildUsageError($"{option} needs a value"),
+            [var option, ..] => CommandLineWords.BuildUsageError($"{option} needs a value"),
         };
 
-    private static Result<IScaffoldCommand> CreateCommand(
+    private static Result<IScaffold> CreateScaffold(
         String moduleName,
         String featureName,
         IReadOnlyDictionary<String, String> options) =>
@@ -81,17 +83,17 @@ internal static class FeatureCommandLine
             .Collect(ParseKind(options))
             .And(ParseMethod(options))
             .And(ParseRoute(options))
-            .Bind((kind, method, route) => CreateFeatureCommand(
+            .Bind((kind, method, route) => RequireEndpointForRoute(
                 new FeatureRequest(moduleName, featureName, kind, method)
                 {
                     EventType = FindEvent(options),
                     Route = route,
                 }));
 
-    private static Result<IScaffoldCommand> CreateFeatureCommand(FeatureRequest request) =>
+    private static Result<IScaffold> RequireEndpointForRoute(FeatureRequest request) =>
         HasRouteWithoutEndpoint(request)
-            ? BuildUsageError(RouteWithoutEndpoint)
-            : Result.Success<IScaffoldCommand>(new FeatureCommand(request));
+            ? CommandLineWords.BuildUsageError(RouteWithoutEndpoint)
+            : Result.Success<IScaffold>(new FeatureScaffold(request));
 
     private static Boolean HasRouteWithoutEndpoint(FeatureRequest request) =>
         request.Route.HasValue && request.Method == EndpointMethod.None;
@@ -102,7 +104,7 @@ internal static class FeatureCommandLine
     private static Result<FeatureKind> ParseKind(IReadOnlyDictionary<String, String> options) =>
         options.TryGetValue(KindOption, out var kind)
             ? ParseValue(Kinds, kind, $"{KindOption} '{kind}' is not a feature kind")
-            : BuildUsageError($"feature needs {KindOption}");
+            : CommandLineWords.BuildUsageError($"feature needs {KindOption}");
 
     private static Result<EndpointMethod> ParseMethod(IReadOnlyDictionary<String, String> options) =>
         options.TryGetValue(EndpointOption, out var method)
@@ -118,7 +120,5 @@ internal static class FeatureCommandLine
 
     private static Result<T> ParseValue<T>(IReadOnlyDictionary<String, T> values, String name, String unknown)
         where T : notnull =>
-        values.TryGetValue(name, out var value) ? value : BuildUsageError(unknown);
-
-    private static Error BuildUsageError(String message) => Error.Failure("scaffold.usage", message);
+        values.TryGetValue(name, out var value) ? value : CommandLineWords.BuildUsageError(unknown);
 }

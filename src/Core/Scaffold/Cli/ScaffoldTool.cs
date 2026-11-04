@@ -29,33 +29,34 @@ internal sealed class ScaffoldTool(
         ScaffoldCommandLine
             .Parse(arguments)
             .Match(
-                command => RunAsync(command, cancellationToken),
-                error => Task.FromResult(ReportFailure(error, UsageExitCode)));
+                scaffold => ScaffoldAsync(scaffold, cancellationToken),
+                error => Task.FromResult(ReportUsageError(error)));
 
-    public async Task<Int32> RunAsync(IScaffoldCommand command, CancellationToken cancellationToken)
+    public async Task<Int32> ScaffoldAsync(IScaffold scaffold, CancellationToken cancellationToken)
     {
-        var outcome = await fileSystem
+        var outcome = await HoldingAppLockAsync(() => PlanAndWriteAsync(scaffold, cancellationToken));
+
+        return outcome.Match(ReportSuccess, ReportFailure);
+    }
+
+    private Task<Result<ScaffoldPlan>> HoldingAppLockAsync(Func<Task<Result<ScaffoldPlan>>> planAndWriteAsync) =>
+        fileSystem
             .Attempt(() => fileSystem.Lock(LockPath), LockedOut)
-            .BindAsync(appLock => RunLockedAsync(command, appLock, cancellationToken));
+            .BindAsync(async appLock =>
+            {
+                using (appLock)
+                {
+                    return await planAndWriteAsync();
+                }
+            });
 
-        return outcome.Match(ReportSuccess, error => ReportFailure(error, FailedExitCode));
-    }
+    private Task<Result<ScaffoldPlan>> PlanAndWriteAsync(IScaffold scaffold, CancellationToken cancellationToken) =>
+        new AppLayoutReader(fileSystem)
+            .Read()
+            .Bind(app => scaffold.Plan(app, fileSystem))
+            .BindAsync(plan => WriteAsync(plan, cancellationToken));
 
-    private async Task<Result<ScaffoldPlan>> RunLockedAsync(
-        IScaffoldCommand command,
-        IDisposable appLock,
-        CancellationToken cancellationToken)
-    {
-        using (appLock)
-        {
-            return await new AppLayoutReader(fileSystem)
-                .Read()
-                .Bind(app => command.Plan(app, fileSystem))
-                .BindAsync(plan => RunPlanAsync(plan, cancellationToken));
-        }
-    }
-
-    private Task<Result<ScaffoldPlan>> RunPlanAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
+    private Task<Result<ScaffoldPlan>> WriteAsync(ScaffoldPlan plan, CancellationToken cancellationToken) =>
         new Transaction(fileSystem, processRunner)
             .RunAsync(plan, cancellationToken)
             .MapAsync(_ => plan);
@@ -67,9 +68,15 @@ internal sealed class ScaffoldTool(
         return SucceededExitCode;
     }
 
-    private Int32 ReportFailure(Error error, Int32 exitCode)
+    private Int32 ReportFailure(Error error)
     {
         errorTextWriter.WriteLine($"scaffold: {error.Message}");
-        return exitCode;
+        return FailedExitCode;
+    }
+
+    private Int32 ReportUsageError(Error error)
+    {
+        errorTextWriter.WriteLine($"scaffold: {error.Message}");
+        return UsageExitCode;
     }
 }

@@ -13,7 +13,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Features;
 
-internal sealed class FeatureCommand(FeatureRequest request) : IScaffoldCommand
+internal sealed class FeatureScaffold(FeatureRequest request) : IScaffold
 {
     private const String TestProjectPattern = "*.IntegrationTests.csproj";
 

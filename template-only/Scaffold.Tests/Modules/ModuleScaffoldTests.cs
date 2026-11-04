@@ -6,7 +6,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Tests.Modules;
 
-public sealed class ModuleCommandTests : IDisposable
+public sealed class ModuleScaffoldTests : IDisposable
 {
     private const String RolledBack = "files scaffold created are deleted, files it changed are back as they were";
 
