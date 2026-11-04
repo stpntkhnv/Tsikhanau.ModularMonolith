@@ -35,12 +35,14 @@ public sealed class ArchSolution
             .Append(Path.Combine(Root, "template-only", "Template.slnx"))
             .Where(File.Exists);
 
-    internal String ModuleProjectPrefix => ModuleLayout.BuildRootNamespacePrefix(RootNamespace);
-
     internal String GetModuleFolder(ArchModule module) => Path.Combine(ModulesFolder, module.Name);
 
-    internal String GetProjectPath(ArchModule module, String projectName) =>
-        Path.Combine(GetModuleFolder(module), projectName, $"{projectName}.csproj");
+    internal String GetProjectPath(ArchModule module) => GetProjectPath(module, module.RootNamespace);
+
+    internal String GetContractsProjectPath(ArchModule module) => GetProjectPath(module, module.ContractsName);
+
+    internal IEnumerable<String> GetModuleProjectPaths(ArchModule module) =>
+        module.ProjectNames.Select(projectName => GetProjectPath(module, projectName));
 
     internal IReadOnlyList<String> GetProjectPaths(String folder) =>
         Directory.Exists(folder) ? [.. GetProjectPathsIn(folder)] : [];
@@ -54,4 +56,7 @@ public sealed class ArchSolution
         Directory
             .GetFiles(folder, "*.csproj", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal);
+
+    private String GetProjectPath(ArchModule module, String projectName) =>
+        Path.Combine(GetModuleFolder(module), projectName, $"{projectName}.csproj");
 }

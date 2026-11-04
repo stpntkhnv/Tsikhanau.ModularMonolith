@@ -1,8 +1,8 @@
 using System.Reflection;
-using System.Text.RegularExpressions;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
 using Tsikhanau.Monolith.Application.Queries;
+using Tsikhanau.Monolith.ArchRules.ArchUnit;
 using Tsikhanau.Monolith.ArchRules.Reflection;
 using Tsikhanau.Monolith.Shared.Reflection;
 using Tsikhanau.Monolith.Testing.Modules;
@@ -43,17 +43,25 @@ public sealed class ArchModule
 
     internal IEnumerable<Type> Handlers => Types.Where(IsHandler);
 
-    internal IEnumerable<Assembly> ProjectAssemblies => GetAssembliesNamed(RootNamespace);
+    internal IEnumerable<Type> QueryHandlers => Types.Where(IsQueryHandler);
 
-    internal String ContractsName => ModuleLayout.BuildContractsName(RootNamespace);
+    internal IEnumerable<Assembly> ProjectAssemblies => GetAssembliesNamed(RootNamespace);
 
     internal IEnumerable<Assembly> ContractsAssemblies => GetAssembliesNamed(ContractsName);
 
     internal IEnumerable<Assembly> OwnAssemblies => Assemblies.Where(IsNamedAfterTheModule);
 
-    internal String RootPattern => $"^{Regex.Escape(RootNamespace)}(\\..+)?$";
+    internal String ContractsName => ModuleLayout.BuildContractsName(RootNamespace);
 
-    internal String OutsideContractsPattern => $"^{Regex.Escape(RootNamespace)}(?!\\.Contracts(\\.|$))(\\..+)?$";
+    internal IReadOnlyList<String> ProjectNames => [RootNamespace, ContractsName];
+
+    internal String ModuleClassName => $"{RootNamespace}.{Name}Module";
+
+    internal String FacadeName => $"I{Name}Module";
+
+    internal String RootPattern => NamespacePatterns.Build(RootNamespace);
+
+    internal String OutsideContractsPattern => NamespacePatterns.BuildExcept(RootNamespace, "Contracts");
 
     public static IReadOnlyList<ArchModule> ForProductionModules(String appRootNamespace) =>
     [
@@ -71,7 +79,7 @@ public sealed class ArchModule
     internal Boolean ContainsOutside(Type type, String layer) => Contains(type) && !Contains(type, layer);
 
     internal String BuildLayerPattern(params IEnumerable<String> layers) =>
-        $"^{Regex.Escape(RootNamespace)}\\.({String.Join('|', layers.Select(Regex.Escape))})(\\..+)?$";
+        NamespacePatterns.Build(layers.Select(layer => $"{RootNamespace}.{layer}"));
 
     private static ArchModule CreateProductionModule(String appRootNamespace, String moduleName)
     {
@@ -85,6 +93,8 @@ public sealed class ArchModule
 
     private static Boolean IsHandler(Type type) =>
         HandlerInterfaces.Any(handlerInterfaceType => type.Implements(handlerInterfaceType));
+
+    private static Boolean IsQueryHandler(Type type) => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>));
 
     private IReadOnlyList<Type> ReadTypes() =>
     [

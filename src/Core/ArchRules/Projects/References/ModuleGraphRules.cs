@@ -1,13 +1,12 @@
 using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.ProjectFiles;
+using Tsikhanau.Monolith.Testing.Modules;
 
 namespace Tsikhanau.Monolith.ArchRules.Projects.References;
 
 public static class ModuleGraphRules
 {
-    private const String ContractsSuffix = ".Contracts";
-
     public static RuleEvaluation ModulesDoNotReferenceEachOtherInACycle(ArchSolution solution, ArchModules modules)
     {
         var modulesWithAProject = GetModulesWithAProject(solution, modules);
@@ -29,13 +28,10 @@ public static class ModuleGraphRules
     }
 
     private static IReadOnlyList<ArchModule> GetModulesWithAProject(ArchSolution solution, ArchModules modules) =>
-        [.. modules.All.Where(module => File.Exists(GetProjectPath(solution, module)))];
+        [.. modules.All.Where(module => File.Exists(solution.GetProjectPath(module)))];
 
     private static IReadOnlyList<String> GetProjectPaths(ArchSolution solution, IEnumerable<ArchModule> modules) =>
-        [.. modules.Select(module => solution.ToSolutionPath(GetProjectPath(solution, module)))];
-
-    private static String GetProjectPath(ArchSolution solution, ArchModule module) =>
-        solution.GetProjectPath(module, module.RootNamespace);
+        [.. modules.Select(module => solution.ToSolutionPath(solution.GetProjectPath(module)))];
 
     private static IEnumerable<String> GetUnknownReferences(
         ArchSolution solution,
@@ -49,7 +45,10 @@ public static class ModuleGraphRules
         modules.All.Any(module => module.Name == name);
 
     private static String DescribeReference(ArchSolution solution, ArchModule module, String referencedName) =>
-        $"{module.Name} references {solution.ModuleProjectPrefix}{referencedName}{ContractsSuffix}";
+        $"{module.Name} references {BuildContractsName(solution, referencedName)}";
+
+    private static String BuildContractsName(ArchSolution solution, String moduleName) =>
+        ModuleLayout.BuildContractsName(ModuleLayout.BuildRootNamespace(solution.RootNamespace, moduleName));
 
     private static Dictionary<String, IReadOnlyList<String>> ReadEdges(
         ArchSolution solution,
@@ -58,18 +57,11 @@ public static class ModuleGraphRules
 
     private static IReadOnlyList<String> ReadReferencedModules(ArchSolution solution, ArchModule module) =>
         ProjectReferences
-            .Read(GetProjectPath(solution, module))
-            .Where(projectName => IsModuleContracts(solution, projectName))
-            .Select(projectName => GetModuleOfContracts(solution, projectName))
+            .Read(solution.GetProjectPath(module))
+            .Where(projectName => ModuleLayout.IsContractsName(solution.RootNamespace, projectName))
+            .Select(projectName => ModuleLayout.ParseModuleName(solution.RootNamespace, projectName))
             .Where(otherName => otherName != module.Name)
             .ToList();
-
-    private static Boolean IsModuleContracts(ArchSolution solution, String projectName) =>
-        projectName.StartsWith(solution.ModuleProjectPrefix, StringComparison.Ordinal)
-        && projectName.EndsWith(ContractsSuffix, StringComparison.Ordinal);
-
-    private static String GetModuleOfContracts(ArchSolution solution, String projectName) =>
-        projectName[solution.ModuleProjectPrefix.Length..^ContractsSuffix.Length];
 
     private static IReadOnlyList<String> GetCycles(IReadOnlyDictionary<String, IReadOnlyList<String>> edges)
     {

@@ -20,7 +20,7 @@ public static class CoverageRules
 
     private static IEnumerable<String> GetLoadingViolations(ArchModule module)
     {
-        String[] expectedNames = [module.RootNamespace, $"{module.RootNamespace}.Contracts"];
+        var expectedNames = module.ProjectNames;
         var loadedNames = module.Assemblies
             .Select(assembly => assembly.Name)
             .ToList();

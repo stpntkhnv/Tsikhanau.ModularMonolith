@@ -12,10 +12,14 @@ namespace Tsikhanau.Monolith.ArchRules.Modules.Dependencies;
 
 public static class LayerDependencyRules
 {
-    private const String ConfigurationNamespace = "^Microsoft\\.Extensions\\.Configuration(\\..+)?$";
     private const String DatabaseConnectionTypes = "^Npgsql\\.(NpgsqlConnection|NpgsqlDataSource)$";
     private const String MigrationsNamespace = "(^|\\.)Migrations(\\..+)?$";
-    private const String FrameworksOutsideSystem = "^(Microsoft|Npgsql|NpgsqlTypes|Dapper)(\\..+)?$";
+
+    private static readonly String ConfigurationNamespace =
+        NamespacePatterns.Build("Microsoft.Extensions.Configuration");
+
+    private static readonly String FrameworksOutsideSystem =
+        NamespacePatterns.Build("Microsoft", "Npgsql", "NpgsqlTypes", "Dapper");
 
     private static readonly String WebAndDataFrameworks = NamespacePatterns.Build(
         "Microsoft.EntityFrameworkCore",
@@ -149,7 +153,7 @@ public static class LayerDependencyRules
     {
         var allowedNamespaces = NamespacePatterns.Build(
             "System",
-            $"{module.RootNamespace}.Contracts",
+            module.ContractsName,
             "Tsikhanau.Monolith.Contracts",
             "Tsikhanau.Railway");
 

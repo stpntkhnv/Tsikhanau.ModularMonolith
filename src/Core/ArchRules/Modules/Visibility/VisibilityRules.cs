@@ -36,9 +36,7 @@ public static class VisibilityRules
     private static Boolean IsOpenToOthers(Type type) => type.IsVisible || !type.IsSealed;
 
     private static Boolean IsExposedBesidesTheModuleClass(ArchModule module, Type type) =>
-        type.IsVisible && !IsGeneratedPublic(type) && type.FullName != BuildModuleClassName(module);
-
-    private static String BuildModuleClassName(ArchModule module) => $"{module.RootNamespace}.{module.Name}Module";
+        type.IsVisible && !IsGeneratedPublic(type) && type.FullName != module.ModuleClassName;
 
     private static Boolean IsGeneratedPublic(Type type) => IsMigration(type) || IsComponent(type);
 

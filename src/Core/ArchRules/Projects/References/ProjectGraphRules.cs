@@ -19,56 +19,33 @@ public static class ProjectGraphRules
     public static RuleEvaluation ModuleHasItsProjectAndItsContracts(ArchSolution solution, ArchModule module)
     {
         var moduleFolder = solution.GetModuleFolder(module);
-        IReadOnlyList<String> projectPaths =
-        [
-            .. solution
-                .GetProjectPaths(moduleFolder)
-                .Select(projectPath => ToRelativePath(moduleFolder, projectPath)),
-        ];
+        var projectPaths = ToRelativePaths(moduleFolder, solution.GetProjectPaths(moduleFolder));
+        var expectedPaths = ToRelativePaths(moduleFolder, solution.GetModuleProjectPaths(module));
 
-        return RuleEvaluation.Create(projectPaths, () => GetLayoutViolations(module, projectPaths));
+        return RuleEvaluation.Create(projectPaths, () => GetLayoutViolations(module, projectPaths, expectedPaths));
     }
 
     public static RuleEvaluation ProjectReferencesFollowTheLayerRules(
         ArchSolution solution,
         ArchModules modules,
-        ArchModule module)
-    {
-        var projectPath = solution.GetProjectPath(module, module.RootNamespace);
-        var contractsPath = solution.GetProjectPath(module, module.ContractsName);
-        String[] paths = [projectPath, contractsPath];
-        IReadOnlyList<String> subject =
-        [
-            .. paths
-                .Where(File.Exists)
-                .Select(solution.ToSolutionPath),
-        ];
-
-        String[] allowedContractsReferences = [.. AllowedContractsReferences, .. modules.SharedKernelNames];
-
-        String[] allowedModuleReferences =
-        [
-            module.ContractsName,
-            .. AllowedCoreReferences,
-            .. modules
-                .GetOthers(module)
-                .Select(otherModule => otherModule.ContractsName),
-            .. modules.SharedKernelNames,
-        ];
-
-        return RuleEvaluation.Create(
-            subject,
+        ArchModule module) =>
+        RuleEvaluation.Create(
+            GetExistingProjects(solution, module),
             () =>
             [
-                .. GetDisallowedReferences(contractsPath, allowedContractsReferences),
-                .. GetDisallowedReferences(projectPath, allowedModuleReferences),
+                .. GetDisallowedReferences(
+                    solution.GetContractsProjectPath(module),
+                    GetAllowedContractsReferences(modules)),
+                .. GetDisallowedReferences(
+                    solution.GetProjectPath(module),
+                    GetAllowedModuleReferences(modules, module)),
             ]);
-    }
 
-    private static IEnumerable<String> GetLayoutViolations(ArchModule module, IReadOnlyList<String> projectPaths)
+    private static IEnumerable<String> GetLayoutViolations(
+        ArchModule module,
+        IReadOnlyList<String> projectPaths,
+        IReadOnlyList<String> expectedPaths)
     {
-        String[] expectedPaths = [BuildProjectPath(module.RootNamespace), BuildProjectPath(module.ContractsName)];
-
         var missingPaths = expectedPaths
             .Except(projectPaths)
             .Select(path => $"{module.Name} has no {path}");
@@ -80,6 +57,27 @@ public static class ProjectGraphRules
         return [.. missingPaths, .. strayPaths];
     }
 
+    private static IReadOnlyList<String> GetExistingProjects(ArchSolution solution, ArchModule module) =>
+    [
+        .. solution
+            .GetModuleProjectPaths(module)
+            .Where(File.Exists)
+            .Select(solution.ToSolutionPath),
+    ];
+
+    private static String[] GetAllowedContractsReferences(ArchModules modules) =>
+        [.. AllowedContractsReferences, .. modules.SharedKernelNames];
+
+    private static String[] GetAllowedModuleReferences(ArchModules modules, ArchModule module) =>
+    [
+        module.ContractsName,
+        .. AllowedCoreReferences,
+        .. modules
+            .GetOthers(module)
+            .Select(otherModule => otherModule.ContractsName),
+        .. modules.SharedKernelNames,
+    ];
+
     private static IEnumerable<String> GetDisallowedReferences(String projectPath, String[] allowedNames) =>
         File.Exists(projectPath) ? ReadDisallowedReferences(projectPath, allowedNames) : [];
 
@@ -89,7 +87,8 @@ public static class ProjectGraphRules
             .Where(referenceName => !allowedNames.Contains(referenceName))
             .Select(referenceName => $"{Path.GetFileNameWithoutExtension(projectPath)} references {referenceName}");
 
-    private static String BuildProjectPath(String projectName) => $"{projectName}/{projectName}.csproj";
+    private static IReadOnlyList<String> ToRelativePaths(String folder, IEnumerable<String> paths) =>
+        [.. paths.Select(path => ToRelativePath(folder, path))];
 
     private static String ToRelativePath(String folder, String path) =>
         Path

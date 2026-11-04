@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Tsikhanau.Monolith.Api.Endpoints;
 using Tsikhanau.Monolith.Application.Commands;
 using Tsikhanau.Monolith.Application.Events;
-using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Reflection;
@@ -31,7 +30,7 @@ public static class HandlerBoundaryRules
 
     public static RuleEvaluation QueryHandlersTakeNoWriteSideDependencies(ArchModule module)
     {
-        var queryHandlers = GetQueryHandlers(module);
+        IReadOnlyList<Type> queryHandlers = [.. module.QueryHandlers];
         return RuleEvaluation.Create(queryHandlers, () => ReadQueryHandlerReferences(module, queryHandlers));
     }
 
@@ -65,11 +64,11 @@ public static class HandlerBoundaryRules
     private static IEnumerable<String> GetFacadeReferences(ArchModule module, IReadOnlyList<Type> subjectTypes)
     {
         var facadeTypes = module.Types
-            .Where(type => type.IsInterface && type.Name == $"I{module.Name}Module")
+            .Where(type => type.IsInterface && type.Name == module.FacadeName)
             .ToList();
 
         return facadeTypes.Count == 0
-            ? [$"{module.Name} has no facade I{module.Name}Module"]
+            ? [$"{module.Name} has no facade {module.FacadeName}"]
             : subjectTypes.SelectMany(type => GetReferences(type, wrapped => IsFacade(wrapped, facadeTypes)));
     }
 
@@ -77,17 +76,14 @@ public static class HandlerBoundaryRules
         facadeTypes.Contains(type)
             || type.IsConstructedGenericType && ModuleKeyTypes.Facades.Contains(type.GetGenericTypeDefinition());
 
-    private static List<Type> GetQueryHandlers(ArchModule module) =>
-        module.Types
-            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
-            .ToList();
-
-    private static IEnumerable<String> ReadQueryHandlerReferences(ArchModule module, List<Type> queryHandlers) =>
+    private static IEnumerable<String> ReadQueryHandlerReferences(
+        ArchModule module,
+        IReadOnlyList<Type> queryHandlers) =>
         module.Types
             .Where(type => !type.IsCompilerGenerated && IsOrIsNestedIn(type, queryHandlers))
             .SelectMany(type => GetReferences(type, IsWriteSide));
 
-    private static Boolean IsOrIsNestedIn(Type type, List<Type> handlers) =>
+    private static Boolean IsOrIsNestedIn(Type type, IReadOnlyList<Type> handlers) =>
         handlers.Contains(type) || type.DeclaringType is { } declaringType && IsOrIsNestedIn(declaringType, handlers);
 
     private static Boolean IsEdge(Type type) => type.Implements<IEndpoint>() || type.Implements<IHostedService>();

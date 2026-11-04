@@ -1,4 +1,3 @@
-using Tsikhanau.Monolith.Application.Queries;
 using Tsikhanau.Monolith.ArchRules.Evaluation;
 using Tsikhanau.Monolith.ArchRules.Inputs;
 using Tsikhanau.Monolith.ArchRules.Reflection;
@@ -60,8 +59,7 @@ public static class SqlTextRules
 
     private static List<(String TypeName, String Literal)> ReadQueryHandlerLiterals(ArchModule module)
     {
-        var queryHandlerNames = module.Types
-            .Where(type => type.IsConcrete && type.Implements(typeof(IQueryHandler<,>)))
+        var queryHandlerNames = module.QueryHandlers
             .Select(type => type.FullNameOrName)
             .ToList();
 

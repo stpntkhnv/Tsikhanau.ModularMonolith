@@ -12,7 +12,9 @@ namespace Tsikhanau.Monolith.ArchRules.Projects.Core;
 public static class SharedRules
 {
     private const String SharedNamespace = "Tsikhanau.Monolith.Shared";
-    private const String CoreNamespacesOtherThanShared = "^Tsikhanau\\.Monolith(\\.(?!Shared(\\.|$)).+)?$";
+
+    private static readonly String CoreNamespacesOtherThanShared =
+        NamespacePatterns.BuildExcept("Tsikhanau.Monolith", "Shared");
 
     public static RuleEvaluation SharedCodeDoesNotDependOnTheRestOfTheApp(ArchSolution solution) =>
         SharedCodeDoesNotDependOnTheRestOfTheApp(solution, CoreAssemblies.Shared);

@@ -18,8 +18,8 @@ public static class SuppressionRules
     }
 
     private static IEnumerable<String> GetSourcePaths(ArchSolution solution) =>
-        BuildFileRules
-            .GetFoldersThatAffectCompilation(solution)
+        CompiledFolders
+            .Read(solution)
             .SelectMany(folder => Directory.EnumerateFiles(folder.Path, "*.cs"))
             .Order(StringComparer.Ordinal);
 

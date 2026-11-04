@@ -12,7 +12,7 @@ public static class HostRules
     public static RuleEvaluation HostAddsEveryModuleFolder(Assembly hostAssembly, ArchModules modules)
     {
         var addedNames = ReadModulesAddedBy(hostAssembly);
-        IReadOnlyList<String> expectedNames = [.. modules.All.Select(BuildModuleClassName)];
+        IReadOnlyList<String> expectedNames = [.. modules.All.Select(module => module.ModuleClassName)];
         IReadOnlyList<String> subject = [.. expectedNames.Union(addedNames)];
 
         return RuleEvaluation.Create(subject, () => GetViolations(hostAssembly.Name, modules.All, addedNames));
@@ -24,11 +24,11 @@ public static class HostRules
         IReadOnlyList<String> addedNames)
     {
         var missingModules = modules
-            .Where(module => !addedNames.Contains(BuildModuleClassName(module)))
-            .Select(module => $"{hostName} does not add src/Modules/{module.Name} ({BuildModuleClassName(module)})");
+            .Where(module => !addedNames.Contains(module.ModuleClassName))
+            .Select(module => $"{hostName} does not add src/Modules/{module.Name} ({module.ModuleClassName})");
 
         var strayNames = addedNames
-            .Except(modules.Select(BuildModuleClassName))
+            .Except(modules.Select(module => module.ModuleClassName))
             .Select(name => $"{hostName} adds {name}, which is not in src/Modules");
 
         var repeatedNames = addedNames
@@ -38,8 +38,6 @@ public static class HostRules
 
         return [.. missingModules, .. strayNames, .. repeatedNames];
     }
-
-    private static String BuildModuleClassName(ArchModule module) => $"{module.RootNamespace}.{module.Name}Module";
 
     private static IReadOnlyList<String> ReadModulesAddedBy(Assembly hostAssembly)
     {
