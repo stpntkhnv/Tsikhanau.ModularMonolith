@@ -12,31 +12,24 @@ internal sealed class SourceProjectReader(IFileSystem fileSystem)
     private static readonly String[] BuildFolders = ["bin", "obj"];
 
     public Result<IReadOnlyList<SourceProject>> Read(AppLayout app) =>
-        fileSystem
-            .GetDirectories(ScaffoldedModule.ModulesFolder, "*")
-            .Select(Path.GetFileName)
-            .OfType<String>()
+        ModuleFolders
+            .ReadNames(fileSystem)
             .Order(StringComparer.Ordinal)
-            .SelectMany(moduleName => ReadProjects(app, moduleName))
+            .SelectMany(moduleName => ReadProjects(new ModuleProjects(app.ProjectPrefix, moduleName)))
             .CombineAll();
 
     public Result<IReadOnlyList<SourceProject>> Read(AppLayout app, String moduleName) =>
-        ReadProjects(app, moduleName)
+        ReadProjects(new ModuleProjects(app.ProjectPrefix, moduleName))
             .CombineAll();
 
-    private IEnumerable<Result<SourceProject>> ReadProjects(AppLayout app, String moduleName)
-    {
-        var projectName = $"{app.ProjectPrefix}.Modules.{moduleName}";
-
-        return
+    private IEnumerable<Result<SourceProject>> ReadProjects(ModuleProjects projects) =>
         [
-            ReadProject(moduleName, projectName, isContracts: false),
-            ReadProject(moduleName, $"{projectName}.Contracts", isContracts: true),
+            ReadProject(projects.ModuleName, projects.ProjectFolder, isContracts: false),
+            ReadProject(projects.ModuleName, projects.ContractsFolder, isContracts: true),
         ];
-    }
 
-    private Result<SourceProject> ReadProject(String moduleName, String projectName, Boolean isContracts) =>
-        GetSourceFiles($"{ScaffoldedModule.ModulesFolder}/{moduleName}/{projectName}")
+    private Result<SourceProject> ReadProject(String moduleName, String projectFolder, Boolean isContracts) =>
+        GetSourceFiles(projectFolder)
             .Select(ReadSourceFile)
             .CombineAll()
             .Map(files => new SourceProject(moduleName, isContracts, files));

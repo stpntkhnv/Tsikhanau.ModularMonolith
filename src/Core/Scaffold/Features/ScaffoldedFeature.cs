@@ -28,11 +28,11 @@ internal sealed record ScaffoldedFeature(ScaffoldedModule Module, FeatureRequest
 
     public String Namespace => $"{Module.Namespace}.Features.{Name}";
 
-    public String FeaturesFolder => Module.InProject("Features");
+    public String FeaturesFolder => Module.Projects.InProject("Features");
 
     public String Folder => $"{FeaturesFolder}/{Name}";
 
-    public String PublicQueriesFolder => Module.InContracts("Queries");
+    public String PublicQueriesFolder => Module.Projects.InContracts("Queries");
 
     public String PublicQueryFolder => $"{PublicQueriesFolder}/{Name}";
 

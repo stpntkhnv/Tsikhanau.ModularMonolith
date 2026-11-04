@@ -28,48 +28,47 @@ internal static partial class ProgramEdit
     private static partial Regex ModuleCallPattern { get; }
 
     public static Result<FileEdit> AddModule(TextFile program, ScaffoldedModule module) =>
-        program.PlanEdit(text => AddModuleLines(TextLines.Split(text, program.NewLine), program.Path, module));
+        program.PlanLineEdit(lines => AddModuleLines(lines, program, module));
 
-    private static Result<String> AddModuleLines(TextLines lines, String path, ScaffoldedModule module)
+    private static Result<TextLines> AddModuleLines(TextLines lines, TextFile program, ScaffoldedModule module)
     {
         var moduleCall = $"builder.AddModule<{module.ModuleClass}>();";
         var moduleUsing = $"using {module.Namespace};";
         var usingIndexes = lines.GetIndexes(UsingPattern.IsMatch);
 
-        return FindModuleCallAnchor(lines, path)
-            .Ensure(_ => usingIndexes.Count > 0, BuildAnchorError(path, "using directives at the top"))
-            .Ensure(_ => !lines.Contains(moduleCall), BuildAnchorError(path, $"no {moduleCall} yet"))
-            .Ensure(_ => !lines.Contains(moduleUsing), BuildAnchorError(path, $"no {moduleUsing} yet"))
+        return FindModuleCallAnchor(lines, program)
+            .Ensure(_ => usingIndexes.Count > 0, program.MissingAnchor("using directives at the top"))
+            .Ensure(_ => !lines.Contains(moduleCall), program.MissingAnchor($"no {moduleCall} yet"))
+            .Ensure(_ => !lines.Contains(moduleUsing), program.MissingAnchor($"no {moduleUsing} yet"))
             .Map(anchor => AddModuleCall(lines, anchor, module.Name, moduleCall))
             .Map(withCall => AddUsing(withCall, usingIndexes, module.Namespace))
-            .Map(AddModuleApiUsingWhenMissing)
-            .Map(updatedLines => updatedLines.Join());
+            .Map(AddModuleApiUsingWhenMissing);
     }
 
-    private static Result<ModuleCallAnchor> FindModuleCallAnchor(TextLines lines, String path)
+    private static Result<ModuleCallAnchor> FindModuleCallAnchor(TextLines lines, TextFile program)
     {
         var platformIndexes = lines.GetIndexes(line => line.Trim() == PlatformCall);
 
         return platformIndexes.Count > 0
-            ? FindPlatformCallAnchor(lines, path, platformIndexes)
-            : FindAddServicesAnchor(lines, path);
+            ? FindPlatformCallAnchor(lines, program, platformIndexes)
+            : FindAddServicesAnchor(lines, program);
     }
 
     private static Result<ModuleCallAnchor> FindPlatformCallAnchor(
         TextLines lines,
-        String path,
+        TextFile program,
         IReadOnlyList<Int32> platformIndexes) =>
         platformIndexes is [var platformIndex]
             ? new ModuleCallAnchor(platformIndex, TextLines.ReadIndentation(lines.Lines[platformIndex]))
-            : BuildAnchorError(path, $"exactly one line {PlatformCall}");
+            : program.MissingAnchor($"exactly one line {PlatformCall}");
 
-    private static Result<ModuleCallAnchor> FindAddServicesAnchor(TextLines lines, String path)
+    private static Result<ModuleCallAnchor> FindAddServicesAnchor(TextLines lines, TextFile program)
     {
         var declarationIndexes = lines.GetIndexes(line => line.Trim() == AddServicesDeclaration);
 
         return declarationIndexes is [var declarationIndex] && OpensBody(lines, declarationIndex + 1)
             ? new ModuleCallAnchor(declarationIndex + 1, ReadBodyIndentation(lines.Lines[declarationIndex + 1]))
-            : BuildAnchorError(path, $"exactly one line {AddServicesDeclaration} followed by a line {BodyOpening}");
+            : program.MissingAnchor($"exactly one line {AddServicesDeclaration} followed by a line {BodyOpening}");
     }
 
     private static Boolean OpensBody(TextLines lines, Int32 index) =>
@@ -131,9 +130,6 @@ internal static partial class ProgramEdit
     private static String ReadModuleName(String line) => ModuleCallPattern.Match(line).Groups["module"].Value;
 
     private static String ReadNamespace(String line) => UsingPattern.Match(line).Groups["namespace"].Value;
-
-    private static Error BuildAnchorError(String path, String expected) =>
-        Error.Failure("scaffold.anchor", $"{path} must hold {expected}");
 
     private sealed record ModuleCallAnchor(Int32 Index, String Indentation);
 }

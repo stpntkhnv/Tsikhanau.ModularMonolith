@@ -80,9 +80,11 @@ public sealed class ModuleProjectEditTests
 
     private static readonly ScaffoldedModule Tags = SampleModules.Create("Tags");
 
+    private static readonly String TagsProjectPath = Tags.Projects.ProjectPath;
+
     private static readonly String TagsProject = new ModuleTemplate(Tags, hasSettings: false)
         .CreateFiles()
-        .Single(newFile => newFile.Path == Tags.ProjectPath)
+        .Single(newFile => newFile.Path == TagsProjectPath)
         .Content;
 
     [Fact]
@@ -181,12 +183,12 @@ public sealed class ModuleProjectEditTests
 
         ReadText(edit)
             .ShouldBe(
-                $@"{Tags.ProjectPath} must hold the reference to ..\Acme.Shop.Modules.Tags.Contracts\"
+                $@"{TagsProjectPath} must hold the reference to ..\Acme.Shop.Modules.Tags.Contracts\"
                 + "Acme.Shop.Modules.Tags.Contracts.csproj");
     }
 
     private static String BuildSplitTagError(Int32 line) =>
-        $"{Tags.ProjectPath}:{line} holds a <ProjectReference> tag that does not end on that line; scaffold edits "
+        $"{TagsProjectPath}:{line} holds a <ProjectReference> tag that does not end on that line; scaffold edits "
         + "references whose tag is one line, <ProjectReference Include=\"...\" /> or <ProjectReference "
         + "Include=\"...\"> with its children below, so write the tag on one line and run scaffold again";
 
@@ -197,7 +199,7 @@ public sealed class ModuleProjectEditTests
             StringComparison.Ordinal);
 
     private static Result<FileEdit> AddNotesContracts(String project) =>
-        ModuleProjectEdit.AddNeighbourContracts(SampleModules.CreateFile(Tags.ProjectPath, project), Tags, "Notes");
+        ModuleProjectEdit.AddNeighbourContracts(SampleModules.CreateFile(TagsProjectPath, project), Tags, "Notes");
 
     private static String ReadText(Result<FileEdit> edit) =>
         edit.Match(fileEdit => Encoding.UTF8.GetString(fileEdit.Updated), error => error.Message);

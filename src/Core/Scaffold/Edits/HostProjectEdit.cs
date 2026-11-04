@@ -13,24 +13,22 @@ internal static partial class HostProjectEdit
     private static partial Regex ProjectReferencePattern { get; }
 
     public static Result<FileEdit> AddModule(TextFile hostProject, ScaffoldedModule module) =>
-        hostProject.PlanEdit(text =>
-            AddReference(TextLines.Split(text, hostProject.NewLine), hostProject.Path, module));
+        hostProject.PlanLineEdit(lines => AddReference(lines, hostProject, module));
 
-    private static Result<String> AddReference(TextLines lines, String path, ScaffoldedModule module)
+    private static Result<TextLines> AddReference(TextLines lines, TextFile hostProject, ScaffoldedModule module)
     {
-        var include = $@"..\..\Modules\{module.Name}\{module.ProjectName}\{module.ProjectName}.csproj";
+        var include = module.Projects.ProjectIncludeFromHost;
         var referenceIndexes = lines.GetIndexes(ProjectReferencePattern.IsMatch);
 
         return Result
             .Success(lines)
-            .Ensure(_ => referenceIndexes.Count > 0, BuildAnchorError(path, "a ProjectReference to the core"))
+            .Ensure(_ => referenceIndexes.Count > 0, hostProject.MissingAnchor("a ProjectReference to the core"))
             .Ensure(
                 _ => !referenceIndexes.Any(index => Includes(lines.Lines[index], include)),
-                BuildAnchorError(path, $"no reference to {include} yet"))
+                hostProject.MissingAnchor($"no reference to {include} yet"))
             .Map(_ => lines.Insert(
                 GetInsertionIndex(lines, referenceIndexes, include),
-                BuildReference(lines.Lines[referenceIndexes[^1]], include)))
-            .Map(updatedLines => updatedLines.Join());
+                BuildReference(lines.Lines[referenceIndexes[^1]], include)));
     }
 
     private static Int32 GetInsertionIndex(TextLines lines, IReadOnlyList<Int32> referenceIndexes, String include) =>
@@ -46,7 +44,4 @@ internal static partial class HostProjectEdit
         String.Equals(ReadInclude(line), include, StringComparison.OrdinalIgnoreCase);
 
     private static String ReadInclude(String line) => ProjectReferencePattern.Match(line).Groups["include"].Value;
-
-    private static Error BuildAnchorError(String path, String expected) =>
-        Error.Failure("scaffold.anchor", $"{path} must hold {expected}");
 }

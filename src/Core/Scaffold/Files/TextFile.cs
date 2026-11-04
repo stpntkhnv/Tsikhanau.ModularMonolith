@@ -1,4 +1,5 @@
 using System.Text;
+using Tsikhanau.Monolith.Scaffold.Edits;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using Tsikhanau.Railway;
 
@@ -19,6 +20,13 @@ internal sealed record TextFile(String Path, Byte[] Content)
     public Result<FileEdit> PlanEdit(Func<String, Result<String>> edit) =>
         edit(Text)
             .Map(updatedText => new FileEdit(Path, Content, Encode(updatedText)));
+
+    public Result<FileEdit> PlanLineEdit(Func<TextLines, Result<TextLines>> edit) =>
+        PlanEdit(text =>
+            edit(TextLines.Split(text, NewLine))
+                .Map(updatedLines => updatedLines.Join()));
+
+    public Error MissingAnchor(String expected) => Error.Failure("scaffold.anchor", $"{Path} must hold {expected}");
 
     private Byte[] Encode(String text) =>
         HasByteOrderMark

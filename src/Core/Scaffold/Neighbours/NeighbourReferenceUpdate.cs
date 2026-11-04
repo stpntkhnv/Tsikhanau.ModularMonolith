@@ -33,7 +33,7 @@ internal sealed class NeighbourReferenceUpdate(ScaffoldedModule module, IFileSys
 
     private Result<IReadOnlyList<FileEdit>> AddReference(String neighbour) =>
         fileSystem
-            .ReadTextFile(module.ProjectPath)
+            .ReadTextFile(module.Projects.ProjectPath)
             .Bind(moduleProject => ModuleProjectEdit.AddNeighbourContracts(moduleProject, module, neighbour))
             .Map(IReadOnlyList<FileEdit> (edit) => [edit]);
 }

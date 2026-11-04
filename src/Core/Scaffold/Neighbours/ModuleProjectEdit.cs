@@ -28,9 +28,9 @@ internal static partial class ModuleProjectEdit
         TextFile moduleProject,
         ScaffoldedModule module,
         String neighbour) =>
-        moduleProject.PlanEdit(text =>
-            EnsureOneLineTags(TextLines.Split(text, moduleProject.NewLine), moduleProject.Path)
-                .Bind(lines => AddReference(lines, moduleProject.Path, module, neighbour)));
+        moduleProject.PlanLineEdit(lines =>
+            EnsureOneLineTags(lines, moduleProject.Path)
+                .Bind(checkedLines => AddReference(checkedLines, moduleProject, module, neighbour)));
 
     private static Result<TextLines> EnsureOneLineTags(TextLines lines, String path)
     {
@@ -53,15 +53,13 @@ internal static partial class ModuleProjectEdit
             .TrimEnd()
             .EndsWith('>');
 
-    private static Result<String> AddReference(
+    private static Result<TextLines> AddReference(
         TextLines lines,
-        String path,
+        TextFile moduleProject,
         ScaffoldedModule module,
         String neighbour)
     {
-        var ownContractsInclude = $@"..\{module.ContractsProjectName}\{module.ContractsProjectName}.csproj";
-        var neighbourContracts = $"{module.App.ProjectPrefix}.Modules.{neighbour}.Contracts";
-        var include = $@"..\..\{neighbour}\{neighbourContracts}\{neighbourContracts}.csproj";
+        var include = new ModuleProjects(module.App.ProjectPrefix, neighbour).ContractsIncludeFromNeighbour;
         var contractsReferences = ReadContractsReferences(lines, module.App.ProjectPrefix);
         var neighbourReferences = contractsReferences
             .Where(contractsReference => contractsReference.Module != module.Name)
@@ -71,12 +69,10 @@ internal static partial class ModuleProjectEdit
             contractsReference => contractsReference.Module == module.Name);
 
         return ownContracts.Match(
-            ownReference => Result.Success(lines
-                .Insert(
-                    GetInsertionIndex(neighbourReferences, neighbour, ownReference.End + 1),
-                    BuildReference(lines.Lines[ownReference.Start], include))
-                .Join()),
-            () => Error.Failure("scaffold.anchor", $"{path} must hold the reference to {ownContractsInclude}"));
+            ownReference => Result.Success(lines.Insert(
+                GetInsertionIndex(neighbourReferences, neighbour, ownReference.End + 1),
+                BuildReference(lines.Lines[ownReference.Start], include))),
+            () => moduleProject.MissingAnchor($"the reference to {module.Projects.OwnContractsInclude}"));
     }
 
     private static IReadOnlyList<ContractsReference> ReadContractsReferences(TextLines lines, String projectPrefix) =>
@@ -92,7 +88,9 @@ internal static partial class ModuleProjectEdit
         ];
 
     private static Optional<String> FindModuleOfContracts(String line, String projectPrefix) =>
-        ModuleGraph.FindModuleOfContracts(ProjectReferencePattern.Match(line).Groups["include"].Value, projectPrefix);
+        ModuleProjects.FindModuleOfContracts(
+            ProjectReferencePattern.Match(line).Groups["include"].Value,
+            projectPrefix);
 
     private static Int32 GetEnd(TextLines lines, Int32 start) =>
         IsSelfClosing(lines.Lines[start])

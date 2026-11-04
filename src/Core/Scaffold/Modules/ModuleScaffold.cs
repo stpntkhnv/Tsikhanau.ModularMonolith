@@ -2,7 +2,6 @@ using Tsikhanau.Monolith.Scaffold.Apps;
 using Tsikhanau.Monolith.Scaffold.Cli;
 using Tsikhanau.Monolith.Scaffold.Edits;
 using Tsikhanau.Monolith.Scaffold.Files;
-using Tsikhanau.Monolith.Scaffold.Names;
 using Tsikhanau.Monolith.Scaffold.Plans;
 using Tsikhanau.Monolith.Scaffold.Templates;
 using Tsikhanau.Railway;
@@ -14,27 +13,21 @@ internal sealed class ModuleScaffold(String name, Boolean hasSettings) : IScaffo
     private const String MigrationName = "Initial";
 
     public Result<ScaffoldPlan> Plan(AppLayout app, IFileSystem fileSystem) =>
-        ModuleName
-            .Parse(name, app.DatabaseName)
-            .Map(moduleName => new ScaffoldedModule(app, moduleName))
+        ScaffoldedModule
+            .Parse(app, name)
             .Bind(module => EnsureNoSuchModule(module, fileSystem))
             .Bind(PlanModule);
 
     private static Result<ScaffoldedModule> EnsureNoSuchModule(ScaffoldedModule module, IFileSystem fileSystem)
     {
-        Optional<String> existingFolder = fileSystem
-            .GetDirectories(ScaffoldedModule.ModulesFolder, "*")
-            .FirstOrDefault(folder => IsFolderOf(folder, module));
+        Optional<String> existingName = ModuleFolders
+            .ReadNames(fileSystem)
+            .FirstOrDefault(folderName => folderName.Equals(module.Name, StringComparison.OrdinalIgnoreCase));
 
-        return existingFolder.Match(
-            folder => Error.Failure("scaffold.exists", $"{folder} already exists"),
+        return existingName.Match(
+            folderName => Error.Failure("scaffold.exists", $"{ModuleFolders.InRoot(folderName)} already exists"),
             () => Result.Success(module));
     }
-
-    private static Boolean IsFolderOf(String folder, ScaffoldedModule module) =>
-        Path
-            .GetFileName(folder)
-            .Equals(module.Name, StringComparison.OrdinalIgnoreCase);
 
     private Result<ScaffoldPlan> PlanModule(ScaffoldedModule module) =>
         Result

@@ -7,7 +7,7 @@ using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Scaffold.Edits;
 
-internal sealed class AppSettingsEdit(JsonText json, String path, String moduleName)
+internal sealed class AppSettingsEdit(JsonText json, TextFile appSettings, String moduleName)
 {
     private const String App = "App";
 
@@ -19,7 +19,7 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
 
     public static Result<FileEdit> AddModule(TextFile appSettings, ScaffoldedModule module) =>
         appSettings.PlanEdit(text =>
-            new AppSettingsEdit(new JsonText(text, appSettings.NewLine), appSettings.Path, module.Name)
+            new AppSettingsEdit(new JsonText(text, appSettings.NewLine), appSettings, module.Name)
                 .AddModuleSection());
 
     private String Entry => $"\"{moduleName}\": {{}}";
@@ -28,7 +28,7 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
         JsonOutlineReader
             .Read(json.Text)
             .Bind(root => root.FindObject(App))
-            .ToResult(BuildAnchorError($"an object {App}"))
+            .ToResult(appSettings.MissingAnchor($"an object {App}"))
             .Bind(AddToApp);
 
     private Result<String> AddToApp(JsonObjectOutline app)
@@ -39,7 +39,7 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
             .FindProperty(Modules)
             .Match(
                 modulesProperty => modulesProperty.ObjectValue
-                    .ToResult(BuildAnchorError($"{ModulesPath} as an object"))
+                    .ToResult(appSettings.MissingAnchor($"{ModulesPath} as an object"))
                     .Bind(modules => AddToModules(modules, indentationStep)),
                 () => AppendModulesSection(app, indentationStep));
     }
@@ -50,7 +50,7 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
     private Result<String> AddToModules(JsonObjectOutline modules, String indentationStep) =>
         Result
             .Success(modules)
-            .Ensure(HasNoModuleSection, BuildAnchorError($"no {ModulesPath}:{moduleName} yet"))
+            .Ensure(HasNoModuleSection, appSettings.MissingAnchor($"no {ModulesPath}:{moduleName} yet"))
             .Bind(_ => FindLaterModule(modules)
                 .Match(InsertBefore, () => AppendModule(modules, indentationStep)));
 
@@ -106,7 +106,5 @@ internal sealed class AppSettingsEdit(JsonText json, String path, String moduleN
     private String JoinLines(IReadOnlyList<String> lines) =>
         String.Concat(lines.Select(line => line + json.NewLine));
 
-    private Error BuildLayoutError(String targetPath) => BuildAnchorError($"{targetPath} {LayoutRule}");
-
-    private Error BuildAnchorError(String expected) => Error.Failure("scaffold.anchor", $"{path} must hold {expected}");
+    private Error BuildLayoutError(String targetPath) => appSettings.MissingAnchor($"{targetPath} {LayoutRule}");
 }

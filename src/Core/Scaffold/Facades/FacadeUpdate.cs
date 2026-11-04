@@ -19,7 +19,7 @@ internal sealed class FacadeUpdate(ScaffoldedModule module, IFileSystem fileSyst
         + $"or add {module.QueryMarker}, {module.QueryFacade} and ExecuteQueryAsync by hand and run scaffold again";
 
     private String HalfQueryShape =>
-        $"{module.ContractsFolder} must hold both {module.QueryMarker}.cs and {module.QueryFacade}.cs "
+        $"{module.Projects.ContractsFolder} must hold both {module.QueryMarker}.cs and {module.QueryFacade}.cs "
         + "or neither of them";
 
     public Result<FacadeChange> Plan(Func<FacadeShape, FacadeShape> require) =>

@@ -12,20 +12,22 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
 
     private String Namespace => module.Namespace;
 
+    private ModuleProjects Projects => module.Projects;
+
     public IReadOnlyList<NewFile> CreateFiles() =>
     [
-        new(module.ContractsProjectPath, ContractsProject),
-        new(module.ProjectPath, ModuleProject),
-        new(module.InProject($"{module.ModuleClass}.cs"), ModuleClass),
+        new(Projects.ContractsProjectPath, ContractsProject),
+        new(Projects.ProjectPath, ModuleProject),
+        new(Projects.InProject($"{module.ModuleClass}.cs"), ModuleClass),
         _facadeTemplate.FacadeContractFile,
         _facadeTemplate.FacadeClassFile,
-        new(module.InProject($"Infrastructure/Persistence/{module.DbContext}.cs"), DbContext),
-        new(module.InProject($"Infrastructure/Persistence/{module.DbContext}DesignTimeFactory.cs"), DesignTimeFactory),
+        new(Projects.InProject($"Infrastructure/Persistence/{module.DbContext}.cs"), DbContext),
+        new(Projects.InProject($"Infrastructure/Persistence/{DesignTimeFactoryName}.cs"), DesignTimeFactory),
         .. SettingsFiles,
     ];
 
     private IEnumerable<NewFile> SettingsFiles =>
-        hasSettings ? [new(module.InProject($"Settings/{SettingsName}.cs"), SettingsRecord)] : [];
+        hasSettings ? [new(Projects.InProject($"Settings/{SettingsName}.cs"), SettingsRecord)] : [];
 
     private static String ContractsProject =>
         $$"""
@@ -45,7 +47,7 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
             <InternalsVisibleTo Include="{{module.UnitTestsAssembly}}" />
           </ItemGroup>
           <ItemGroup>
-            <ProjectReference Include="{{ContractsReference}}" />
+            <ProjectReference Include="{{Projects.OwnContractsInclude}}" />
             <ProjectReference Include="{{CoreFolder}}\Domain\Tsikhanau.Monolith.Domain.csproj" />
             <ProjectReference Include="{{CoreFolder}}\Application\Tsikhanau.Monolith.Application.csproj" />
             <ProjectReference Include="{{CoreFolder}}\Infrastructure\Tsikhanau.Monolith.Infrastructure.csproj" />
@@ -57,8 +59,6 @@ internal sealed class ModuleTemplate(ScaffoldedModule module, Boolean hasSetting
         </Project>
 
         """;
-
-    private String ContractsReference => $@"..\{module.ContractsProjectName}\{module.ContractsProjectName}.csproj";
 
     private String ModuleClass =>
         $$"""

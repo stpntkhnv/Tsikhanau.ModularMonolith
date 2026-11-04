@@ -420,7 +420,7 @@ public sealed class EventHandlerScaffoldTests : IAsyncLifetime
 
             return new ModuleTemplate(tags, hasSettings: false)
                 .CreateFiles()
-                .Single(newFile => newFile.Path == tags.ProjectPath)
+                .Single(newFile => newFile.Path == tags.Projects.ProjectPath)
                 .Content;
         }
     }

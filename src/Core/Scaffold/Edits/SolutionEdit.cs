@@ -15,24 +15,23 @@ internal static partial class SolutionEdit
     private static partial Regex FolderPattern { get; }
 
     public static Result<FileEdit> AddModule(TextFile solution, ScaffoldedModule module) =>
-        solution.PlanEdit(text => AddFolder(TextLines.Split(text, solution.NewLine), solution.Path, module));
+        solution.PlanLineEdit(lines => AddFolder(lines, solution, module));
 
-    private static Result<String> AddFolder(TextLines lines, String path, ScaffoldedModule module)
+    private static Result<TextLines> AddFolder(TextLines lines, TextFile solution, ScaffoldedModule module)
     {
-        var folderName = $"/{module.Folder}/";
+        var folderName = $"/{module.Projects.Folder}/";
         var folderIndexes = lines.GetIndexes(FolderPattern.IsMatch);
         var solutionEnds = lines.GetIndexes(line => line.Trim() == "</Solution>");
 
         return Result
             .Success(lines)
-            .Ensure(_ => solutionEnds.Count == 1, BuildAnchorError(path, "one </Solution> line"))
+            .Ensure(_ => solutionEnds.Count == 1, solution.MissingAnchor("one </Solution> line"))
             .Ensure(
                 _ => !folderIndexes.Any(index => HasName(lines.Lines[index], folderName)),
-                BuildAnchorError(path, $"no folder {folderName} yet"))
+                solution.MissingAnchor($"no folder {folderName} yet"))
             .Map(_ => lines.Insert(
                 GetInsertionIndex(lines, folderIndexes, folderName, solutionEnds[0]),
-                BuildFolder(lines, folderIndexes, folderName, module)))
-            .Map(updatedLines => updatedLines.Join());
+                BuildFolder(lines, folderIndexes, folderName, module.Projects)));
     }
 
     private static Int32 GetInsertionIndex(
@@ -49,18 +48,16 @@ internal static partial class SolutionEdit
         TextLines lines,
         IReadOnlyList<Int32> folderIndexes,
         String folderName,
-        ScaffoldedModule module)
+        ModuleProjects projects)
     {
         var indentation = folderIndexes.Count > 0
             ? TextLines.ReadIndentation(lines.Lines[folderIndexes[0]])
             : DefaultIndentation;
 
-        String[] projectPaths = [module.ContractsProjectPath, module.ProjectPath];
-
         return
         [
             $"{indentation}<Folder Name=\"{folderName}\">",
-            .. projectPaths
+            .. projects.ProjectPaths
                 .Order(StringComparer.Ordinal)
                 .Select(projectPath => $"{indentation}{indentation}<Project Path=\"{projectPath}\" />"),
             $"{indentation}</Folder>",
@@ -71,7 +68,4 @@ internal static partial class SolutionEdit
         String.Equals(ReadName(line), folderName, StringComparison.OrdinalIgnoreCase);
 
     private static String ReadName(String line) => FolderPattern.Match(line).Groups["name"].Value;
-
-    private static Error BuildAnchorError(String path, String expected) =>
-        Error.Failure("scaffold.anchor", $"{path} must hold {expected}");
 }

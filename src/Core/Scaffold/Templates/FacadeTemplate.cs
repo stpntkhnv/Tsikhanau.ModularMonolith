@@ -17,15 +17,15 @@ internal sealed class FacadeTemplate(ScaffoldedModule module)
 
     private const String SendQuery = " =>\n        QueryAsync(query, cancellationToken);";
 
-    public String FacadeContractPath => module.InProject($"{module.FacadeContract}.cs");
+    public String FacadeContractPath => module.Projects.InProject($"{module.FacadeContract}.cs");
 
-    public String FacadeClassPath => module.InProject($"Infrastructure/{module.FacadeClass}.cs");
+    public String FacadeClassPath => module.Projects.InProject($"Infrastructure/{module.FacadeClass}.cs");
 
-    public String CommandMarkerPath => module.InProject($"{module.CommandMarker}.cs");
+    public String CommandMarkerPath => module.Projects.InProject($"{module.CommandMarker}.cs");
 
-    public String QueryMarkerPath => module.InContracts($"{module.QueryMarker}.cs");
+    public String QueryMarkerPath => module.Projects.InContracts($"{module.QueryMarker}.cs");
 
-    public String QueryFacadePath => module.InContracts($"{module.QueryFacade}.cs");
+    public String QueryFacadePath => module.Projects.InContracts($"{module.QueryFacade}.cs");
 
     public NewFile FacadeContractFile => new(FacadeContractPath, RenderFacadeContract(FacadeShape.Fresh));
 

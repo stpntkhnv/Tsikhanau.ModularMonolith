@@ -8,32 +8,16 @@ namespace Tsikhanau.Monolith.Scaffold.Neighbours;
 
 internal sealed partial class ModuleGraph(IReadOnlyDictionary<String, IReadOnlyList<String>> references)
 {
-    private const String ContractsSuffix = ".Contracts";
-
     [GeneratedRegex(@"<ProjectReference\s+Include=""(?<include>[^""]+)""")]
     private static partial Regex ProjectReferencePattern { get; }
 
     public static Result<ModuleGraph> Read(IFileSystem fileSystem, AppLayout app) =>
-        fileSystem
-            .GetDirectories(ScaffoldedModule.ModulesFolder, "*")
-            .Select(Path.GetFileName)
-            .OfType<String>()
-            .Select(moduleName => ReadNeighbours(fileSystem, app, moduleName)
+        ModuleFolders
+            .ReadNames(fileSystem)
+            .Select(moduleName => ReadNeighbours(fileSystem, new ModuleProjects(app.ProjectPrefix, moduleName))
                 .Map(neighbours => KeyValuePair.Create(moduleName, neighbours)))
             .CombineAll()
             .Map(modules => new ModuleGraph(modules.ToDictionary(StringComparer.Ordinal)));
-
-    public static Optional<String> FindModuleOfContracts(String include, String projectPrefix)
-    {
-        var projectName = Path.GetFileNameWithoutExtension(include.Replace('\\', '/'));
-        var modulePrefix = $"{projectPrefix}.Modules.";
-
-        return projectName.Length > modulePrefix.Length + ContractsSuffix.Length
-            && projectName.StartsWith(modulePrefix, StringComparison.Ordinal)
-            && projectName.EndsWith(ContractsSuffix, StringComparison.Ordinal)
-            ? projectName[modulePrefix.Length..^ContractsSuffix.Length]
-            : Optional<String>.None();
-    }
 
     public Boolean References(String from, String to) =>
         GetReferences(from)
@@ -77,26 +61,18 @@ internal sealed partial class ModuleGraph(IReadOnlyDictionary<String, IReadOnlyL
         return path;
     }
 
-    private static Result<IReadOnlyList<String>> ReadNeighbours(
-        IFileSystem fileSystem,
-        AppLayout app,
-        String moduleName)
-    {
-        var projectName = $"{app.ProjectPrefix}.Modules.{moduleName}";
-        var projectPath = $"{ScaffoldedModule.ModulesFolder}/{moduleName}/{projectName}/{projectName}.csproj";
-
-        return fileSystem.FileExists(projectPath)
+    private static Result<IReadOnlyList<String>> ReadNeighbours(IFileSystem fileSystem, ModuleProjects projects) =>
+        fileSystem.FileExists(projects.ProjectPath)
             ? fileSystem
-                .ReadTextFile(projectPath)
-                .Map(moduleProject => GetNeighbours(moduleProject.Text, app.ProjectPrefix, moduleName))
+                .ReadTextFile(projects.ProjectPath)
+                .Map(moduleProject => GetNeighbours(moduleProject.Text, projects.ProjectPrefix, projects.ModuleName))
             : Result.Success<IReadOnlyList<String>>([]);
-    }
 
     private static IReadOnlyList<String> GetNeighbours(String projectText, String projectPrefix, String moduleName) =>
         [
             .. ProjectReferencePattern
                 .Matches(projectText)
-                .Select(match => FindModuleOfContracts(match.Groups["include"].Value, projectPrefix))
+                .Select(match => ModuleProjects.FindModuleOfContracts(match.Groups["include"].Value, projectPrefix))
                 .Where(neighbour => neighbour.HasValue && neighbour.Value != moduleName)
                 .Select(neighbour => neighbour.Value),
         ];
