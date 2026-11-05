@@ -1,6 +1,6 @@
-namespace Tsikhanau.Monolith.Api.Endpoints;
+namespace Tsikhanau.Railway;
 
-internal static class ProblemMembers
+public static class ProblemMembers
 {
     public const String Code = "code";
 

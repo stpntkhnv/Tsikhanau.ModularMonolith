@@ -41,11 +41,13 @@ public sealed class MapReturnsResultAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        var bind = method.Name == "Map" ? "Bind" : "BindAsync";
         context.ReportDiagnostic(Diagnostic.Create(
             Descriptors.MapReturnsResult,
             GetNameLocation(invocation.Syntax),
+            ImmutableDictionary<String, String?>.Empty.Add(FixProperties.Bind, bind),
             method.Name,
-            method.Name == "Map" ? "Bind" : "BindAsync"));
+            bind));
     }
 
     private static Location GetNameLocation(SyntaxNode syntax)

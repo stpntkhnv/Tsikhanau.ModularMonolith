@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Tsikhanau.Monolith.Api.Modules;
 using Tsikhanau.Monolith.Shared.Collections;
 using Tsikhanau.Monolith.Shared.Reflection;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Api.Endpoints;
 
@@ -10,11 +11,9 @@ public static class EndpointMappingExtensions
 {
     private static readonly Int32[] ProblemStatusCodes =
     [
-        StatusCodes.Status401Unauthorized,
-        StatusCodes.Status403Forbidden,
-        StatusCodes.Status404NotFound,
-        StatusCodes.Status409Conflict,
-        StatusCodes.Status422UnprocessableEntity,
+        .. ErrorHttpExtensions.ExpectedKinds
+            .Where(kind => kind is not ErrorKind.Validation)
+            .Select(kind => kind.ToStatusCode()),
         StatusCodes.Status500InternalServerError
     ];
 

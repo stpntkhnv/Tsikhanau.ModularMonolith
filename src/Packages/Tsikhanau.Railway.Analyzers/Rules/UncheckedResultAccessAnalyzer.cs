@@ -21,12 +21,12 @@ public sealed class UncheckedResultAccessAnalyzer : DiagnosticAnalyzer
         {
             if (RailwayTypes.Create(start.Compilation) is { } types)
             {
-                start.RegisterOperationBlockAction(block => Analyze(block, types));
+                start.RegisterOperationBlockAction(block => ReportUncheckedAccesses(block, types));
             }
         });
     }
 
-    private static void Analyze(OperationBlockAnalysisContext context, RailwayTypes types)
+    private static void ReportUncheckedAccesses(OperationBlockAnalysisContext context, RailwayTypes types)
     {
         foreach (var block in context.OperationBlocks)
         {
@@ -36,7 +36,7 @@ public sealed class UncheckedResultAccessAnalyzer : DiagnosticAnalyzer
             }
 
             var graph = context.GetControlFlowGraph(block);
-            new ResultFlowAnalysis(types, context.ReportDiagnostic).Analyze(graph, new ResultStates());
+            new ResultFlowAnalysis(types, context.ReportDiagnostic).ReportUncheckedAccesses(graph, new ResultStates());
         }
     }
 

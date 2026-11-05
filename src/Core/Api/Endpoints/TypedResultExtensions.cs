@@ -24,7 +24,7 @@ public static class TypedResultExtensions
             var result = await resultTask;
             return result.IsSuccess
                 ? toSuccess(result.Value)
-                : ErrorResults.ToProblem<TSuccess>(result.Error);
+                : result.Error.ToProblem<TSuccess>();
         }
     }
 

@@ -40,8 +40,8 @@ internal sealed class PongTestHooks
     public void Record(Guid pingId)
     {
         ReceivedPingIds.Enqueue(pingId);
-        LastTraceId = Optional<Activity>
-            .FromNullable(Activity.Current)
+        LastTraceId = Activity.Current
+            .AsOptional()
             .Map(activity => activity.TraceId);
     }
 }

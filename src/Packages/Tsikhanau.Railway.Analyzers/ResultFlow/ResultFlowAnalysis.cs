@@ -10,6 +10,8 @@ internal sealed class ResultFlowAnalysis
 {
     private const String AttributeNamespace = "System.Diagnostics.CodeAnalysis";
 
+    private static readonly Action<IOperation, ResultStates> NoStep = static (_, _) => { };
+
     private readonly RailwayTypes _types;
     private readonly Action<Diagnostic> _report;
 
@@ -19,7 +21,14 @@ internal sealed class ResultFlowAnalysis
         _report = report;
     }
 
-    public void Analyze(ControlFlowGraph graph, ResultStates entry)
+    public void ReportUncheckedAccesses(ControlFlowGraph graph, ResultStates entry)
+    {
+        var states = SolveBlockStates(graph, entry);
+        ReportBlocks(graph, states);
+        ReportLocalFunctions(graph);
+    }
+
+    private ResultStates?[] SolveBlockStates(ControlFlowGraph graph, ResultStates entry)
     {
         var blocks = graph.Blocks;
         var states = new ResultStates?[blocks.Length];
@@ -42,7 +51,7 @@ internal sealed class ResultFlowAnalysis
 
             var block = blocks[ordinal];
             var state = states[ordinal]!.Clone();
-            Transfer(graph, block, state, report: false);
+            ApplyBlock(block, state);
 
             foreach (var (branch, branchState) in GetSuccessors(block, state))
             {
@@ -53,17 +62,25 @@ internal sealed class ResultFlowAnalysis
             }
         }
 
-        for (var i = 0; i < blocks.Length; i++)
+        return states;
+    }
+
+    private void ReportBlocks(ControlFlowGraph graph, ResultStates?[] states)
+    {
+        for (var i = 0; i < states.Length; i++)
         {
             if (states[i] is { } state)
             {
-                Transfer(graph, blocks[i], state.Clone(), report: true);
+                ApplyAndReportBlock(graph, graph.Blocks[i], state.Clone());
             }
         }
+    }
 
+    private void ReportLocalFunctions(ControlFlowGraph graph)
+    {
         foreach (var localFunction in graph.LocalFunctions)
         {
-            Analyze(graph.GetLocalFunctionControlFlowGraph(localFunction), new ResultStates());
+            ReportUncheckedAccesses(graph.GetLocalFunctionControlFlowGraph(localFunction), new ResultStates());
         }
     }
 
@@ -102,41 +119,58 @@ internal sealed class ResultFlowAnalysis
         yield return (block.FallThroughSuccessor, conditionalIsTrue ? whenFalse : whenTrue);
     }
 
-    private void Transfer(ControlFlowGraph graph, BasicBlock block, ResultStates state, Boolean report)
+    private void ApplyBlock(BasicBlock block, ResultStates state) => WalkBlock(block, state, NoStep);
+
+    private void ApplyAndReportBlock(ControlFlowGraph graph, BasicBlock block, ResultStates state) =>
+        WalkBlock(block, state, (operation, current) => ReportOperation(graph, operation, current));
+
+    private void WalkBlock(BasicBlock block, ResultStates state, Action<IOperation, ResultStates> beforeEffect)
     {
         foreach (var operation in block.Operations)
         {
-            Visit(graph, operation, state, report);
+            Walk(operation, state, beforeEffect);
         }
 
         if (block.BranchValue is { } branchValue)
         {
-            Visit(graph, branchValue, state, report);
+            Walk(branchValue, state, beforeEffect);
         }
     }
 
-    private void Visit(ControlFlowGraph graph, IOperation operation, ResultStates state, Boolean report)
+    private void Walk(IOperation operation, ResultStates state, Action<IOperation, ResultStates> beforeEffect)
     {
-        if (operation is IFlowAnonymousFunctionOperation lambda)
+        if (operation is IFlowAnonymousFunctionOperation)
         {
-            if (report && !state.IsUnreachable)
-            {
-                Analyze(graph.GetAnonymousFunctionControlFlowGraph(lambda), state.Clone());
-            }
-
+            beforeEffect(operation, state);
             return;
         }
 
         foreach (var child in operation.ChildOperations)
         {
-            Visit(graph, child, state, report);
+            Walk(child, state, beforeEffect);
         }
 
+        beforeEffect(operation, state);
+        ApplyEffect(operation, state);
+    }
+
+    private void ReportOperation(ControlFlowGraph graph, IOperation operation, ResultStates state)
+    {
         switch (operation)
         {
-            case IPropertyReferenceOperation property when report:
+            case IFlowAnonymousFunctionOperation lambda when !state.IsUnreachable:
+                ReportUncheckedAccesses(graph.GetAnonymousFunctionControlFlowGraph(lambda), state.Clone());
+                break;
+            case IPropertyReferenceOperation property:
                 Check(property, state);
                 break;
+        }
+    }
+
+    private void ApplyEffect(IOperation operation, ResultStates state)
+    {
+        switch (operation)
+        {
             case IDeconstructionAssignmentOperation:
                 state.Clear();
                 break;

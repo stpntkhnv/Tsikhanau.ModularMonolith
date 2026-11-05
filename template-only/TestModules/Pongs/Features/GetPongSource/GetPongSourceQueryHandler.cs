@@ -1,6 +1,5 @@
 using Dapper;
 using Tsikhanau.Monolith.Application.Queries;
-using Tsikhanau.Monolith.Domain.Optionals;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts;
 using Tsikhanau.Monolith.TestModules.Pings.Contracts.Queries.GetPing;
 using Tsikhanau.Monolith.TestModules.Pongs.Domain.Pongs;

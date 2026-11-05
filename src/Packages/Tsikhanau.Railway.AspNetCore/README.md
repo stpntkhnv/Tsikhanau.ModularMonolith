@@ -34,7 +34,7 @@ app.MapDelete("/users/{id}", (Guid id, UserService users) =>
 
 | ErrorKind | Status |
 |---|---|
-| Validation | 400, `errors` grouped by field |
+| Validation | 400, `errors` grouped by field; a message without a field goes under the `""` key |
 | Unauthorized | 401 |
 | Forbidden | 403 |
 | NotFound | 404 |
@@ -42,7 +42,23 @@ app.MapDelete("/users/{id}", (Guid id, UserService users) =>
 | Failure | 422 |
 | Unexpected | 500, message and code are not exposed |
 
-`Error.Metadata` is never written to the response. `error.ToHttpResult()` and `kind.ToStatusCode()` are available for custom handling.
+`Error.Metadata` is never written to the response, and neither is the message of an unexpected error, also when it sits inside another error. `error.ToHttpResult()` and `kind.ToStatusCode()` are available for custom handling.
+
+For an endpoint that declares its results, `error.ToProblem<TSuccess>()` gives the same answer typed as `Results<TSuccess, ValidationProblem, ProblemHttpResult>`:
+
+```csharp
+app.MapGet("/users/{id}", async Task<Results<Ok<UserDto>, ValidationProblem, ProblemHttpResult>> (
+    Guid id,
+    UserService users) =>
+{
+    var user = await users.GetUser(id);
+    return user.IsSuccess
+        ? TypedResults.Ok(new UserDto(user.Value.Id, user.Value.Name))
+        : user.Error.ToProblem<Ok<UserDto>>();
+});
+```
+
+`ErrorHttpExtensions.ExpectedKinds` lists the kinds that answer with their own status, `error.IsExpected()` says whether an error answers that way or as a bare 500, and `ProblemMembers` names the body members `code`, `errors` and `traceId`.
 
 ## License
 

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using Tsikhanau.Monolith.Api.Endpoints;
+using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.Hosting.OpenApi;
 

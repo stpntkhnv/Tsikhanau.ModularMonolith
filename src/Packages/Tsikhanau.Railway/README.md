@@ -17,6 +17,7 @@ Result and Optional types for railway-oriented programming in .NET: functional e
 - **Match**, **GetValueOrDefault** - get the value out
 - **Where**, **Or**, **OrElse** - filter and fallback for Optional
 - **ToResult**, **ToOptional** - conversions between Result and Optional
+- **AsOptional**, **AsNullable**, **AsEnumerable** - conversions between nullable values, Optional and sequences
 - Async variants for all operations
 - Roslyn analyzers for ignored results, Map instead of Bind, and unchecked Value/Error access
 - ASP.NET Core integration (ProblemDetails, status codes by ErrorKind) in [Tsikhanau.Railway.AspNetCore](https://www.nuget.org/packages/Tsikhanau.Railway.AspNetCore)

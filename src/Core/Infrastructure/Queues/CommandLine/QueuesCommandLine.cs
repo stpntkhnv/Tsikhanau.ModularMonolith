@@ -43,8 +43,9 @@ internal static class QueuesCommandLine
             .Map((module, knownQueue, parsedMessageId) => new MessageAddress(module, knownQueue, parsedMessageId));
 
     private static Result<ModuleDescriptor> FindModule(ModuleRegistry moduleRegistry, String moduleName) =>
-        Optional<ModuleDescriptor>
-            .FromNullable(moduleRegistry.Modules.FirstOrDefault(module => IsNamed(module, moduleName)))
+        moduleRegistry.Modules
+            .FirstOrDefault(module => IsNamed(module, moduleName))
+            .AsOptional()
             .ToResult(() => BuildUsageError($"unknown module '{moduleName}'; {DescribeModules(moduleRegistry)}"));
 
     private static Boolean IsNamed(ModuleDescriptor module, String moduleName) =>

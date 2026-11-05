@@ -25,4 +25,24 @@ public static class OptionalConversions
             ? Result<T>.Success(optional.Value)
             : Result<T>.Failure(errorFactory());
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T? AsNullable<T>(
+        this Optional<T> optional)
+        where T : struct
+    {
+        return optional.HasValue
+            ? optional.Value
+            : null;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEnumerable<T> AsEnumerable<T>(
+        this Optional<T> optional)
+        where T : notnull
+    {
+        return optional.HasValue
+            ? [optional.Value]
+            : [];
+    }
 }

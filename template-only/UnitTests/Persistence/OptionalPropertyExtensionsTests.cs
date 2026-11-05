@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Tsikhanau.Monolith.Domain.Optionals;
 using Tsikhanau.Monolith.Infrastructure.Persistence;
 using Tsikhanau.Railway;
 

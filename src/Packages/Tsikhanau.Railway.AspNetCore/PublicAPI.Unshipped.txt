@@ -1,1 +1,8 @@
 #nullable enable
+const Tsikhanau.Railway.ProblemMembers.Code = "code" -> string!
+const Tsikhanau.Railway.ProblemMembers.Errors = "errors" -> string!
+const Tsikhanau.Railway.ProblemMembers.TraceId = "traceId" -> string!
+static Tsikhanau.Railway.ErrorHttpExtensions.ExpectedKinds.get -> System.Collections.Generic.IReadOnlyList<Tsikhanau.Railway.ErrorKind>!
+static Tsikhanau.Railway.ErrorHttpExtensions.IsExpected(this Tsikhanau.Railway.Error! error) -> bool
+static Tsikhanau.Railway.ErrorHttpExtensions.ToProblem<TSuccess>(this Tsikhanau.Railway.Error! error) -> Microsoft.AspNetCore.Http.HttpResults.Results<TSuccess, Microsoft.AspNetCore.Http.HttpResults.ValidationProblem!, Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult!>!
+Tsikhanau.Railway.ProblemMembers

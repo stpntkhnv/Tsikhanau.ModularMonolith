@@ -17,8 +17,9 @@ internal static class ScenarioRunner
             .CreateInstancesOf<IScenario>()
             .ToList();
 
-        var foundScenario = Optional<IScenario>.FromNullable(
-            scenarios.Find(scenario => IsRequested(scenario, arguments)));
+        var foundScenario = scenarios
+            .Find(scenario => IsRequested(scenario, arguments))
+            .AsOptional();
 
         if (foundScenario.IsNone)
         {

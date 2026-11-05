@@ -7,7 +7,7 @@ namespace Tsikhanau.Monolith.Api.Callers;
 internal sealed class HttpCaller(IHttpContextAccessor httpContextAccessor) : ICaller
 {
     public Optional<String> Id =>
-        Optional<HttpContext>
-            .FromNullable(httpContextAccessor.HttpContext)
+        httpContextAccessor.HttpContext
+            .AsOptional()
             .Bind(httpContext => httpContext.User.CallerId);
 }

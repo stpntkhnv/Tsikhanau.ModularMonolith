@@ -1,4 +1,8 @@
 #nullable enable
+static Tsikhanau.Railway.NullableConversions.AsOptional<T>(this T? value) -> Tsikhanau.Railway.Optional<T!>
+static Tsikhanau.Railway.NullableConversions.AsOptional<T>(this T? value) -> Tsikhanau.Railway.Optional<T>
+static Tsikhanau.Railway.OptionalConversions.AsEnumerable<T>(this Tsikhanau.Railway.Optional<T> optional) -> System.Collections.Generic.IEnumerable<T>!
+static Tsikhanau.Railway.OptionalConversions.AsNullable<T>(this Tsikhanau.Railway.Optional<T> optional) -> T?
 static Tsikhanau.Railway.Result.Collect<T1>(Tsikhanau.Railway.Result<T1> first) -> Tsikhanau.Railway.Collected<T1>
 Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>
 Tsikhanau.Railway.Collected<T1, T2, T3, T4, T5, T6, T7, T8>.Bind<TOut>(System.Func<T1, T2, T3, T4, T5, T6, T7, T8, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
@@ -39,3 +43,4 @@ Tsikhanau.Railway.Collected<T1>.And<T2>(Tsikhanau.Railway.Result<T2> next) -> Ts
 Tsikhanau.Railway.Collected<T1>.Bind<TOut>(System.Func<T1, Tsikhanau.Railway.Result<TOut>>! bind) -> Tsikhanau.Railway.Result<TOut>
 Tsikhanau.Railway.Collected<T1>.Collected() -> void
 Tsikhanau.Railway.Collected<T1>.Map<TOut>(System.Func<T1, TOut>! map) -> Tsikhanau.Railway.Result<TOut>
+Tsikhanau.Railway.NullableConversions

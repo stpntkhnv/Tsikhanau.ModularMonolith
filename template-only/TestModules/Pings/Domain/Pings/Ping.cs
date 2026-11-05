@@ -1,5 +1,4 @@
 using Tsikhanau.Monolith.Domain.Aggregates;
-using Tsikhanau.Monolith.Domain.Optionals;
 using Tsikhanau.Monolith.TestModules.Pings.Domain.Pings.Events;
 using Tsikhanau.Railway;
 

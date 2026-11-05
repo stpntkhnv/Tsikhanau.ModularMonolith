@@ -23,13 +23,15 @@ public sealed class MapToBindCodeFixProvider : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         foreach (var diagnostic in context.Diagnostics)
         {
-            if (root?.FindNode(diagnostic.Location.SourceSpan, getInnermostNodeForTie: true) is not SimpleNameSyntax name)
+            var node = root?.FindNode(diagnostic.Location.SourceSpan, getInnermostNodeForTie: true);
+            if (node is not SimpleNameSyntax name
+                || !diagnostic.Properties.TryGetValue(FixProperties.Bind, out var bind)
+                || bind is null)
             {
                 continue;
             }
 
             var map = name.Identifier.ValueText;
-            var bind = map == "MapAsync" ? "BindAsync" : "Bind";
             context.RegisterCodeFix(
                 CodeAction.Create(
                     $"Replace '{map}' with '{bind}'",
