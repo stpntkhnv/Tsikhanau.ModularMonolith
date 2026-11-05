@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Tsikhanau.Monolith.Hosting;
+using Tsikhanau.Monolith.UnitTests.ProbeApps;
 
 namespace Tsikhanau.Monolith.UnitTests.Hosting;
 
@@ -70,7 +68,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task Server_error_answers_code_server_unexpected_without_its_detail_for_every_client()
     {
-        await using var app = await StartProbeAppAsync(
+        await using var app = await ProbeApp.StartAsync(
             probeApp => probeApp.MapGet("/probe", () => TypedResults.Problem(Secret, statusCode: 500)));
 
         using var httpClient = app.GetTestClient();
@@ -91,7 +89,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task Server_error_keeps_nothing_the_endpoint_set_but_its_status_for_every_client()
     {
-        await using var app = await StartProbeAppAsync(
+        await using var app = await ProbeApp.StartAsync(
             probeApp => probeApp.MapGet("/probe", WriteServerErrorWithEveryMember));
 
         using var httpClient = app.GetTestClient();
@@ -112,7 +110,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task Problem_written_without_a_status_takes_the_status_of_the_response_for_every_client()
     {
-        await using var app = await StartProbeAppAsync(
+        await using var app = await ProbeApp.StartAsync(
             probeApp => probeApp.MapGet("/probe", WriteConflictWithoutAStatusAsync));
 
         using var httpClient = app.GetTestClient();
@@ -129,7 +127,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task App_that_customizes_problems_keeps_the_core_problem_shape_for_every_client()
     {
-        await using var app = await StartProbeAppAsync(CustomizeProblemsLikeAnApp, MapCustomizationProbes);
+        await using var app = await ProbeApp.StartAsync(CustomizeProblemsLikeAnApp, MapCustomizationProbes);
         using var httpClient = app.GetTestClient();
 
         IReadOnlyList<String> answers =
@@ -165,7 +163,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task Trace_id_takes_the_naming_policy_of_the_app_and_stays_on_a_server_error_for_every_client()
     {
-        await using var app = await StartProbeAppAsync(
+        await using var app = await ProbeApp.StartAsync(
             NameJsonMembersInSnakeCase,
             probeApp => probeApp.MapGet("/probe", WriteServerErrorWithEveryMember));
 
@@ -191,7 +189,7 @@ public sealed class ProblemDetailsTests
     [Fact]
     public async Task Binding_failure_names_the_parts_of_the_request_it_can_come_from()
     {
-        await using var app = await StartProbeAppAsync(MapBindingProbes);
+        await using var app = await ProbeApp.StartAsync(MapBindingProbes);
         using var httpClient = app.GetTestClient();
 
         IReadOnlyList<String> answers =
@@ -210,28 +208,6 @@ public sealed class ProblemDetailsTests
             "null body: 400 Request.Invalid errors[$]: The body or a route or query value is not valid.",
             "empty body: 400 Request.Invalid errors[$]: The request could not be read."
         ]);
-    }
-
-    private static Task<WebApplication> StartProbeAppAsync(Action<WebApplication> mapProbe) =>
-        StartProbeAppAsync(_ => { }, mapProbe);
-
-    private static async Task<WebApplication> StartProbeAppAsync(
-        Action<WebApplicationBuilder> configureApp,
-        Action<WebApplication> mapProbe)
-    {
-        var builder = WebApplication.CreateSlimBuilder(
-            new WebApplicationOptions { EnvironmentName = Environments.Production });
-
-        builder.WebHost.UseTestServer();
-        builder.Logging.ClearProviders();
-        builder.AddHttpDefaults();
-        configureApp(builder);
-
-        var app = builder.Build();
-        app.UseServiceDefaults();
-        mapProbe(app);
-        await app.StartAsync(CancellationToken);
-        return app;
     }
 
     private static void MapBindingProbes(WebApplication app)

@@ -5,9 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Tsikhanau.Monolith.Hosting;
+using Tsikhanau.Monolith.UnitTests.ProbeApps;
 using Tsikhanau.Railway;
 
 namespace Tsikhanau.Monolith.UnitTests.Hosting;
@@ -218,21 +216,8 @@ public sealed class OptionalSchemaTests
             ignoreOrder: true);
     }
 
-    private static async Task<WebApplication> StartProbeAppAsync(Delegate probeHandler)
-    {
-        var builder = WebApplication.CreateSlimBuilder(
-            new WebApplicationOptions { EnvironmentName = Environments.Development });
-
-        builder.WebHost.UseTestServer();
-        builder.Logging.ClearProviders();
-        builder.AddHttpDefaults();
-
-        var app = builder.Build();
-        app.UseServiceDefaults();
-        app.MapPost("/probe", probeHandler);
-        await app.StartAsync(CancellationToken);
-        return app;
-    }
+    private static Task<WebApplication> StartProbeAppAsync(Delegate probeHandler) =>
+        ProbeApp.StartInDevelopmentAsync(probeApp => probeApp.MapPost("/probe", probeHandler));
 
     private static async Task<JsonElement> ReadDocumentAsync(WebApplication app)
     {
