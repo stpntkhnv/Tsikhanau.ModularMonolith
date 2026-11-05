@@ -67,11 +67,14 @@ internal sealed class ResultFlowAnalysis
 
     private void ReportBlocks(ControlFlowGraph graph, ResultStates?[] states)
     {
+        Action<IOperation, ResultStates> reportOperation =
+            (operation, current) => ReportOperation(graph, operation, current);
+
         for (var i = 0; i < states.Length; i++)
         {
             if (states[i] is { } state)
             {
-                ApplyAndReportBlock(graph, graph.Blocks[i], state.Clone());
+                WalkBlock(graph.Blocks[i], state.Clone(), reportOperation);
             }
         }
     }
@@ -120,9 +123,6 @@ internal sealed class ResultFlowAnalysis
     }
 
     private void ApplyBlock(BasicBlock block, ResultStates state) => WalkBlock(block, state, NoStep);
-
-    private void ApplyAndReportBlock(ControlFlowGraph graph, BasicBlock block, ResultStates state) =>
-        WalkBlock(block, state, (operation, current) => ReportOperation(graph, operation, current));
 
     private void WalkBlock(BasicBlock block, ResultStates state, Action<IOperation, ResultStates> beforeEffect)
     {
