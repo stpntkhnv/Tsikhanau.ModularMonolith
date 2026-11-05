@@ -9,5 +9,5 @@ internal sealed class HttpCaller(IHttpContextAccessor httpContextAccessor) : ICa
     public Optional<String> Id =>
         httpContextAccessor.HttpContext
             .AsOptional()
-            .Bind(httpContext => httpContext.User.CallerId);
+            .Bind(httpContext => httpContext.User.FindCallerId());
 }
