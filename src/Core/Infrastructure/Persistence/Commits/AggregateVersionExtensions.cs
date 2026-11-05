@@ -10,28 +10,22 @@ public static class AggregateVersionExtensions
     private const String VersionProperty = "Version";
     private const Int32 FirstVersion = 1;
 
-    extension(EntityTypeBuilder builder)
-    {
-        public void HasVersion() =>
-            builder
-                .Property<Int32>(VersionProperty)
-                .IsConcurrencyToken();
-    }
+    public static void HasVersion(this EntityTypeBuilder builder) =>
+        builder
+            .Property<Int32>(VersionProperty)
+            .IsConcurrencyToken();
 
-    extension<TAggregate>(EntityEntry<TAggregate> entry)
+    public static void BumpVersion<TAggregate>(this EntityEntry<TAggregate> entry)
         where TAggregate : class, IAggregateRoot
     {
-        public void BumpVersion()
+        var versionEntry = entry.Property<Int32>(VersionProperty);
+        if (entry.State == EntityState.Added)
         {
-            var versionEntry = entry.Property<Int32>(VersionProperty);
-            if (entry.State == EntityState.Added)
-            {
-                versionEntry.CurrentValue = FirstVersion;
-                return;
-            }
-
-            versionEntry.IsModified = true;
-            versionEntry.CurrentValue = checked(versionEntry.OriginalValue + 1);
+            versionEntry.CurrentValue = FirstVersion;
+            return;
         }
+
+        versionEntry.IsModified = true;
+        versionEntry.CurrentValue = checked(versionEntry.OriginalValue + 1);
     }
 }

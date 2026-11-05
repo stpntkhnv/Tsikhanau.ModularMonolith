@@ -6,31 +6,31 @@ namespace Tsikhanau.Monolith.Api.Endpoints;
 
 public static class TypedResultExtensions
 {
-    extension<T>(Task<Result<T>> resultTask)
+    public static Task<Results<Ok<T>, ValidationProblem, ProblemHttpResult>> ToOkAsync<T>(
+        this Task<Result<T>> resultTask)
+        where T : notnull =>
+        resultTask.ToResultsAsync(TypedResults.Ok);
+
+    public static Task<Results<CreatedAtRoute<T>, ValidationProblem, ProblemHttpResult>> ToCreatedAsync<T>(
+        this Task<Result<T>> resultTask,
+        String routeName,
+        Func<T, Object> routeValues)
+        where T : notnull =>
+        resultTask.ToResultsAsync(value => TypedResults.CreatedAtRoute(value, routeName, routeValues(value)));
+
+    public static Task<Results<NoContent, ValidationProblem, ProblemHttpResult>> ToNoContentAsync(
+        this Task<Result<Unit>> resultTask) =>
+        resultTask.ToResultsAsync(_ => TypedResults.NoContent());
+
+    private static async Task<Results<TSuccess, ValidationProblem, ProblemHttpResult>> ToResultsAsync<T, TSuccess>(
+        this Task<Result<T>> resultTask,
+        Func<T, TSuccess> toSuccess)
         where T : notnull
+        where TSuccess : IResult
     {
-        public Task<Results<Ok<T>, ValidationProblem, ProblemHttpResult>> ToOkAsync() =>
-            resultTask.ToResultsAsync(TypedResults.Ok);
-
-        public Task<Results<CreatedAtRoute<T>, ValidationProblem, ProblemHttpResult>> ToCreatedAsync(
-            String routeName,
-            Func<T, Object> routeValues) =>
-            resultTask.ToResultsAsync(value => TypedResults.CreatedAtRoute(value, routeName, routeValues(value)));
-
-        private async Task<Results<TSuccess, ValidationProblem, ProblemHttpResult>> ToResultsAsync<TSuccess>(
-            Func<T, TSuccess> toSuccess)
-            where TSuccess : IResult
-        {
-            var result = await resultTask;
-            return result.IsSuccess
-                ? toSuccess(result.Value)
-                : result.Error.ToProblem<TSuccess>();
-        }
-    }
-
-    extension(Task<Result<Unit>> resultTask)
-    {
-        public Task<Results<NoContent, ValidationProblem, ProblemHttpResult>> ToNoContentAsync() =>
-            resultTask.ToResultsAsync(_ => TypedResults.NoContent());
+        var result = await resultTask;
+        return result.IsSuccess
+            ? toSuccess(result.Value)
+            : result.Error.ToProblem<TSuccess>();
     }
 }

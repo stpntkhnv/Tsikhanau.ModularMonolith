@@ -13,18 +13,17 @@ public static class OptionalPropertyExtensions
         "gets an empty column name, since the naming convention drops letters without upper and lower case: "
         + "give the property a name with Latin letters and keep its old column with HasColumnName after HasOptional";
 
-    extension<TEntity>(EntityTypeBuilder<TEntity> builder)
+    public static PropertyBuilder<TValue?> HasOptional<TEntity, TValue>(
+        this EntityTypeBuilder<TEntity> builder,
+        Expression<Func<TEntity, Optional<TValue>>> property)
         where TEntity : class
+        where TValue : struct
     {
-        public PropertyBuilder<TValue?> HasOptional<TValue>(Expression<Func<TEntity, Optional<TValue>>> property)
-            where TValue : struct
-        {
-            var propertyName = GetPropertyName(property);
-            builder.Ignore(propertyName);
-            return builder
-                .Property<TValue?>(BuildFieldName(propertyName))
-                .HasColumnName(BuildColumnName(typeof(TEntity), propertyName));
-        }
+        var propertyName = GetPropertyName(property);
+        builder.Ignore(propertyName);
+        return builder
+            .Property<TValue?>(BuildFieldName(propertyName))
+            .HasColumnName(BuildColumnName(typeof(TEntity), propertyName));
     }
 
     private static String GetPropertyName(LambdaExpression property) =>

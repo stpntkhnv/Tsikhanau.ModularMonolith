@@ -8,26 +8,24 @@ namespace Tsikhanau.Monolith.Infrastructure.Persistence.Commits;
 
 internal static class ChangeTrackerAggregateExtensions
 {
-    extension(ChangeTracker changeTracker)
+    public static IReadOnlyList<EntityEntry<IAggregateRoot>> GetChangedAggregateEntries(
+        this ChangeTracker changeTracker,
+        IReadOnlyCollection<IAggregateRoot> rootsWithEvents)
     {
-        public IReadOnlyList<EntityEntry<IAggregateRoot>> GetChangedAggregateEntries(
-            IReadOnlyCollection<IAggregateRoot> rootsWithEvents)
-        {
-            var entries = changeTracker
-                .Entries()
-                .ToList();
+        var entries = changeTracker
+            .Entries()
+            .ToList();
 
-            var rootsWithChangedParts = GetRootsWithChangedParts(entries)
-                .Concat(rootsWithEvents)
-                .ToHashSet(ReferenceEqualityComparer.Instance);
+        var rootsWithChangedParts = GetRootsWithChangedParts(entries)
+            .Concat(rootsWithEvents)
+            .ToHashSet(ReferenceEqualityComparer.Instance);
 
-            return entries
-                .Select(entry => entry.Entity)
-                .OfType<IAggregateRoot>()
-                .Select(root => changeTracker.Context.Entry(root))
-                .Where(rootEntry => IsChanged(rootEntry, rootsWithChangedParts))
-                .ToList();
-        }
+        return entries
+            .Select(entry => entry.Entity)
+            .OfType<IAggregateRoot>()
+            .Select(root => changeTracker.Context.Entry(root))
+            .Where(rootEntry => IsChanged(rootEntry, rootsWithChangedParts))
+            .ToList();
     }
 
     private static IEnumerable<Object> GetRootsWithChangedParts(IReadOnlyList<EntityEntry> entries)

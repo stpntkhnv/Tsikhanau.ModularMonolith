@@ -21,12 +21,12 @@ internal static class InternalCommandNameValidator
 
     private static IEnumerable<String> CollectUnnamedProblems(IEnumerable<Type> commandTypes) =>
         commandTypes
-            .Where(type => !type.HasInternalCommandNameAttribute)
+            .Where(type => !type.HasInternalCommandNameAttribute())
             .Select(type => $"{type.FullName} has no InternalCommandName attribute");
 
     private static IEnumerable<String> CollectBlankNameProblems(IEnumerable<Type> commandTypes) =>
         commandTypes
-            .Where(type => type.HasInternalCommandNameAttribute && type.FindInternalCommandName().IsNone)
+            .Where(type => type.HasInternalCommandNameAttribute() && type.FindInternalCommandName().IsNone)
             .Select(type => $"{type.FullName} has a blank InternalCommandName");
 
     private static IEnumerable<String> CollectSharedNameProblems(IEnumerable<Type> commandTypes) =>
