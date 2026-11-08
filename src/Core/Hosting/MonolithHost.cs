@@ -23,16 +23,7 @@ public static class MonolithHost
         await using var app = BuildApp(args, addServices);
         try
         {
-            var settings = app.Services.ValidateSettings();
-            await app.Services.PrepareOrVerifyModuleDatabasesAsync(settings, CancellationToken.None);
-            if (settings.PrepareMode == DatabasePrepareMode.Only)
-            {
-                HostLog.PreparedOnly(app.Logger);
-            }
-            else
-            {
-                await ServeAsync(app);
-            }
+            await RunAppAsync(app);
 
             return Success;
         }
@@ -41,6 +32,19 @@ public static class MonolithHost
             HostLog.Terminated(app.Logger, exception);
             throw;
         }
+    }
+
+    private static async Task RunAppAsync(WebApplication app)
+    {
+        var settings = app.Services.ValidateSettings();
+        await app.Services.PrepareOrVerifyModuleDatabasesAsync(settings, CancellationToken.None);
+        if (settings.PrepareMode == DatabasePrepareMode.Only)
+        {
+            HostLog.PreparedOnly(app.Logger);
+            return;
+        }
+
+        await ServeAsync(app);
     }
 
     private static WebApplication BuildApp(String[] args, Action<WebApplicationBuilder> addServices)
